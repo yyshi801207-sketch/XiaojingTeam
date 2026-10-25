@@ -15,7 +15,7 @@ import type { TeamView } from './model.ts'
 import type { ChatView } from './chat-model.ts'
 import type { TeamSidebarActions } from './ui-state.ts'
 import type { createSidebarViewStore } from './sidebar-view.ts'
-import { CatAvatar } from './avatars.tsx'
+import { BotIdentityAvatar } from './BotIdentityAvatar.tsx'
 import { ChatAvatar } from './ChatAvatar.tsx'
 import { chatApprovals } from './chat-approvals.ts'
 import { chatSidebarStatus } from './chat-sidebar-status.ts'
@@ -139,7 +139,7 @@ export function TeamSidebar({
           aria-label={bot.name} aria-current={conversationVisible && currentId === bot.sessionId ? 'page' : undefined}
           onClick={() => { commands.openBot(bot.id) }}
           onContextMenu={isMain ? undefined : (event) => { openMenu(event, botEntity(bot)) }}>
-          <CatAvatar appearance={bot.avatar} size={isMain ? wide ? 96 : 30 : 28} />
+          <BotIdentityAvatar bot={bot} size={isMain ? wide ? 96 : 30 : 28} />
           {wide && <span className={css.memberText}>
             <span className={css.memberIdentity}>
               <span className={css.memberName}>{bot.name}</span>

@@ -64,12 +64,13 @@ beforeEach(() => { localStorage.clear() })
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); localStorage.clear() })
 
 describe('team sidebar', () => {
-  it('keeps the saved main appearance and orders custom groups, group chats, then ungrouped members', () => {
+  it('shows the supplied main portrait and orders custom groups, group chats, then ungrouped members', () => {
     const { props } = setup()
     render(<TeamSidebar {...props} />)
-    const avatar = screen.getByRole('button', { name: main.name }).querySelector('svg')
+    const avatar = screen.getByRole('button', { name: main.name }).querySelector('img')
     expect(avatar?.getAttribute('width')).toBe('96')
-    expect(avatar?.style.getPropertyValue('--katcats-avatar-color')).toBe(main.avatar.color)
+    expect(avatar?.getAttribute('src')).toContain('main-bot-avatar.png')
+    expect(screen.getByRole('button', { name: main.name }).querySelector('svg')).toBeNull()
     expect(screen.getByRole('button', { name: writer.name }).querySelector('svg')?.getAttribute('width')).toBe('28')
     expect(screen.queryByRole('button', { name: t('entity.menu', { name: main.name }) })).toBeNull()
     expect(screen.getAllByRole('region').map(region => region.getAttribute('aria-label'))).toEqual([
@@ -82,6 +83,16 @@ describe('team sidebar', () => {
     const badge = within(mainButton).getByText(zh['team.main'])
     expect(badge.previousElementSibling).toBe(within(mainButton).getByText(main.name))
     expect(badge.parentElement?.parentElement?.textContent).toContain(zh['team.mainRole'])
+  })
+
+  it('keeps the same main portrait at the narrow sidebar size', () => {
+    const { props } = setup()
+    const view = render(<TeamSidebar {...props} />)
+    const source = screen.getByRole('button', { name: main.name }).querySelector('img')?.getAttribute('src')
+    view.rerender(<TeamSidebar {...props} wide={false} />)
+    const avatar = screen.getByRole('button', { name: main.name }).querySelector('img')
+    expect(avatar?.getAttribute('width')).toBe('30')
+    expect(avatar?.getAttribute('src')).toBe(source)
   })
 
   it('opens group creation from the top action and keeps each group plus bound to that group', () => {

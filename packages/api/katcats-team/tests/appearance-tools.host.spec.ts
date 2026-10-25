@@ -29,7 +29,8 @@ describe('member appearance tools', () => {
     const h = await harness()
     const schemas = h.ctx.tools.schemas(mainAgent(h))
     const avatar = { type: 'object', additionalProperties: false, required: ['shape', 'color'], properties: {
-      shape: { type: 'string', enum: ['classic', 'round', 'point', 'fold', 'tilt', 'fluffy', 'slim'] },
+      shape: { type: 'string', enum: ['classic', 'round', 'point', 'fold', 'tilt', 'fluffy', 'slim'],
+        description: 'Financial robot styles: classic ledger, round cashier, point tax, fold reporting, tilt audit, fluffy cost, slim supervisor. The style changes appearance only, not the member role.' },
       color: { type: 'string' },
     } }
     expect(schemas.find(tool => tool.name === 'create_bot')).toMatchObject({ parameters: {

@@ -153,6 +153,9 @@ describe('explicit group forms', () => {
     const props = { sessionId: chat.rootSessionId, useDirectory: bindSnapshotSelector(directory()), useChats: bindSnapshotSelector(source), save, t } as ChatSettingsProps
     render(<ChatSettings {...permissionDefaults} {...props} />)
     fireEvent.click(screen.getByText(`${zh['chat.members']} · 2`))
+    const members = screen.getByRole('group', { name: zh['chat.members'] })
+    expect(members.querySelector('img[data-xiaojing-main-avatar]')?.getAttribute('width')).toBe('24')
+    expect(members.querySelector('[data-katcats-manager-avatar="main"]')).toBeNull()
     fireEvent.click(screen.getByRole('checkbox', { name: t('chat.mainMember', { name: main.name }) }))
     expect(screen.queryByRole('checkbox', { name: t('chat.mainMember', { name: main.name }) })).toBeNull()
     expect(screen.getByLabelText(zh['chat.manager']).textContent).toContain(zh['chat.noManager'])

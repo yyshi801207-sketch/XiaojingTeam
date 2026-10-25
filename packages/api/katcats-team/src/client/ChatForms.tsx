@@ -10,6 +10,7 @@ import type { CreateChatRequest, TeamChat, UpdateChatRequest } from '../chats-ty
 import type { TeamView } from './model.ts'
 import type { ChatView } from './chat-model.ts'
 import { GroupMemberAvatar } from './GroupMemberAvatar.tsx'
+import { BotIdentityAvatar } from './BotIdentityAvatar.tsx'
 import { ChatAvatar } from './ChatAvatar.tsx'
 import { Choice } from './Choice.tsx'
 import { GroupPermissionSettings } from './PermissionSettings.tsx'
@@ -29,8 +30,9 @@ function Members({ bots, selected, setSelected, disabled, managerId = null, t }:
   return <fieldset className={css.chatMembers}><legend>{t('chat.members')}</legend>
     <p className={css.hint}>{t('chat.memberHint')}</p>
     {bots.filter(bot => bot.kind === 'ordinary' || selected.includes(bot.id)).map(bot => <div key={bot.id} className={css.chatMember}>
-      <GroupMemberAvatar appearance={bot.avatar} botId={bot.id} managerId={managerId} size={24}
-        managerLabel={t('chat.managerBadge')} />
+      {bot.kind === 'main' ? <BotIdentityAvatar bot={bot} size={24} />
+        : <GroupMemberAvatar appearance={bot.avatar} botId={bot.id} managerId={managerId} size={24}
+          managerLabel={t('chat.managerBadge')} />}
       <Checkbox label={bot.kind === 'main' ? t('chat.mainMember', { name: bot.name }) : bot.name}
         checked={selected.includes(bot.id)} disabled={disabled}
         onChange={(checked) => {
@@ -231,8 +233,9 @@ function SettingsForm({ chat, bots, permissionsEnabled, retainPermissionSession,
           const summary = role.trim() || bot.role.trim() || t('chat.inheritRole')
           return <details key={bot.id} className={settingsCss.role}>
             <summary aria-label={t('chat.editMemberRole', { name: bot.name })}>
-              <GroupMemberAvatar appearance={bot.avatar} botId={bot.id} managerId={permissionsEnabled ? chat.managerId : null}
-                size={22} managerLabel={t('chat.managerBadge')} />
+              {bot.kind === 'main' ? <BotIdentityAvatar bot={bot} size={22} />
+                : <GroupMemberAvatar appearance={bot.avatar} botId={bot.id} managerId={permissionsEnabled ? chat.managerId : null}
+                  size={22} managerLabel={t('chat.managerBadge')} />}
               <span className={settingsCss.roleIdentity}><span>{bot.name}</span>
                 <span className={settingsCss.roleSummary}>{summary}</span></span>
               <IconChevronRightOutlineRegular size={14} className={settingsCss.roleChevron} />

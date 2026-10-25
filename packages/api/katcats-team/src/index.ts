@@ -468,7 +468,7 @@ export class KatcatsTeam extends TypertRemoteService {
 
   private avatarValue(avatar: TeamBot['avatar']): TeamBot['avatar'] {
     const parsed = avatarSchema.safeParse(avatar)
-    if (!parsed.success) throw new RemoteError('gateway/bad-request', 'Choose a cat avatar and a six-digit color', {})
+    if (!parsed.success) throw new RemoteError('gateway/bad-request', 'Choose a financial robot avatar and a six-digit color', {})
     return parsed.data
   }
 

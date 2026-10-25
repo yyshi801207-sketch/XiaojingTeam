@@ -5,7 +5,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { BotSettingsInjected } from './BotSettings.tsx'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import type { ChatView } from './chat-model.ts'
-import { CatAvatar } from './avatars.tsx'
+import { BotIdentityAvatar } from './BotIdentityAvatar.tsx'
 import { ChatAvatar } from './ChatAvatar.tsx'
 import css from './team.module.css'
 
@@ -19,7 +19,7 @@ export type BotHeaderActionProps = PropsRuntime<'conversation.session.header.act
 /**
  * Open the scoped member's settings without replacing Session navigation.
  * @param props - Current Session, directory hook and settings action.
- * @returns The saved cat appearance, or no action for unrelated Sessions.
+ * @returns The main portrait or saved member appearance, or no action for unrelated Sessions.
  */
 export function BotHeaderAction({ sessionId, useDirectory, useChats, openSettings, t }: BotHeaderActionProps) {
   const bots = useDirectory(value => value.snapshot?.bots ?? [])
@@ -31,7 +31,7 @@ export function BotHeaderAction({ sessionId, useDirectory, useChats, openSetting
     <button type="button" className={css.headerIdentity} aria-label={label} onClick={openSettings}>
       {bot === undefined && chat !== undefined
         ? <ChatAvatar appearances={bots.filter(item => chat.memberIds.includes(item.id)).map(item => item.avatar)} />
-        : bot !== undefined && <CatAvatar appearance={bot.avatar} size={24} />}
+        : bot !== undefined && <BotIdentityAvatar bot={bot} size={24} />}
     </button>
   </Tooltip>
 }

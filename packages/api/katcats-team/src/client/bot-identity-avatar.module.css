@@ -1,0 +1,7 @@
+.portrait {
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
+  object-position: center;
+  border-radius: 20%;
+}

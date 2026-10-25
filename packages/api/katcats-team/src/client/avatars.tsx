@@ -1,18 +1,18 @@
-/** Approved Katcat silhouettes and bright, independently selected colors. */
+/** Soft, solid financial robot silhouettes with independently selected colors. */
 import type { CSSProperties } from 'react'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
 import css from './team.module.css'
 import motion from './avatar-motion.module.css'
 
-/** Product artwork copied from this source copy's approved cat-head inventory. */
+/** Robot silhouettes keyed by the existing persisted avatar identifiers. The legacy export name is retained for callers. */
 export const CAT_HEADS = [
-  { id: 'classic', path: 'M10 28C9 22 9 13 12 10C14 9 21 13 24 16C29 14 35 14 40 16C44 13 51 9 53 10C56 13 55 22 54 28C59 35 59 42 55 48C50 56 40 59 32 59C22 59 13 56 8 49C3 42 4 34 10 28Z', transform: undefined },
-  { id: 'round', path: 'M12 24C10 19 11 11 15 10C18 10 22 14 25 17C30 16 35 16 40 17C43 14 48 10 51 11C54 13 53 21 52 25C59 30 62 37 59 45C56 55 45 60 32 60C19 60 8 55 5 46C2 37 5 29 12 24Z', transform: undefined },
-  { id: 'point', path: 'M11 27C10 22 9 8 12 3C14 1 24 13 26 17C30 16 35 16 39 17C42 11 51 1 53 3C56 8 54 22 53 27C58 33 60 39 56 47C52 54 41 60 32 60C23 60 12 54 8 47C4 39 6 33 11 27Z', transform: undefined },
-  { id: 'fold', path: 'M12 23C8 20 5 19 4 23C3 27 5 32 9 34C5 39 6 47 12 52C18 57 25 59 32 59C41 59 49 56 54 50C58 45 58 38 55 33C59 30 61 25 58 22C55 19 50 21 47 23C43 18 37 16 31 16C23 16 17 18 12 23Z', transform: undefined },
-  { id: 'tilt', path: 'M10 28C9 22 9 13 12 10C14 9 21 13 24 16C29 14 35 14 40 16C44 13 51 9 53 10C56 13 55 22 54 28C59 35 59 42 55 48C50 56 40 59 32 59C22 59 13 56 8 49C3 42 4 34 10 28Z', transform: 'rotate(-17 32 33)' },
-  { id: 'fluffy', path: 'M11 25L9 10Q10 6 16 9L25 16Q33 13 41 16L51 9Q56 7 55 14L54 26L60 30L57 35L62 41L56 45L56 51L49 52L45 58L38 57L32 61L26 57L19 58L15 53L8 52L8 46L2 41L7 35L4 30Z', transform: undefined },
-  { id: 'slim', path: 'M17 27L15 7Q16 2 20 6L27 16Q33 14 38 16L46 6Q50 3 50 8L48 28C53 33 54 41 50 49C46 57 40 62 32 62C24 62 17 57 14 49C10 40 12 32 17 27Z', transform: undefined },
+  { id: 'classic', path: 'M29 16C29 13 29 12 28 11C24 8 27 3 32 3C37 3 40 8 36 11C35 12 35 13 35 16C46 16 53 21 54 29C61 29 62 33 62 38C62 43 59 46 54 46C52 55 45 59 32 59C19 59 12 55 10 46C5 46 2 43 2 38C2 33 3 29 10 29C11 21 18 16 29 16Z' },
+  { id: 'round', path: 'M28 15C28 13 28 12 27 10C24 6 27 2 32 2C37 2 40 6 37 10C36 12 36 13 36 15C47 17 53 24 53 32C60 32 61 37 60 41C59 45 56 47 52 47C49 56 42 61 32 61C22 61 15 56 12 47C8 47 5 45 4 41C3 37 4 32 11 32C11 24 17 17 28 15Z' },
+  { id: 'point', path: 'M25 17C24 14 22 13 20 12C15 10 16 4 20 4C24 4 27 8 25 11C27 13 28 15 29 16C41 14 51 19 55 29C61 30 63 34 62 39C62 43 60 46 55 46C51 55 43 60 31 60C19 60 11 57 8 49C3 48 1 44 2 39C3 34 6 33 10 34C12 25 17 20 25 17Z' },
+  { id: 'fold', path: 'M40 20C40 17 41 15 42 13C38 10 40 5 45 5C50 5 53 10 49 13C47 15 47 17 47 20C54 22 58 26 58 31C64 32 65 36 63 40C62 44 59 46 55 46C50 53 41 56 29 55C17 54 9 51 7 44C1 43 0 39 2 35C3 31 6 30 9 30C13 22 24 18 40 20Z' },
+  { id: 'tilt', path: 'M31 18C30 15 29 13 27 12C23 11 23 6 27 4C31 2 35 6 33 10C35 12 36 13 37 16C47 13 55 17 57 26C62 25 65 29 63 34C62 39 59 41 56 42C55 51 48 57 36 60C24 63 14 60 11 51C5 53 1 50 2 45C3 40 6 37 10 37C10 27 17 21 31 18Z' },
+  { id: 'fluffy', path: 'M28 16C27 13 27 12 26 10C23 6 27 2 31 3C36 3 38 7 35 11C34 13 34 14 34 16C42 10 50 15 51 23C59 20 64 27 60 35C65 41 60 49 53 49C51 59 42 61 35 57C28 63 18 60 16 53C6 55 0 48 4 40C0 32 5 25 13 26C15 17 21 13 28 16Z' },
+  { id: 'slim', path: 'M29 15C29 12 28 11 27 10C24 7 27 3 31 3C36 3 39 7 36 10C35 11 35 12 35 15C44 17 48 23 48 30C54 30 57 34 56 39C56 43 53 46 48 46C47 56 41 62 32 62C23 62 17 56 16 46C11 46 8 43 8 39C7 34 10 30 16 30C16 23 20 17 29 15Z' },
 ] as const
 
 /** Appearance values travel as member data rather than browser-local preferences. */
@@ -29,7 +29,7 @@ const COLORS = [
 ] as const
 
 /**
- * Draw one approved head, preserving the chosen shape and color independently.
+ * Draw one robot head, preserving the chosen shape and color independently. The legacy CatAvatar name keeps existing callers compatible.
  * @param props - Saved appearance and requested edge size.
  * @returns A decorative SVG using the chosen color and inherited head-specific hover motion, respecting reduced motion.
  */
@@ -39,7 +39,7 @@ export function CatAvatar({ appearance, size = 32 }: { appearance: CatAppearance
     data-head={head.id}
     data-neutral={appearance.color.toLowerCase() === '#202124' ? '' : undefined}
     style={{ '--katcats-avatar-color': appearance.color } as CSSProperties}>
-    <path d={head.path} transform={head.transform} />
+    <path d={head.path} />
   </svg>
 }
 

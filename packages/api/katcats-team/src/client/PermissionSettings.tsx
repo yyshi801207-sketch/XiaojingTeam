@@ -8,6 +8,7 @@ import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
 import type { BotId, TeamBot } from '../types.ts'
 import type { ChatId, TeamChat } from '../chats-types.ts'
 import { GroupMemberAvatar } from './GroupMemberAvatar.tsx'
+import { BotIdentityAvatar } from './BotIdentityAvatar.tsx'
 import type { GroupPermissionBatch, GroupPermissionBatchView } from './group-permission-batch.ts'
 import css from './permission-settings.module.css'
 
@@ -114,8 +115,12 @@ export function GroupPermissionSettings({
       const usable = executor !== undefined && executor.sessionId !== chat.rootSessionId
         && !bots.some(member => member.sessionId === executor.sessionId)
       return <div key={bot.id} className={css.member} role="group" aria-label={t('permissions.member', { name: bot.name })}>
-        <div className={css.identity}><GroupMemberAvatar appearance={bot.avatar} botId={bot.id} managerId={enabled ? chat.managerId : null}
-          size={22} managerLabel={t('chat.managerBadge')} /><span>{bot.name}</span></div>
+        <div className={css.identity}>
+          {bot.kind === 'main' ? <BotIdentityAvatar bot={bot} size={22} />
+            : <GroupMemberAvatar appearance={bot.avatar} botId={bot.id} managerId={enabled ? chat.managerId : null}
+              size={22} managerLabel={t('chat.managerBadge')} />}
+          <span>{bot.name}</span>
+        </div>
         {enabled && usable
           ? <RetainedPermissionPicker key={`${chat.id}:${bot.id}:${executor.sessionId}`}
             chatId={chat.id} botId={bot.id} sessionId={executor.sessionId} locked={locked || batch.busy}

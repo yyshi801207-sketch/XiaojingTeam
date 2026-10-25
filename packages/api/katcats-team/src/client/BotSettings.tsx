@@ -10,7 +10,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type { TeamBot, TeamGroup, UpdateBotRequest } from '../types.ts'
 import type { ModelCatalog } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { TeamView } from './model.ts'
-import { AppearancePicker, CatAvatar } from './avatars.tsx'
+import { AppearancePicker } from './avatars.tsx'
+import { BotIdentityAvatar } from './BotIdentityAvatar.tsx'
 import { Choice } from './Choice.tsx'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
 import css from './team.module.css'
@@ -99,7 +100,7 @@ function SettingsForm({ bot, groups, catalog, actualModel, overrideEnabled, foll
     ).finally(() => { setBusy(false) })
   }}>
     <div className={[css.settingsIdentity, settingsCss.identity].join(' ')}>
-      <CatAvatar appearance={value.avatar} size={60} /><h2>{bot.name}</h2>
+      <BotIdentityAvatar bot={value} size={60} /><h2>{bot.name}</h2>
       <Tooltip label={t('team.automations')}><button type="button" className={settingsCss.automation}
         aria-label={t('team.automations')} onClick={() => { openSchedules(bot.sessionId) }}>
         <IconClockOutlineRegular size={18} />
@@ -111,7 +112,7 @@ function SettingsForm({ bot, groups, catalog, actualModel, overrideEnabled, foll
     <label className={css.label} htmlFor={`${id}-role`}>{t('bot.role')}</label>
     <textarea id={`${id}-role`} className={css.textarea} value={value.role} disabled={busy}
       placeholder={t('bot.rolePlaceholder')} onChange={(event) => { set({ role: event.target.value }) }} />
-    <AppearancePicker value={value.avatar} onChange={(avatar) => { set({ avatar }) }} t={t} disabled={busy} />
+    {bot.kind !== 'main' && <AppearancePicker value={value.avatar} onChange={(avatar) => { set({ avatar }) }} t={t} disabled={busy} />}
     {bot.kind !== 'main' && <><label className={css.label} htmlFor={`${id}-group`}>{t('bot.group')}</label>
       <Choice id={`${id}-group`} label={t('bot.group')} value={value.groupId ?? ''} disabled={busy}
         options={groups.filter(group => group.kind === 'bots').map(group => ({ value: group.id, label: group.system ? t('team.bots') : group.name }))}

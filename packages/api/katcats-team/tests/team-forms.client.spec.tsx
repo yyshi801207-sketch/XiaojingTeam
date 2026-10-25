@@ -39,7 +39,7 @@ const permissionDefaults = {
 }
 
 describe('quick member creation', () => {
-  it('offers the seven approved cats, keeps shape and color independent, and submits a general member', async () => {
+  it('offers the seven approved robots, keeps shape and color independent, and submits a general member', async () => {
     const create = vi.fn(async () => {})
     render(<CreateBot groupId={gid('ordinary')} create={create} close={vi.fn()} t={t} />)
     expect(within(screen.getByRole('group', { name: zh['avatar.shape'] })).getAllByRole('button')).toHaveLength(7)
@@ -61,7 +61,7 @@ describe('quick member creation', () => {
     expect(create).not.toHaveBeenCalled()
   })
 
-  it('uses the default red classic cat and prevents a blank name', async () => {
+  it('uses the default red classic robot and prevents a blank name', async () => {
     const create = vi.fn(async () => {})
     render(<CreateBot groupId={undefined} create={create} close={vi.fn()} t={makeTranslate(en)} />)
     expect(screen.getByRole<HTMLButtonElement>('button', { name: en['team.create'] }).disabled).toBe(true)
@@ -72,6 +72,22 @@ describe('quick member creation', () => {
 })
 
 describe('member settings', () => {
+  it('shows the fixed main portrait without ordinary appearance controls and saves only the edited identity', async () => {
+    const source = directory()
+    const save = vi.fn(async () => {})
+    const props = { sessionId: main.sessionId, useDirectory: bindSnapshotSelector(source), useProjection: () => undefined,
+      save, openMemory: vi.fn(), openSchedules: vi.fn(), t } as BotSettingsProps
+    const view = render(<BotSettings {...permissionDefaults} {...props} />)
+    const portrait = view.container.querySelector('img[data-xiaojing-main-avatar]')
+    expect(portrait?.getAttribute('width')).toBe('60')
+    expect(screen.queryByRole('group', { name: zh['avatar.shape'] })).toBeNull()
+    expect(screen.queryByRole('group', { name: zh['avatar.color'] })).toBeNull()
+    fireEvent.change(screen.getByLabelText(zh['bot.name']), { target: { value: 'Team Assistant' } })
+    fireEvent.click(screen.getByRole('button', { name: zh['bot.save'] }))
+    await waitFor(() => { expect(save).toHaveBeenCalledExactlyOnceWith({ id: main.id, name: 'Team Assistant' }) })
+    expect(source.getSnapshot().snapshot?.bots[0]?.avatar).toBe(main.avatar)
+  })
+
   it.each(['disconnected', 'hidden', 'loading'] as const)('withholds permission factories while %s and restores them only when ready', (reason) => {
     const source = directory()
     const connection = createSnapshotStore<ConnectionState | undefined>('connected')
@@ -196,7 +212,7 @@ it('keeps the main member fixed above the two default sections, including an emp
   expect(commands.createBot).toHaveBeenCalledExactlyOnceWith(gid('ordinary'))
 })
 
-it('updates the scoped header cat from saved member data and opens its settings', () => {
+it('updates the scoped header robot from saved member data and opens its settings', () => {
   const source = directory()
   const openSettings = vi.fn()
   const props = { sessionId: bot.sessionId, useDirectory: bindSnapshotSelector(source), useChats: bindSnapshotSelector(chatDirectory()), openSettings, t } as BotHeaderActionProps
@@ -211,6 +227,22 @@ it('updates the scoped header cat from saved member data and opens its settings'
   expect(openSettings).toHaveBeenCalledOnce()
   view.rerender(<BotHeaderAction {...props} sessionId={'unrelated-session' as SessionId} />)
   expect(screen.queryByRole('button', { name: zh['bot.settings'] })).toBeNull()
+})
+
+it('uses the main portrait only in its own header and restores ordinary artwork when navigating', () => {
+  const source = directory()
+  const openSettings = vi.fn()
+  const props = { sessionId: main.sessionId, useDirectory: bindSnapshotSelector(source), useChats: bindSnapshotSelector(chatDirectory()),
+    openSettings, t } as BotHeaderActionProps
+  const view = render(<BotHeaderAction {...props} />)
+  const button = screen.getByRole('button', { name: zh['bot.settings'] })
+  expect(button.querySelector('img')?.getAttribute('width')).toBe('24')
+  expect(button.querySelector('svg')).toBeNull()
+  fireEvent.click(button)
+  expect(openSettings).toHaveBeenCalledOnce()
+  view.rerender(<BotHeaderAction {...props} sessionId={bot.sessionId} />)
+  expect(button.querySelector('img')).toBeNull()
+  expect(button.querySelector('svg')?.getAttribute('width')).toBe('24')
 })
 
 describe('per-member model selection', () => {

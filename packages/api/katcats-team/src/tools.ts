@@ -23,7 +23,8 @@ export interface MemberToolActions {
 const toolAvatarSchema = {
   type: 'object', additionalProperties: false,
   properties: {
-    shape: { type: 'string', required: true, enum: avatarSchema.shape.shape.options },
+    shape: { type: 'string', required: true, enum: avatarSchema.shape.shape.options,
+      description: 'Financial robot styles: classic ledger, round cashier, point tax, fold reporting, tilt audit, fluffy cost, slim supervisor. The style changes appearance only, not the member role.' },
     color: { type: 'string', required: true, description: 'A six-digit hexadecimal color including #, for example #2288FF.' },
   },
 } as const
@@ -48,7 +49,7 @@ const botResultSchema = {
 export function memberToolGuidance(kind: TeamBot['kind']): string {
   const ownRole = 'Use set_own_role only when the user explicitly asks to establish or change your ongoing identity or responsibilities. Do not change your saved role for a temporary task. Claim a role was saved only after the tool succeeds.'
   return kind === 'main'
-    ? `${ownRole}\nWhen the user explicitly requests a new persistent team member, use create_bot with its name and lasting role. Pass any requested cat shape and color through avatar; writing a color in role does not change the avatar. Omit avatar only to use the default classic red cat. Use set_bot_appearance to change an existing member's requested avatar without recreating it. Use list_bots to inspect existing members, saved avatars, and group IDs; the default group is 未分组. Claim creation or an appearance change only after the tool returns the saved avatar. If a change fails or is cancelled, first use list_bots to check whether it completed; do not automatically retry it.`
+    ? `${ownRole}\nWhen the user explicitly requests a new persistent team member, use create_bot with its name and lasting role. Pass any requested robot style and color through avatar; writing a color in role does not change the avatar. Omit avatar only to use the default red ledger robot. Use set_bot_appearance to change an existing member's requested avatar without recreating it. Use list_bots to inspect existing members, saved avatars, and group IDs; the default group is 未分组. Claim creation or an appearance change only after the tool returns the saved avatar. If a change fails or is cancelled, first use list_bots to check whether it completed; do not automatically retry it.`
     : ownRole
 }
 
@@ -71,7 +72,7 @@ function botResult(bot: TeamBot) {
 function avatarValue(value: BotAvatar): BotAvatar {
   const parsed = avatarSchema.strict().safeParse(value)
   if (!parsed.success) {
-    throw new HarnessError('Choose a declared cat shape and a six-digit hexadecimal color including #.', 'KATCATS_TOOL_INVALID_INPUT')
+    throw new HarnessError('Choose a declared robot style and a six-digit hexadecimal color including #.', 'KATCATS_TOOL_INVALID_INPUT')
   }
   return parsed.data
 }
@@ -125,12 +126,12 @@ export function registerMemberTools(agent: Agent, kind: TeamBot['kind'], actions
   if (kind === 'main') {
     definitions.push(defineTool({
       name: 'create_bot',
-      description: 'Create a persistent team member with the requested name, lasting role, and optional cat avatar. Omitted avatar uses the default classic red cat. Pass requested appearance in avatar, not only in role. Success means the member and its private conversation are durable. On failure or cancellation, call list_bots before trying again.',
+      description: 'Create a persistent team member with the requested name, lasting role, and optional financial robot avatar. Omitted avatar uses the default red ledger robot. Pass requested appearance in avatar, not only in role. Success means the member and its private conversation are durable. On failure or cancellation, call list_bots before trying again.',
       parameters: {
         name: { type: 'string', required: true, description: 'The requested member name.' },
         role: { type: 'string', required: true, description: 'The complete lasting role and responsibilities requested by the user.' },
         group_id: { type: 'string', description: 'A member group ID from list_bots. Omit for the default 未分组 group.' },
-        avatar: { ...toolAvatarSchema, description: 'The requested cat shape and color. Omit to retain the default classic red cat.' },
+        avatar: { ...toolAvatarSchema, description: 'The requested robot style and color. Omit to retain the default red ledger robot.' },
       },
       output: {
         schema: botResultSchema,
@@ -155,7 +156,7 @@ export function registerMemberTools(agent: Agent, kind: TeamBot['kind'], actions
         : undefined,
     }), defineTool({
       name: 'set_bot_appearance',
-      description: 'Save a requested cat shape and color for an existing team member from list_bots. Changes only its avatar, preserving its role, model, groups, private conversation and files. On failure or cancellation, call list_bots before trying again.',
+      description: 'Save a requested robot style and color for an existing team member from list_bots. Changes only its avatar, preserving its role, model, groups, private conversation and files. On failure or cancellation, call list_bots before trying again.',
       parameters: {
         bot_id: { type: 'string', required: true, description: 'The existing member ID from list_bots.' },
         avatar: { ...toolAvatarSchema, required: true },
