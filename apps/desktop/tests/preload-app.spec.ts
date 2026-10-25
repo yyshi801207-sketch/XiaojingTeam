@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { JSDOM } from 'jsdom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { installMandatoryUpdateOverlay } from '../src/preload-mandatory-overlay.ts'
+import { MANDATORY_IPC } from '../src/mandatory-update-ipc.ts'
 import { syncWindowsAppearance } from '../src/preload-windows.ts'
 import { DESKTOP_IPC, XIAOJING_DESKTOP_IPC, type DshDesktopProductApi } from '../src/ipc.ts'
 
@@ -14,7 +14,6 @@ vi.mock('electron', () => electron)
 vi.mock('../src/preload-platform.ts', () => ({ markDocumentPlatform: vi.fn(), syncWindowFullscreen: vi.fn() }))
 vi.mock('../src/preload-theme.ts', () => ({ syncNativeTheme: vi.fn() }))
 vi.mock('../src/preload-windows.ts', () => ({ syncWindowsAppearance: vi.fn() }))
-vi.mock('../src/preload-mandatory-overlay.ts', () => ({ installMandatoryUpdateOverlay: vi.fn() }))
 vi.mock('../src/xiaojing-companion-layout.ts', () => ({ installXiaojingCompanionLayout: vi.fn(() => vi.fn()) }))
 
 beforeEach(() => { vi.stubGlobal('process', { ...process, isMainFrame: true }) })
@@ -167,14 +166,17 @@ it('moves welcome-entry focus to the document without changing keyboard tab orde
   } finally { dom.window.close() }
 })
 
-it.each(['win32', 'darwin'] as const)('installs the embedded mandatory UI only in the Windows app document (%s)', async (platform) => {
+it.each(['win32', 'darwin'] as const)('starts product documents without mandatory-update IPC (%s)', async (platform) => {
   vi.stubGlobal('process', { ...process, platform })
   for (const url of ['dsh-app://app/', 'dsh-app://shell/mandatory-update.html', 'https://example.com/']) {
     vi.resetModules()
-    vi.mocked(installMandatoryUpdateOverlay).mockClear()
+    electron.ipcRenderer.invoke.mockClear()
+    electron.ipcRenderer.on.mockClear()
     vi.stubGlobal('location', new URL(url))
     await import('../src/preload-app.ts')
-    expect(installMandatoryUpdateOverlay).toHaveBeenCalledTimes(platform === 'win32' && url === 'dsh-app://app/' ? 1 : 0)
+    expect(electron.ipcRenderer.invoke.mock.calls.some(([channel]) =>
+      channel === MANDATORY_IPC.status || channel === MANDATORY_IPC.action)).toBe(false)
+    expect(electron.ipcRenderer.on.mock.calls.some(([channel]) => channel === MANDATORY_IPC.state)).toBe(false)
   }
 })
 

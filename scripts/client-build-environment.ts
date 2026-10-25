@@ -22,16 +22,16 @@ const OFFICIAL_CLIENT_BUILD_ENVIRONMENT = {
   DSH_CLIENT_TITLE: 'DeepSeek Harness',
 } as const
 
-/** Public client environment required by Katcats artifacts. */
+/** Public client environment required by Xiaojing Accounting Team artifacts. */
 const XIAOJING_CLIENT_BUILD_ENVIRONMENT = {
   DSH_CLIENT_BUILD_PROFILE: 'xiaojing',
-  DSH_CLIENT_TITLE: 'Katcats.AI',
+  DSH_CLIENT_TITLE: '小兢会计团队版',
   DSH_CLIENT_BOOT_LOGO: './sudo-logo-gray.png',
   DSH_CLIENT_BOOT_LOGO_ALT: '数豆科技',
   DSH_CLIENT_FAVICON: './xiaojing-character-logo.png',
-  DSH_CLIENT_RUNNING_LABEL_ZH: 'Katcats is thinking',
-  DSH_CLIENT_RUNNING_LABEL_EN: 'Katcats is thinking',
-  DSH_CLIENT_WORKSPACE_LABEL: 'Katcats Home',
+  DSH_CLIENT_RUNNING_LABEL_ZH: '小兢正在思考',
+  DSH_CLIENT_RUNNING_LABEL_EN: 'Xiaojing Team is thinking',
+  DSH_CLIENT_WORKSPACE_LABEL: 'Xiaojing Team Home',
 } as const
 
 /** Public variable carrying the source commit embedded in client artifacts. */

@@ -4,7 +4,7 @@
 
 [English](README.md) | 中文
 
-全新安装默认进入 `%LOCALAPPDATA%\Programs\XiaojingAccountingTeam-desktop`，只有 Katcats GUID 登记的安装可以覆盖升级。安装页底部保留 `installer-company-source.png` 中的基线字标。每次成功安装或重装都会初始化一次浅色主题，详见[用户数据路径](#permanent-user-data-paths)。Katcat.AI 安装、工作区和会话路径保持不变，新默认工作区为 `Documents\XiaojingAccountingTeam_Home`。
+全新安装默认进入 `%LOCALAPPDATA%\Programs\XiaojingAccountingTeam-desktop`，只有团队版 GUID 登记的安装可以覆盖升级。安装页底部保留 `installer-company-source.png` 中的基线字标。每次成功安装或重装都会初始化一次浅色主题，详见[用户数据路径](#permanent-user-data-paths)。Katcat.AI 安装、工作区和会话路径保持不变，新默认工作区为 `Documents\XiaojingAccountingTeam_Home`。
 
 “小兢会计团队版”的私有 Electron 部署应用。它通过 Windows 安装包而不是 npm 分发，启动随包提供的 Node 运行时和 Web profile，将 renderer 与 Node 隔离，并在一个 Windows 桌面窗口中呈现本地 Host。
 
@@ -47,7 +47,7 @@
 <a id="permanent-user-data-paths"></a>
 ## 永久用户数据路径
 
-Electron 在获取单实例锁之前，将 `userData` 固定为 `%APPDATA%\XiaojingAccountingTeam-desktop`。随包 Host 使用其 `harness` 子目录作为 `DSH_HOME`。Host 从 `%USERPROFILE%\Documents\XiaojingAccountingTeam_Home` 启动，并通过 `XIAOJING_OFFICE_WORKSPACE_ROOT` 传入。此构建不创建财务工作区。添加操作未提供初始路径时，Electron 目录对话框默认进入 `XiaojingAccountingTeam_Home`，用户可以选择其他目录。现有 Katcat.AI 与小兢数据目录不读取、不导入。[Models 引导协调器](../../packages/client/ui-settings-models/README.zh.md#onboarding-coordinator)根据安装标识和可用提供商状态决定是否显示引导。卸载保留 Katcats 数据，删除工作区不等于清除会话、配置或计费记录。
+Electron 在获取单实例锁之前，将 `userData` 固定为 `%APPDATA%\XiaojingAccountingTeam-desktop`。随包 Host 使用其 `harness` 子目录作为 `DSH_HOME`。Host 从 `%USERPROFILE%\Documents\XiaojingAccountingTeam_Home` 启动，并通过 `XIAOJING_OFFICE_WORKSPACE_ROOT` 传入。此构建不创建财务工作区。添加操作未提供初始路径时，Electron 目录对话框默认进入 `XiaojingAccountingTeam_Home`，用户可以选择其他目录。现有 Katcat.AI 与小兢数据目录不读取、不导入。[Models 引导协调器](../../packages/client/ui-settings-models/README.zh.md#onboarding-coordinator)根据安装标识和可用提供商状态决定是否显示引导。卸载保留团队版数据，删除工作区不等于清除会话、配置或计费记录。
 
 每次成功的 NSIS 安装（包括同版本重装）都会在可执行文件旁的 `katcat-installation-id.txt` 中写入新 GUID。Desktop 在启动 Host 前持有 profile 锁；安装标识尚未处理时，只将 `ui-theme.preference` 设为 `light`，再把该标识记录到 `userData/desktop/installation-theme-id.txt`。其他设置、凭据、会话和用量数据保持完整。普通重启保留用户此后选择的主题。Desktop 通过 `KATCAT_DESKTOP_INSTALLATION_ID` 向 Host 提供这个公开、非机密的标识；没有安装标记的构建保持原有行为。
 
@@ -98,7 +98,7 @@ Electron 就绪后，桌面端会创建一个透明且不抢焦点的Katcat 桌�
 
 Electron 在启动时读取一次 `userData/desktop/settings.json`。可选布尔项 `updates.allowTestAuthPopupWindow` 默认为 `false`；设置文件缺失时创建默认文档，不覆盖已有文件，设置无效时保留原始文件并使用默认值继续启动。该选项只控制测试更新认证，不会启用小兢隐藏的官方账号欢迎流程。修改后须重启。
 
-随包的 `dshDesktopUpdateChannel` 选择 `nightly` 或 `latest`，旧清单默认使用 `nightly`。团队版不执行更新检查、不嵌入远程策略，也不显示更新和共享命令菜单；频道字段仅作为共享打包实现的元数据。打包继续区分小兢产品身份与内核包版本。保留构建的上传验证使用该构建的原产品版本，不受后来源码版本变化影响。
+随包的 `dshDesktopUpdateChannel` 选择 `nightly` 或 `latest`，旧清单默认使用 `nightly`。团队版不执行更新检查、不嵌入远程策略，也不显示更新和共享命令菜单；应用 preload 不请求强制更新 IPC，也不挂载继承的更新浮层；频道字段仅作为共享打包实现的元数据。打包继续区分小兢产品身份与内核包版本。保留构建的上传验证使用该构建的原产品版本，不受后来源码版本变化影响。
 
 上游[打包参考](packaging/README.zh.md)说明机器预设、签名、未签名及未公证输出；[Windows 签名指南](windows-signing/README.zh.md)说明硬件签名要求。小兢还须通过前述身份、数据保留及 Client profile 检查。上游发布及 CI 示例指向 DeepSeek 基础设施，不代表允许向这些服务发布小兢产物。
 

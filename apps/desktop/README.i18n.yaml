@@ -3,14 +3,14 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop/README.md
 /windows-desktop:
-  en: e50228b9735abe55
-  zh: a0e40260cc6b2a8a
+  en: 9eb0a01625306dd9
+  zh: bf95c4f69c6d98c5
 /windows-desktop/permanent-installer-identity:
   en: 7303c7f9698a1d53
   zh: 79e42dfa4a1e2dd1
 /windows-desktop/permanent-user-data-paths:
-  en: 4a750ae8685305be
-  zh: bfa942c0ddb9ed0b
+  en: 7a9beeb268a492c7
+  zh: 404cf389d44b2f99
 /windows-desktop/development-preview-isolation:
   en: 6935c204831d9332
   zh: 5e02efeb8cc05182
@@ -27,8 +27,8 @@
   en: a5c09cf1797cbbcb
   zh: d596b423a66ee0c3
 /windows-desktop/shell-settings-and-packaging:
-  en: 6ae5674aa4d52b28
-  zh: 39eac23ef659f3cc
+  en: e47d0ea80409c99f
+  zh: 490122572d9c1d15
 /windows-desktop/known-limitations:
   en: 8fae0392a30cd5e8
   zh: 02a3a57c9c98b02f
