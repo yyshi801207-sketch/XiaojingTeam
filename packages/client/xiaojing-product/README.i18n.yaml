@@ -3,20 +3,20 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/client/xiaojing-product/README.md
 /:
-  en: 84338672099314e2
-  zh: 84338672099314e2
+  en: c566a1c10be0ff6b
+  zh: c566a1c10be0ff6b
 /deepseek-ai-dsh-client-xiaojing-product:
   en: a87ac61a08f06884
   zh: 688a5771387d9f0f
 /deepseek-ai-dsh-client-xiaojing-product/summary:
-  en: 095946665e486d0a
-  zh: 479a72b09b4cc6db
+  en: 560cafa8ae996c86
+  zh: e606edce4835ac55
 /deepseek-ai-dsh-client-xiaojing-product/table-of-contents:
   en: f1d967a7e5342ebc
   zh: 86774d5ea1aab22d
 /deepseek-ai-dsh-client-xiaojing-product/product-contributions:
-  en: 848578c381726711
-  zh: a0f3efbd5bea61e6
+  en: 84a4f28e26ddb991
+  zh: 690512a6bfa97220
 /deepseek-ai-dsh-client-xiaojing-product/upstream-upgrade-contract:
   en: a0a5fe94aa5a3e44
   zh: ba3c623ca90155ab

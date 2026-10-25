@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import type { InjectFace, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { XiaojingProductKey } from './locales.ts'
 import { useApplicationVersion } from './application-info.ts'
-import artwork from './assets/katcats-team-hero.png'
+import artwork from './assets/xiaojing-finance-team-hero.png'
 import css from './HeroBrand.module.css'
 
 /** Product copy injected into the hero. */
@@ -20,19 +20,20 @@ export type HeroBrandMarkProps =
 export type HeroBrandContentProps =
   PropsRuntime<'conversation.hero.brand.content'> & InjectFace<HeroBrandInjected>
 
-/** Render the supplied Katcats team artwork at the product hero size. */
+/** Fit the supplied finance robots and their shadows within the existing product hero frame. */
 export function HeroBrandMark({ className, t }: HeroBrandMarkProps): ReactNode {
-  const artworkHeight = 1024
+  const frameHeight = 1024
   const displayHeight = 'min(220px, 35vh, 55vw)'
   return (
     <svg
       className={[css.logo, className].filter(Boolean).join(' ')}
-      style={{ width: `calc(${displayHeight} * 1536 / ${artworkHeight})`, height: displayHeight, overflow: 'hidden' }}
-      viewBox={`0 0 1536 ${artworkHeight}`}
+      style={{ width: `calc(${displayHeight} * 1536 / ${frameHeight})`, height: displayHeight, overflow: 'hidden' }}
+      viewBox="0 17 1240 1195"
+      preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label={t('teamArtworkAlt')}
     >
-      <image href={artwork} width="1536" height="1024" />
+      <image href={artwork} width="1254" height="1254" preserveAspectRatio="xMidYMid meet" />
     </svg>
   )
 }

@@ -1,0 +1,14 @@
+{
+  "source": "视觉资产/ChatGPT Image 2026年6月1日 15_41_44 (5).png",
+  "asset": "main-bot-avatar.png",
+  "tool": "image_gen.imagegen (built-in)",
+  "operation": "Remove baked checkerboard background; preserve supplied identity; reframe head and shoulders with true alpha.",
+  "prompt": "Use case: background-extraction / precise-object-edit. Edit this supplied avatar image for direct use as the main Bot avatar in a clean white desktop app. Preserve the exact same original illustrated man, exact face and identity, hairstyle, black glasses, smile, skin tone, teal suit, rendering style and perspective. Remove ALL of the gray-and-white checkerboard, which is baked into the supplied image, and replace it with genuinely transparent alpha. Do not redraw or redesign the man. Reframe as a square, tightly composed HEAD-AND-SHOULDERS portrait: keep full hair and both ears intact, crop the jacket below upper chest, 4–6% clear margin above the hair and sides; face/head should occupy most of the canvas so it remains legible at 24px and 30px. Bottom shoulders can crop naturally at the square edge. No circle, no colored backdrop, no background pattern, no border, no badge, no text, no shadow outside the subject. Produce one clean high-quality transparent PNG avatar, not a comparison sheet.",
+  "transparentBackground": true,
+  "displaySizes": {
+    "sidebarWide": 96,
+    "sidebarCompact": 30,
+    "conversationHeader": 24,
+    "settings": 60
+  }
+}

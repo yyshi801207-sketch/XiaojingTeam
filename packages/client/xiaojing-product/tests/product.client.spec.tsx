@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { Context } from '@deepseek-ai/cordis'
 import { allowAllAccess } from '@deepseek-ai/dsh-client-test-runtime'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -120,17 +121,24 @@ describe('Xiaojing product UI', () => {
     }
   })
 
-  it('renders the supplied team artwork, personal-team tagline and current version badge', () => {
-    render(<HeroBrandMark {...kit} useSessions={sessionHook()} size={34} className="hero-mark" t={t} />)
-    expect(screen.getByRole('img', { name: zh.teamArtworkAlt }).querySelector('image')?.getAttribute('href')).toContain('katcats-team-hero.png')
-    expect(screen.getByRole('img', { name: zh.teamArtworkAlt }).style.width.replaceAll(' ', ''))
+  it.each([
+    ['zh', zh, '小兢会计，您的AI财务团队'],
+    ['en', en, 'Xiaojing Accounting, your AI finance team.'],
+  ] as const)('renders the supplied finance team, localized title and current version badge (%s)', (_language, dictionary, title) => {
+    const translate = (key: keyof typeof zh): string => dictionary[key]
+    render(<HeroBrandMark {...kit} useSessions={sessionHook()} size={34} className="hero-mark" t={translate} />)
+    const artwork = screen.getByRole('img', { name: dictionary.teamArtworkAlt })
+    expect(artwork.querySelector('image')?.getAttribute('href')).toContain('xiaojing-finance-team-hero.png')
+    expect(artwork.style.width.replaceAll(' ', ''))
       .toBe('calc(min(220px,35vh,55vw)*1536/1024)')
-    render(<HeroBrandContent {...kit} useSessions={sessionHook('standard')} t={t} />)
-    expect(screen.getByText('Katcats，Your personal AI team.')).toBeTruthy()
-    expect(screen.getByText(`V${XIAOJING_PRODUCT_VERSION}`)).toBeTruthy()
+    expect(artwork.getAttribute('viewBox')).toBe('0 17 1240 1195')
+    expect(artwork.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
+    render(<HeroBrandContent {...kit} useSessions={sessionHook('standard')} t={translate} />)
+    expect(screen.getByText(title)).toBeTruthy()
+    expect(screen.getByText(dictionary.betaBadgeFormat.replace('{version}', XIAOJING_PRODUCT_VERSION))).toBeTruthy()
     cleanup()
-    render(<HeroBrandContent {...kit} sessionId={'current' as never} useSessions={sessionHook('finance')} t={t} />)
-    expect(screen.getByText('Katcats，Your personal AI team.')).toBeTruthy()
+    render(<HeroBrandContent {...kit} sessionId={'current' as never} useSessions={sessionHook('finance')} t={translate} />)
+    expect(screen.getByText(title)).toBeTruthy()
     expect(screen.queryByText('小兢办公，您的AI财务助手')).toBeNull()
   })
 
@@ -138,30 +146,53 @@ describe('Xiaojing product UI', () => {
     const props = { ...kit, sessionId: 'current' as never, size: 34, t }
     const view = render(<HeroBrandMark {...props} useSessions={sessionHook('standard')} />)
     const artwork = () => screen.getByRole('img', { name: zh.teamArtworkAlt }).querySelector('image')?.getAttribute('href')
-    expect(artwork()).toContain('katcats-team-hero.png')
+    expect(artwork()).toContain('xiaojing-finance-team-hero.png')
     view.rerender(<HeroBrandMark {...props} useSessions={sessionHook('finance')} />)
-    expect(artwork()).toContain('katcats-team-hero.png')
-    expect(screen.getByRole('img', { name: zh.teamArtworkAlt }).getAttribute('viewBox')).toBe('0 0 1536 1024')
+    expect(artwork()).toContain('xiaojing-finance-team-hero.png')
+    expect(screen.getByRole('img', { name: zh.teamArtworkAlt }).getAttribute('viewBox')).toBe('0 17 1240 1195')
     expect(screen.getByRole('img', { name: zh.teamArtworkAlt }).style.width.replaceAll(' ', ''))
       .toBe('calc(min(220px,35vh,55vw)*1536/1024)')
     expect(readFileSync('apps/web/public/xiaojing-office-robot-logo.png')
       .equals(readFileSync('apps/web/public/xiaojing-finance-robot-logo.png'))).toBe(true)
     view.rerender(<HeroBrandMark {...props} useSessions={sessionHook('standard')} />)
-    expect(artwork()).toContain('katcats-team-hero.png')
-    expect(screen.getByRole('img', { name: zh.teamArtworkAlt }).getAttribute('viewBox')).toBe('0 0 1536 1024')
+    expect(artwork()).toContain('xiaojing-finance-team-hero.png')
+    expect(screen.getByRole('img', { name: zh.teamArtworkAlt }).getAttribute('viewBox')).toBe('0 17 1240 1195')
   })
 
-  it('renders independent sidebar mark and name occupants', () => {
+  it.each([['zh', zh], ['en', en]] as const)('renders the complete supplied SUDO sidebar wordmark (%s)', (_language, dictionary) => {
     const view = render(<SidebarBrandMark {...kit} size={24} />)
-    expect(view.container.querySelector('image')?.getAttribute('href')).toContain('katcats-wordmark.png')
+    expect(view.container.querySelector('image')?.getAttribute('href')).toContain('sudo-wordmark.png')
     expect(view.container.querySelector('svg')?.getAttribute('width')).toBe('24')
     expect(view.container.querySelector('svg')?.getAttribute('height')).toBe('24')
-    expect(view.container.querySelector('svg')?.getAttribute('viewBox')).toBe('68 132 380 400')
-    render(<SidebarBrandName {...kit} t={t} />)
-    expect(screen.getByRole('img', { name: 'Katcats.AI' }).querySelector('image')?.getAttribute('href')).toContain('katcats-wordmark.png')
+    expect(view.container.querySelector('svg')?.getAttribute('viewBox')).toBe('35 59 2106 645')
+    render(<SidebarBrandName {...kit} t={key => dictionary[key]} />)
+    const wordmark = screen.getByRole('img', { name: dictionary.sidebarBrandAlt })
+    expect(wordmark.querySelector('image')?.getAttribute('href')).toContain('sudo-wordmark.png')
+    expect(wordmark.querySelector('image')?.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
+    expect(wordmark.getAttribute('viewBox')).toBe('35 59 2106 645')
+    expect(wordmark.querySelector('filter')).toBeNull()
     expect(screen.queryByText('您的AI办公搭子')).toBeNull()
     const css = readFileSync('packages/client/xiaojing-product/src/client/SidebarBrand.module.css', 'utf8')
     expect(css).toContain('padding-right: 4px')
+    expect(css).toContain('width: 148px')
+    expect(css).toContain('height: 46px')
+    expect(css).not.toMatch(/invert\(|hue-rotate\(/u)
+  })
+
+  it('retains the supplied transparent SUDO logo bytes without recoloring or raster edits', () => {
+    const source = readFileSync('packages/client/xiaojing-product/src/client/assets/sudo-wordmark.png')
+    expect(createHash('sha256').update(source).digest('hex'))
+      .toBe('4bc1f518e492d171de515e376be2f8eb88cecfea3741c3c5c2d478593fad00cf')
+    expect({ width: source.readUInt32BE(16), height: source.readUInt32BE(20), colorType: source[25] })
+      .toEqual({ width: 2172, height: 724, colorType: 6 })
+  })
+
+  it('retains the supplied finance robots and foot shadows without raster edits', () => {
+    const source = readFileSync('packages/client/xiaojing-product/src/client/assets/xiaojing-finance-team-hero.png')
+    expect(createHash('sha256').update(source).digest('hex'))
+      .toBe('2e06582e44cabdea0173675f84f06ee83f57ef13fdcd3fae4270b2588a80bdcf')
+    expect({ width: source.readUInt32BE(16), height: source.readUInt32BE(20), colorType: source[25] })
+      .toEqual({ width: 1254, height: 1254, colorType: 6 })
   })
 
   it.each([['zh', zh], ['en', en]] as const)('shows only product and base versions in About (%s)', (_language, dictionary) => {
