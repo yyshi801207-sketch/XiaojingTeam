@@ -57,6 +57,9 @@ export function apply(ctx: ClientContext): void {
       ...(config.panelNavigation === undefined ? {} : { panelNavigation: {
         label: ctx.locale.resolveText(config.panelNavigation.label), defaultExpanded: config.panelNavigation.defaultExpanded ?? true,
       } }),
+      ...(config.footerNavigation === undefined ? {} : { footerNavigation: {
+        label: ctx.locale.resolveText(config.footerNavigation.label), defaultExpanded: config.footerNavigation.defaultExpanded ?? true,
+      } }),
       ...(config.footerActionsPlacement === undefined ? {} : { footerActionsPlacement: config.footerActionsPlacement }),
     })
   }

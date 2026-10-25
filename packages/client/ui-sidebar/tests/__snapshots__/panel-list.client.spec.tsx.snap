@@ -1,0 +1,30 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`sidebar global panels > folds every footer action without unmounting settings or losing nested navigation, rail=false 1`] = `
+{
+  "controls": [
+    "New session",
+    "Collapse sidebar",
+    "New session",
+    "Show Tools and settings",
+  ],
+  "rail": false,
+  "settingsHidden": true,
+  "settingsMounted": true,
+  "usageMounted": true,
+}
+`;
+
+exports[`sidebar global panels > folds every footer action without unmounting settings or losing nested navigation, rail=true 1`] = `
+{
+  "controls": [
+    "Open sidebar",
+    "New session",
+    "Show Tools and settings",
+  ],
+  "rail": true,
+  "settingsHidden": true,
+  "settingsMounted": true,
+  "usageMounted": true,
+}
+`;

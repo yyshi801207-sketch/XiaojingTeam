@@ -1,11 +1,10 @@
-/** Katcat first-use API key guide. */
+/** Team first-use API key guide. */
 
 import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { XiaojingProductKey } from './locales.ts'
-import { WordmarkImage } from './WordmarkImage.tsx'
 import css from './OnboardingContent.module.css'
 
 const DEEPSEEK_PLATFORM_URL = 'https://platform.deepseek.com/'
@@ -39,16 +38,6 @@ export function OnboardingContent({ acknowledge, saving, failed, t }: Onboarding
   return (
     <Modal open title={t('onboardingTitle')} onClose={ignoreImplicitDismiss} headless className={css.dialog as string}>
       <div className={css.content}>
-        <div className={css.welcome}>
-          <div className={css.brand}>
-            <svg className={css.wordmark} viewBox="68 132 2040 400" role="img" aria-label={t('brandAlt')}>
-              <WordmarkImage />
-            </svg>
-            <p className={css.tagline}>{t('aboutDescription')}</p>
-          </div>
-          <div className={css.paperLayers} aria-hidden="true" />
-          <img className={css.artwork} src="./katcat-hero.png" alt="" width="1536" height="1024" />
-        </div>
         <div className={css.body}>
           <h2 ref={titleRef} className={css.title} tabIndex={-1}>{t('onboardingTitle')}</h2>
           <ol className={css.steps}>

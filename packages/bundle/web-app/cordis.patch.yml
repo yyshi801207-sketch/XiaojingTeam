@@ -394,6 +394,7 @@
         process.env.KATCATS_PRODUCT_MODE === '1' ? {
           primaryActionLabel: { zh: '创建新 Bot', en: 'Create new Bot' },
           panelNavigation: { label: { zh: '工具与自动化', en: 'Tools and automations' }, defaultExpanded: false },
+          footerNavigation: { label: { zh: '工具与设置', en: 'Tools and settings' }, defaultExpanded: false },
           footerActionsPlacement: 'after-panels'
         } : {}
 

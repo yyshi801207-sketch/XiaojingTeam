@@ -35,7 +35,7 @@ dsh Web 客户端的侧边栏让用户识别当前构建、启动新会话、将
 
 ### 产品展示
 
-可选 Config 字段定制原有外壳：`primaryActionLabel` 提供主操作的本地化文本、可访问名称和 tooltip；`panelNavigation: { label, defaultExpanded? }` 将原有全局面板行置于折叠容器；`footerActionsPlacement: 'after-panels'` 将底部操作排在这些行下方，设置仍最后显示。文案映射要求非空白的英文 `en` 兜底。折叠容器默认展开，挂载期间保留后续切换，窄栏导航仍可用。省略这些字段时沿用标准文案和布局，创建回调、快捷键及面板注册保持不变。
+可选 Config 字段定制原有外壳：`primaryActionLabel` 提供主操作的本地化文本、可访问名称和 tooltip；`panelNavigation: { label, defaultExpanded? }` 折叠原有全局面板行；`footerNavigation: { label, defaultExpanded? }` 将全部底部导航、用量操作和设置入口收进一行 32px 控件；`footerActionsPlacement: 'after-panels'` 将底部操作排在面板行下方，设置仍最后显示。文案映射要求非空白的英文 `en` 兜底。两种折叠容器默认展开，挂载期间保留后续切换。单独折叠面板时窄栏导航仍可用；底部整体折叠也作用于窄栏。省略这些字段时沿用标准文案和布局，创建回调、快捷键及面板注册保持不变。
 
 这些字段配置在 Host 插件上。Host 通过 `webserver/index-inject` 将公开展示字段发布为页面全局值 `__DSH_SIDEBAR_PRESENTATION__`；Client 在注册任何侧栏 effect 前校验该载荷。缺少 bootstrap 时保留默认行为。Client 入口的激活参数不传递 Host 配置。配置修改在下次页面 bootstrap 生效；语言切换更新已挂载文案，不改变用户的折叠状态。
 
@@ -75,7 +75,7 @@ dsh Web 客户端的侧边栏让用户识别当前构建、启动新会话、将
 
 ### slot 纪律
 
-声明感知的 `slots.inject()` 让替换包无论先于还是后于侧边栏激活都能生效。页脚承载 `sidebar.settings` 席位：侧边栏只渲染固定在底部的布局 slot，并共享其栏状态（`wide`）。`/client` 导出接口只包含插件主体（`apply`/`inject`）及约定类型；SidebarRoot、行组件与树派生仍由 slot 注册封装在包内。
+声明感知的 `slots.inject()` 让替换包无论先于还是后于侧边栏激活都能生效。页脚承载 `sidebar.settings` 席位：侧边栏渲染固定在底部的布局 slot，并共享其栏状态（`wide`）。底部整体折叠时，可选 owner prop `hiddenAction` 只隐藏入口；设置组件保持挂载，其弹窗、草稿和快捷键仍可使用。`/client` 导出接口只包含插件主体（`apply`/`inject`）及约定类型；SidebarRoot、行组件与树派生仍由 slot 注册封装在包内。
 
 </details>
 

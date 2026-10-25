@@ -71,20 +71,25 @@ exports[`sidebar shell snapshots > renders Windows caption controls in expanded 
       class="footArea"
     >
       <div
-        class="footerActions"
+        class="footerContents"
+        id=":rh:"
       >
         <div
-          data-slot="sidebar.footer.action"
-          style="display: contents;"
-        />
-      </div>
-      <div
-        class="settingsArea"
-      >
+          class="footerActions"
+        >
+          <div
+            data-slot="sidebar.footer.action"
+            style="display: contents;"
+          />
+        </div>
         <div
-          data-slot="sidebar.settings"
-          style="display: contents;"
-        />
+          class="settingsArea"
+        >
+          <div
+            data-slot="sidebar.settings"
+            style="display: contents;"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -214,20 +219,25 @@ exports[`sidebar shell snapshots > renders Windows caption controls in expanded 
       class="footArea"
     >
       <div
-        class="footerActions"
+        class="footerContents"
+        id=":rh:"
       >
         <div
-          data-slot="sidebar.footer.action"
-          style="display: contents;"
-        />
-      </div>
-      <div
-        class="settingsArea"
-      >
+          class="footerActions"
+        >
+          <div
+            data-slot="sidebar.footer.action"
+            style="display: contents;"
+          />
+        </div>
         <div
-          data-slot="sidebar.settings"
-          style="display: contents;"
-        />
+          class="settingsArea"
+        >
+          <div
+            data-slot="sidebar.settings"
+            style="display: contents;"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -323,20 +333,25 @@ exports[`sidebar shell snapshots > renders the collapsed rail after the crossfad
       class="footArea"
     >
       <div
-        class="footerActions"
+        class="footerContents"
+        id=":r9:"
       >
         <div
-          data-slot="sidebar.footer.action"
-          style="display: contents;"
-        />
-      </div>
-      <div
-        class="settingsArea"
-      >
+          class="footerActions"
+        >
+          <div
+            data-slot="sidebar.footer.action"
+            style="display: contents;"
+          />
+        </div>
         <div
-          data-slot="sidebar.settings"
-          style="display: contents;"
-        />
+          class="settingsArea"
+        >
+          <div
+            data-slot="sidebar.settings"
+            style="display: contents;"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -466,20 +481,25 @@ exports[`sidebar shell snapshots > renders the expanded column (wordmark, capsul
       class="footArea"
     >
       <div
-        class="footerActions"
+        class="footerContents"
+        id=":r5:"
       >
         <div
-          data-slot="sidebar.footer.action"
-          style="display: contents;"
-        />
-      </div>
-      <div
-        class="settingsArea"
-      >
+          class="footerActions"
+        >
+          <div
+            data-slot="sidebar.footer.action"
+            style="display: contents;"
+          />
+        </div>
         <div
-          data-slot="sidebar.settings"
-          style="display: contents;"
-        />
+          class="settingsArea"
+        >
+          <div
+            data-slot="sidebar.settings"
+            style="display: contents;"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -609,20 +629,25 @@ exports[`sidebar shell snapshots > renders the expanded column in the default lo
       class="footArea"
     >
       <div
-        class="footerActions"
+        class="footerContents"
+        id=":r1:"
       >
         <div
-          data-slot="sidebar.footer.action"
-          style="display: contents;"
-        />
-      </div>
-      <div
-        class="settingsArea"
-      >
+          class="footerActions"
+        >
+          <div
+            data-slot="sidebar.footer.action"
+            style="display: contents;"
+          />
+        </div>
         <div
-          data-slot="sidebar.settings"
-          style="display: contents;"
-        />
+          class="settingsArea"
+        >
+          <div
+            data-slot="sidebar.settings"
+            style="display: contents;"
+          />
+        </div>
       </div>
     </div>
   </div>

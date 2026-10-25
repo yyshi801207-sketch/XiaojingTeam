@@ -26,7 +26,8 @@ export function SidebarBrandName(
 ): ReactNode {
   return (
     <span className={css.name}>
-      <svg className={css.wordmark} viewBox="35 59 2106 645" role="img" aria-label={t('sidebarBrandAlt')}>
+      <svg className={css.wordmark} viewBox="35 59 2106 645" preserveAspectRatio="xMinYMid meet"
+        role="img" aria-label={t('sidebarBrandAlt')}>
         <image href={wordmark} width="2172" height="724" preserveAspectRatio="xMidYMid meet" />
       </svg>
     </span>

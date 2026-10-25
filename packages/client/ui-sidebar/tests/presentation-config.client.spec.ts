@@ -10,6 +10,7 @@ describe('sidebar presentation Config', () => {
   it('accepts localized labels and an explicit initially collapsed panel group', () => {
     const input = { primaryActionLabel: { en: 'Create helper', zh: '创建助手' },
       panelNavigation: { label: { en: 'More', zh: '更多' }, defaultExpanded: false },
+      footerNavigation: { label: { en: 'Tools and settings', zh: '工具与设置' }, defaultExpanded: false },
       footerActionsPlacement: 'after-panels' as const }
     expect(Config(input)).toEqual(input)
   })
@@ -19,6 +20,9 @@ describe('sidebar presentation Config', () => {
     { primaryActionLabel: { en: ' ' } },
     { panelNavigation: {} },
     { panelNavigation: { label: { en: 'More', zh: '\t' } } },
+    { footerNavigation: {} },
+    { footerNavigation: { label: { zh: '工具与设置' } } },
+    { footerNavigation: { label: { en: 'Tools and settings' }, defaultExpanded: 'false' } },
     { footerActionsPlacement: 'elsewhere' },
   ])('rejects invalid presentation configuration %j', (input) => {
     expect(() => Config(input as never)).toThrow()

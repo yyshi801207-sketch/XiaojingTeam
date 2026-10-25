@@ -133,6 +133,43 @@ async function mountPanels(runtime: SlotTestRuntime, locale: LocaleRuntime, beta
 }
 
 describe('sidebar global panels', () => {
+  it.each([false, true])('folds every footer action without unmounting settings or losing nested navigation, rail=%s', async (collapsed) => {
+    const { runtime, locale, view } = await bench(collapsed, {
+      footerNavigation: { label: { en: 'Tools and settings', zh: '工具与设置' }, defaultExpanded: false },
+      panelNavigation: { label: { en: 'Tools', zh: '工具' }, defaultExpanded: false },
+      footerActionsPlacement: 'after-panels',
+    })
+    await runtime.mount({ inject: ['slots'], apply(ctx: Context) {
+      ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({ name: 'sidebar.footer.action', id: 'usage' },
+        () => <button type="button">Usage</button>))
+      ctx.slots.inject('sidebar.settings', () => ctx.slots.register({ name: 'sidebar.settings' },
+        ({ hiddenAction }: PropsRuntime<'sidebar.settings'>) => <button type="button" hidden={hiddenAction}>Settings</button>))
+    } })
+    await mountPanel(runtime, { id: ALPHA, heading: 'Plugin manager', label: 'Plugins' })
+    const sidebar = within(view.getByRole('complementary'))
+    const toggle = sidebar.getByRole('button', { name: 'Show Tools and settings' })
+    const settings = sidebar.getByText('Settings')
+    const usage = sidebar.getByText('Usage')
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(sidebar.queryByRole('button', { name: 'Settings' })).toBeNull()
+    expect(sidebar.queryByRole('button', { name: 'Usage' })).toBeNull()
+    expect(sidebar.queryByRole('button', { name: 'Plugins' })).toBeNull()
+    expect({ rail: collapsed, controls: sidebar.getAllByRole('button').map(button => button.getAttribute('aria-label') ?? button.textContent),
+      settingsMounted: settings.isConnected, settingsHidden: settings.hidden, usageMounted: usage.isConnected }).toMatchSnapshot()
+    fireEvent.click(toggle)
+    expect(sidebar.getByRole('button', { name: 'Settings' })).toBe(settings)
+    expect(sidebar.getByRole('button', { name: 'Usage' })).toBe(usage)
+    if (!collapsed) fireEvent.click(sidebar.getByRole('button', { name: 'Tools' }))
+    const plugins = sidebar.getByRole('button', { name: 'Plugins' })
+    fireEvent.click(toggle)
+    expect(sidebar.queryByRole('button', { name: 'Plugins' })).toBeNull()
+    act(() => { locale.setLocale('zh') })
+    expect(toggle.getAttribute('aria-label')).toBe('展开工具与设置')
+    fireEvent.click(toggle)
+    expect(sidebar.getByRole('button', { name: 'Plugins' })).toBe(plugins)
+    expect(sidebar.getByRole('button', { name: 'Settings' })).toBe(settings)
+  })
+
   it('mounts Host-injected create copy, initial panel fold and footer placement through the Client entry', async () => {
     const { runtime, locale, view, bootstrap } = await bench(false, {
       primaryActionLabel: { en: 'Create helper', zh: '创建助手' },

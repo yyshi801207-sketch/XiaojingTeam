@@ -103,6 +103,11 @@ export function SidebarRoot({
   const presentation = usePresentation(snapshot => snapshot)
   const panelsId = useId()
   const [panelsExpanded, setPanelsExpanded] = useState(() => presentation.panelNavigation?.defaultExpanded ?? true)
+  const footerId = useId()
+  const [footerExpanded, setFooterExpanded] = useState(() => presentation.footerNavigation?.defaultExpanded ?? true)
+  const footerVisible = presentation.footerNavigation === undefined || footerExpanded
+  const footerLabel = presentation.footerNavigation?.label
+  const footerToggleLabel = footerLabel === undefined ? '' : t(footerExpanded ? 'footer.collapse' : 'footer.expand', { label: footerLabel })
   const primaryLabel = presentation.primaryActionLabel ?? t('session.new.label')
   const primaryText = presentation.primaryActionLabel ?? t('session.new')
   const shortcut = useShortcuts(rows => rows.find(row => row.id === 'sidebar.left.toggle'))
@@ -203,7 +208,7 @@ export function SidebarRoot({
     </Tooltip>
   )
 
-  const footerActions = <div className={css.footerActions}>{renderSlot('sidebar.footer.action', { wide })}</div>
+  const footerActions = <div className={css.footerActions} hidden={!footerVisible}>{renderSlot('sidebar.footer.action', { wide })}</div>
   const panelRows = panels.map(({ id, label }) => <PanelRow key={id} id={id} label={label} wide={wide}
     usePanelInfo={usePanelInfo} selectPanel={selectPanel} renderSlot={renderSlot} />)
 
@@ -298,25 +303,37 @@ export function SidebarRoot({
 
       {/* Footer actions and panel navigation stack above Settings in both widths. */}
       <div className={css.footArea}>
-        {presentation.footerActionsPlacement !== 'after-panels' && footerActions}
-        {panels.length > 0 && (
-          <nav className={css.panelList} aria-label={presentation.panelNavigation?.label ?? t('panels.label')}>
-            {wide && presentation.panelNavigation !== undefined ? <>
-              <button type="button" className={css.panelRow} aria-expanded={panelsExpanded} aria-controls={panelsId}
-                onClick={() => { setPanelsExpanded(value => !value) }}>
-                <span className={css.panelGlyph} aria-hidden="true">
-                  {panelsExpanded ? <IconChevronDownOutlineRegular size={16} /> : <IconChevronRightOutlineRegular size={16} />}
-                </span>
-                <span className={css.panelTitle}>{presentation.panelNavigation.label}</span>
-              </button>
-              <div id={panelsId} className={panelsExpanded ? css.panelList : undefined}
-                hidden={!panelsExpanded} style={{ marginBottom: 0 }}>{panelRows}</div>
-            </> : panelRows}
-          </nav>
-        )}
-        {presentation.footerActionsPlacement === 'after-panels' && footerActions}
-        <div className={css.settingsArea}>
-          {renderSlot('sidebar.settings', { wide })}
+        {footerLabel !== undefined && <Tooltip label={footerToggleLabel} disabled={wide} delayMs={500}>
+          <button type="button" className={clsx(css.panelRow, css.footerToggle)}
+            aria-label={footerToggleLabel} aria-expanded={footerExpanded} aria-controls={footerId}
+            onClick={() => { setFooterExpanded(value => !value) }}>
+            <span className={css.panelGlyph} aria-hidden="true">
+              {footerExpanded ? <IconChevronDownOutlineRegular size={16} /> : <IconChevronRightOutlineRegular size={16} />}
+            </span>
+            {wide && <span className={css.panelTitle}>{footerLabel}</span>}
+          </button>
+        </Tooltip>}
+        <div id={footerId} className={css.footerContents}>
+          {presentation.footerActionsPlacement !== 'after-panels' && footerActions}
+          {panels.length > 0 && (
+            <nav className={css.panelList} hidden={!footerVisible} aria-label={presentation.panelNavigation?.label ?? t('panels.label')}>
+              {wide && presentation.panelNavigation !== undefined ? <>
+                <button type="button" className={css.panelRow} aria-expanded={panelsExpanded} aria-controls={panelsId}
+                  onClick={() => { setPanelsExpanded(value => !value) }}>
+                  <span className={css.panelGlyph} aria-hidden="true">
+                    {panelsExpanded ? <IconChevronDownOutlineRegular size={16} /> : <IconChevronRightOutlineRegular size={16} />}
+                  </span>
+                  <span className={css.panelTitle}>{presentation.panelNavigation.label}</span>
+                </button>
+                <div id={panelsId} className={panelsExpanded ? css.panelList : undefined}
+                  hidden={!panelsExpanded} style={{ marginBottom: 0 }}>{panelRows}</div>
+              </> : panelRows}
+            </nav>
+          )}
+          {presentation.footerActionsPlacement === 'after-panels' && footerActions}
+          <div className={css.settingsArea}>
+            {renderSlot('sidebar.settings', { wide, ...(footerVisible ? {} : { hiddenAction: true }) })}
+          </div>
         </div>
       </div>
     </div>

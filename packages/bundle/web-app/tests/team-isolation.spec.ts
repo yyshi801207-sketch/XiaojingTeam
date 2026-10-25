@@ -45,6 +45,14 @@ function resolved(id: string, env: Record<string, string | undefined> = {}, prof
 }
 
 describe('Team product composition', () => {
+  it('folds the complete footer only in the Team product presentation', () => {
+    expect(resolved('ui-sidebar').config).toEqual({})
+    expect(resolved('ui-sidebar', { KATCATS_PRODUCT_MODE: '1' }).config).toMatchObject({
+      footerNavigation: { label: { zh: '工具与设置', en: 'Tools and settings' }, defaultExpanded: false },
+      panelNavigation: { defaultExpanded: false }, footerActionsPlacement: 'after-panels',
+    })
+  })
+
   it('ignores browser executable, connector, endpoint, and token overrides from other editions', () => {
     expect(resolved('xiaojing-native-browser-control', oldEnvironment).disabled).toBe(false)
     expect(resolved('xiaojing-browser-control', oldEnvironment).config).toMatchObject({

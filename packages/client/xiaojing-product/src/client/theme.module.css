@@ -3,14 +3,11 @@ body[data-xiaojing-product] {
   --sudo-brand: #ef254d;
   --sudo-brand-dark: #d8173e;
   --sudo-ink: #202124;
-  --katcat-onboarding-paper: #fff8ed;
-  --katcat-onboarding-paper-raised: #fffdf8;
+  --katcat-onboarding-paper: #fff;
+  --katcat-onboarding-paper-raised: #fff;
   --katcat-onboarding-ink: #27221e;
   --katcat-onboarding-muted: #62564c;
   --katcat-onboarding-line: #ebddcc;
-  --katcat-onboarding-coral: #fb7d50;
-  --katcat-onboarding-coral-mid: #ff9d76;
-  --katcat-onboarding-coral-light: #ffbd9d;
   --katcat-onboarding-accent: #bd4625;
   --katcat-onboarding-link: #066ac9;
   --katcat-onboarding-link-hover: #004c99;

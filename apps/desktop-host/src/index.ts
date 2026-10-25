@@ -59,6 +59,21 @@ async function main(): Promise<void> {
   process.on('message', (message: unknown) => {
     if (typeof message !== 'object' || message === null || !('type' in message)) return
     if (message.type === 'shutdown') { void stop(); return }
+    if (message.type === 'boot-injections') {
+      if (!('requestId' in message) || !Number.isSafeInteger(message.requestId)) return
+      const requestId = message.requestId
+      void (async () => {
+        try {
+          const running = await application
+          if (stopping !== undefined) throw new Error('desktop boot: Host is stopping')
+          await send({ type: 'boot-injections', requestId, injections: running.ctx.webServer.collectIndexInjections() })
+        } catch (error) {
+          await send({ type: 'boot-injections', requestId, injections: [],
+            error: error instanceof Error ? error.message : String(error) })
+        }
+      })().catch((error: unknown) => { console.error(error) })
+      return
+    }
     if (message.type === 'quit-inspection') {
       if (!('requestId' in message) || !Number.isSafeInteger(message.requestId)) return
       const requestId = message.requestId

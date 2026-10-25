@@ -73,7 +73,7 @@ async function bench() {
 }
 
 describe('Xiaojing product UI', () => {
-  it('restores the first-use guide and platform link without the Harness developer introduction', () => {
+  it('keeps the first-use instructions and platform link without a decorative header', () => {
     const root = document.createElement('div')
     root.id = 'root'
     root.inert = false
@@ -83,8 +83,25 @@ describe('Xiaojing product UI', () => {
     const dialog = screen.getByRole('dialog', { name: '初次使用说明' })
     expect(dialog.querySelectorAll('li')).toHaveLength(2)
     expect(dialog.textContent).not.toContain('Harness')
-    expect(screen.getByRole('img', { name: 'Katcats.AI' }).querySelector('image')?.getAttribute('href'))
-      .toContain('katcats-wordmark.png')
+    expect(dialog.querySelector('img, svg')).toBeNull()
+    expect({
+      title: dialog.querySelector('h2')?.textContent,
+      steps: Array.from(dialog.querySelectorAll('h3'), heading => heading.textContent),
+      actions: screen.getAllByRole('button').map(button => button.textContent),
+      graphics: dialog.querySelectorAll('img, svg').length,
+    }).toMatchInlineSnapshot(`
+      {
+        "actions": [
+          "开始使用",
+        ],
+        "graphics": 0,
+        "steps": [
+          "获取 API Key",
+          "连接您的智能体团队",
+        ],
+        "title": "初次使用说明",
+      }
+    `)
     for (const key of ['onboardingGetKeyBody', 'onboardingConnectBody', 'onboardingManageKey', 'onboardingSecurity', 'onboardingLaterHint'] as const) {
       expect(screen.getByText(zh[key], { exact: true })).toBeTruthy()
     }
@@ -170,12 +187,15 @@ describe('Xiaojing product UI', () => {
     expect(wordmark.querySelector('image')?.getAttribute('href')).toContain('sudo-wordmark.png')
     expect(wordmark.querySelector('image')?.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
     expect(wordmark.getAttribute('viewBox')).toBe('35 59 2106 645')
+    expect(wordmark.getAttribute('preserveAspectRatio')).toBe('xMinYMid meet')
     expect(wordmark.querySelector('filter')).toBeNull()
     expect(screen.queryByText('您的AI办公搭子')).toBeNull()
     const css = readFileSync('packages/client/xiaojing-product/src/client/SidebarBrand.module.css', 'utf8')
     expect(css).toContain('padding-right: 4px')
     expect(css).toContain('width: 148px')
-    expect(css).toContain('height: 46px')
+    expect(css).toContain('height: 24px')
+    expect(css).toContain('height: 32px')
+    expect(css).toContain('min-height: 36px')
     expect(css).not.toMatch(/invert\(|hue-rotate\(/u)
   })
 

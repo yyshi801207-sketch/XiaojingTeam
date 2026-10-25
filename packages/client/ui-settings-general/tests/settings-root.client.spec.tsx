@@ -42,6 +42,7 @@ const useSessionStatus: SettingsRootComponentProps['useSessionStatus'] = selecto
 function mount({
   shortcuts = [],
   wide = true,
+  hiddenAction = false,
   dictionary = en,
   connectionState = 'connected',
   desktopUpdate = { failed: false, opening: false },
@@ -59,6 +60,7 @@ function mount({
 }: {
   shortcuts?: readonly ShortcutCatalogEntry[]
   wide?: boolean
+  hiddenAction?: boolean
   dictionary?: typeof en | typeof zh
   connectionState?: ConnectionSnapshot
   desktopUpdate?: DesktopUpdateView
@@ -97,7 +99,7 @@ function mount({
   }
   const unusedHook = (() => { throw new Error('unused by SettingsRoot') }) as never
   const shell = createSettingsShellStore().create()
-  const props: SettingsRootComponentProps = {
+  let props: SettingsRootComponentProps = {
     useStore: bindSnapshotSelector(shell), actions: shell.actions,
     useShortcuts: select => select(shortcuts),
     useSessions: select => select(sessions),
@@ -106,6 +108,7 @@ function mount({
     useWorkspaces: unusedHook,
     ...allowAllAccess,
     wide,
+    hiddenAction,
     reconnect,
     openDesktopUpdate: () => {},
     useDesktopUpdate: select => select(desktopUpdate),
@@ -159,7 +162,11 @@ function mount({
     act(() => { sessions.byId[activeId] = { ...session, blank: next } })
     view.rerender(<SettingsRoot {...props} />)
   }
-  return { view, renderSlot, bump, listeners, reconnect, setConnectionState, setDesktopUpdate, setShortcuts, setOnboardingActive }
+  const setHiddenAction = (next: boolean) => {
+    props = { ...props, hiddenAction: next }
+    view.rerender(<SettingsRoot {...props} />)
+  }
+  return { view, shell, renderSlot, bump, listeners, reconnect, setConnectionState, setDesktopUpdate, setShortcuts, setOnboardingActive, setHiddenAction }
 }
 
 function openPanel() {
@@ -170,6 +177,27 @@ function openPanel() {
 }
 
 describe('SettingsRoot trigger', () => {
+  it('hides only its trigger while externally opened settings and an in-progress draft remain mounted', () => {
+    const mounted = mount({ hiddenAction: true, onboardingActive: false })
+    mounted.renderSlot.mockImplementation(((key: string, _owner: unknown, opts?: { fallback?: import('react').ReactNode }) =>
+      key === 'settings.section' ? <input aria-label="Unsaved setting" defaultValue="" /> : SEAT_CONTENT[key] ?? opts?.fallback
+    ) as SettingsRootComponentProps['renderSlot'])
+    expect(screen.queryByRole('button', { name: 'Settings' })).toBeNull()
+    act(() => { mounted.shell.actions.open() })
+    const panel = screen.getByRole('dialog')
+    const draft = screen.getByRole<HTMLInputElement>('textbox', { name: 'Unsaved setting' })
+    fireEvent.change(draft, { target: { value: 'Keep my draft' } })
+    mounted.setHiddenAction(false)
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy()
+    mounted.setHiddenAction(true)
+    expect(screen.getByRole('dialog')).toBe(panel)
+    expect(screen.getByRole('textbox', { name: 'Unsaved setting' })).toBe(draft)
+    expect(draft.value).toBe('Keep my draft')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Settings' })).toBeNull()
+  })
+
   it('shows installation instead of expected backend reconnection and restores connection feedback after failure', () => {
     const presentation = { phase: 'installing' as const, version: '1.0.1' }
     const f = mount({ dictionary: zh, connectionState: 'connecting',

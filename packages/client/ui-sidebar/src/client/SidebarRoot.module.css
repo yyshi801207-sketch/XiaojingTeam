@@ -573,6 +573,18 @@
   flex-direction: column;
 }
 
+.footerContents {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  width: 100%;
+}
+
+.footerToggle {
+  min-height: 32px;
+  padding-block: 5px;
+}
+
 .settingsArea,
 .footerActions {
   flex: none;
@@ -594,6 +606,10 @@
   justify-content: center;
   width: auto;
 }
+
+.collapsed .footerContents { align-items: center; }
+.collapsed .footerToggle { height: 32px; min-height: 32px; }
+.footerActions[hidden], .panelList[hidden] { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .wide,

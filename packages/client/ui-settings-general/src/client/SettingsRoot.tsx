@@ -112,7 +112,7 @@ function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose }: PanelP
  */
 export function SettingsRoot(props: SettingsRootComponentProps) {
   const {
-    wide, reconnect, useConnectionState, useSections, useOnboardingSteps, useSessions, renderSlot, t,
+    wide, hiddenAction = false, reconnect, useConnectionState, useSections, useOnboardingSteps, useSessions, renderSlot, t,
     useDesktopUpdate, openDesktopUpdate, useStore, actions, useShortcuts,
   } = props
   const { open, activeId } = useStore(state => state)
@@ -214,7 +214,7 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
 
   return (
     <>
-      <div className={clsx(css.triggerRow, !wide && css.railRow)}>
+      <div className={clsx(css.triggerRow, !wide && css.railRow)} hidden={hiddenAction}>
         {renderSlot('settings.launcher', {
           wide, settingsOpen: open, openSettings: actions.open,
           ...(shortcut?.keys.length ? { settingsShortcut: { keys: shortcut.keys, aria: shortcut.aria } } : {}),

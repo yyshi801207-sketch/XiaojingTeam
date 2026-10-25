@@ -102,6 +102,8 @@ export interface SidebarSectionOwnerProps {
 export interface SidebarSettingsOwnerProps {
   /** Whether the sidebar renders wide content (false = 56px rail). */
   wide: boolean
+  /** Hides only the sidebar trigger; the settings owner keeps its modal, drafts and shortcuts mounted. */
+  hiddenAction?: boolean
 }
 
 /** Owner share of an action rendered beside Settings at the sidebar foot. */
@@ -114,6 +116,7 @@ export interface SidebarFooterActionOwnerProps {
 export interface SidebarPresentation {
   readonly primaryActionLabel?: string
   readonly panelNavigation?: { readonly label: string; readonly defaultExpanded: boolean }
+  readonly footerNavigation?: { readonly label: string; readonly defaultExpanded: boolean }
   readonly footerActionsPlacement?: 'before-panels' | 'after-panels'
 }
 

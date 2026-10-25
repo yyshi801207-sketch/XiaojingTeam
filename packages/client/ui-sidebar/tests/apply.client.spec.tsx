@@ -60,6 +60,7 @@ describe('ui-sidebar apply', () => {
     const b = await bench()
     const config = { primaryActionLabel: { en: 'Create helper' },
       panelNavigation: { label: { en: 'More' }, defaultExpanded: false },
+      footerNavigation: { label: { en: 'Tools and settings' }, defaultExpanded: false },
       footerActionsPlacement: 'after-panels' as const, unrelated: 'must stay Host-side' }
     const host = b.ctx.plugin(hostPlugin, config)
     await host.await()
@@ -67,6 +68,7 @@ describe('ui-sidebar apply', () => {
     b.ctx.emit('webserver/index-inject', rows)
     expect(rows).toEqual([{ kind: 'global', name: SIDEBAR_PRESENTATION_GLOBAL, value: {
       primaryActionLabel: config.primaryActionLabel, panelNavigation: config.panelNavigation,
+      footerNavigation: config.footerNavigation,
       footerActionsPlacement: config.footerActionsPlacement,
     } }])
     await host.dispose()
@@ -88,6 +90,7 @@ describe('ui-sidebar apply', () => {
   it.each([
     { primaryActionLabel: { zh: 'No English fallback' } },
     { panelNavigation: { label: { en: 'More' }, defaultExpanded: 'false' } },
+    { footerNavigation: { label: { en: 'Tools and settings' }, defaultExpanded: 'false' } },
     { footerActionsPlacement: 'elsewhere' },
   ])('rejects invalid page bootstrap before mounting sidebar effects: %j', async (payload) => {
     const b = await bench()

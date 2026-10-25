@@ -24,6 +24,11 @@ interface PlatformSessionEvent {
 }
 
 type DesktopHostEvent = ReadyEvent | FatalEvent | PlatformSessionEvent | { readonly type: 'shutdown-complete' } | {
+  readonly type: 'boot-injections'
+  readonly requestId: number
+  readonly injections: readonly unknown[]
+  readonly error?: string
+} | {
   readonly type: 'update-tasks'
   readonly requestId: number
   readonly active: boolean
@@ -81,6 +86,9 @@ function isDesktopHostEvent(message: unknown): message is DesktopHostEvent {
       return typeof candidate.message === 'string' && (candidate.diagnostic === undefined || typeof candidate.diagnostic === 'string')
     case 'update-tasks':
       return Number.isSafeInteger(candidate.requestId) && typeof candidate.active === 'boolean'
+        && (candidate.error === undefined || typeof candidate.error === 'string')
+    case 'boot-injections':
+      return Number.isSafeInteger(candidate.requestId) && Array.isArray(candidate.injections)
         && (candidate.error === undefined || typeof candidate.error === 'string')
     case 'quit-inspection':
       return Number.isSafeInteger(candidate.requestId) && typeof candidate.activeTasks === 'boolean'
@@ -259,13 +267,25 @@ export class DesktopHostProcess {
     return { activeTasks: response.activeTasks, scheduledTasks: response.scheduledTasks }
   }
 
+  /**
+   * Read the running Host's current document injections, including the latest client bundle revisions.
+   * @returns A fresh injection table; rejects when the Host is unavailable or does not answer within ten seconds.
+   */
+  async bootInjections(): Promise<readonly unknown[]> {
+    const response = await this.control({ type: 'boot-injections' }, 10_000, 'desktop boot: injection request timed out')
+    if (response.type !== 'boot-injections') throw new Error('desktop boot: Host answered with a different control response')
+    return response.injections
+  }
+
   private async control(
-    request: { readonly type: 'update-tasks'; readonly action: 'inspect' | 'lock' | 'unlock' } | { readonly type: 'quit-inspection' },
+    request: { readonly type: 'update-tasks'; readonly action: 'inspect' | 'lock' | 'unlock' }
+      | { readonly type: 'quit-inspection' | 'boot-injections' },
     deadlineMs: number, deadlineMessage: string,
   ): Promise<DesktopHostControlResponse> {
     const child = this.child
     if (child === undefined || !child.connected || this.failureReported || this.stopping) {
-      throw new Error(`${request.type === 'update-tasks' ? 'desktop update' : 'desktop quit'}: Host is unavailable`)
+      const operation = request.type === 'update-tasks' ? 'desktop update' : request.type === 'quit-inspection' ? 'desktop quit' : 'desktop boot'
+      throw new Error(`${operation}: Host is unavailable`)
     }
     const requestId = this.nextControlId++
     let timer: ReturnType<typeof setTimeout> | undefined

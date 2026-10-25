@@ -8,24 +8,22 @@ body:has(#root > :not([data-dsh-boot])) > #xiaojing-startup {
 }
 
 #xiaojing-startup {
-  --katcat-startup-paper: #f9f0e4;
-  --katcat-startup-ink: #76503a;
-  --katcat-startup-accent: #ed875d;
+  --xiaojing-startup-green: #12a489;
   position: fixed;
   inset: 0;
   display: grid;
   place-items: center;
   overflow: hidden;
   -webkit-app-region: drag;
-  color: var(--katcat-startup-ink);
+  color: #fff;
   font-family: "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
-  background: var(--katcat-startup-paper);
+  background: var(--xiaojing-startup-green);
 }
 
 .katcat-startup-scene {
   position: relative;
-  width: max(100%, calc(100dvh * 1585 / 992));
-  aspect-ratio: 1585 / 992;
+  width: min(100%, calc(100dvh * 1584 / 993));
+  aspect-ratio: 1584 / 993;
   overflow: hidden;
   container-type: inline-size;
 }
@@ -36,12 +34,14 @@ body:has(#root > :not([data-dsh-boot])) > #xiaojing-startup {
   width: 100%;
   height: 100%;
   max-width: none;
+  object-fit: contain;
   pointer-events: none;
   user-select: none;
 }
 
 
-#katcat-startup-title {
+#katcat-startup-title,
+.katcat-startup-status p {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -54,21 +54,20 @@ body:has(#root > :not([data-dsh-boot])) > #xiaojing-startup {
 
 .katcat-startup-status {
   position: absolute;
-  top: 56.5%;
+  top: 67%;
   right: 0;
   left: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
 }
 
 .katcat-startup-progress {
-  width: clamp(84px, 12cqw, 168px);
-  height: 2px;
+  width: clamp(100px, 14cqw, 200px);
+  height: 3px;
   overflow: hidden;
-  border-radius: 2px;
-  background: rgb(157 103 61 / 15%);
+  border-radius: 3px;
+  background: rgb(255 255 255 / 22%);
 }
 
 .katcat-startup-progress::after {
@@ -77,17 +76,8 @@ body:has(#root > :not([data-dsh-boot])) > #xiaojing-startup {
   height: 100%;
   content: "";
   border-radius: inherit;
-  background: linear-gradient(90deg, #f4be96, var(--katcat-startup-accent), #f4be96);
+  background: #fff;
   animation: katcat-startup-loading 1.8s ease-in-out infinite;
-}
-
-.katcat-startup-status p {
-  padding: 0;
-  margin: 0;
-  font-size: clamp(10px, 0.84cqw, 12px);
-  font-weight: 400;
-  line-height: 1.6;
-  letter-spacing: 0.08em;
 }
 
 @keyframes katcat-startup-loading {

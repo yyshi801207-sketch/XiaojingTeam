@@ -35,7 +35,7 @@ The expanded brand row renders `sidebar.brand.mark` and `sidebar.brand.name` as 
 
 ### Product presentation
 
-Optional Config fields customize the existing shell: `primaryActionLabel` supplies localized primary-action text, accessible name and tooltip; `panelNavigation: { label, defaultExpanded? }` folds the existing global panel rows; and `footerActionsPlacement: 'after-panels'` places footer actions below those rows while keeping Settings last. Label maps require nonblank English `en` fallback text. The fold defaults expanded, retains subsequent toggles while mounted, and leaves narrow-rail navigation available. Omitting these fields preserves the standard labels and layout; create callbacks, shortcuts and panel registrations stay unchanged.
+Optional Config fields customize the existing shell: `primaryActionLabel` supplies localized primary-action text, accessible name and tooltip; `panelNavigation: { label, defaultExpanded? }` folds the existing global panel rows; `footerNavigation: { label, defaultExpanded? }` folds all footer navigation, usage actions and the Settings trigger into one 32px row; and `footerActionsPlacement: 'after-panels'` places footer actions below panel rows while keeping Settings last. Label maps require nonblank English `en` fallback text. Both folds default expanded and retain subsequent toggles while mounted. The panel-only fold leaves narrow-rail navigation available; the complete footer fold also applies in the rail. Omitting these fields preserves the standard labels and layout; create callbacks, shortcuts and panel registrations stay unchanged.
 
 Configure these fields on the Host plugin. It publishes only the public presentation fields through `webserver/index-inject` as the `__DSH_SIDEBAR_PRESENTATION__` page global; the Client validates that payload before registering any sidebar effects. A missing bootstrap retains defaults. The Client entry's activation arguments do not transport Host configuration. Configuration edits take effect on the next page bootstrap; locale changes update mounted labels without changing the user's fold state.
 
@@ -75,7 +75,7 @@ The shell is pure composition: `SidebarRootComponentProps` composes the layout o
 
 ### Slot discipline
 
-Declaration-aware `slots.inject()` lets a replacing package activate before or after the sidebar. The foot is the `sidebar.settings` seat: the sidebar renders only the bottom-pinned layout slot and shares its column state (`wide`). The `/client` exports are the plugin body (`apply`/`inject`) plus the contract types only; SidebarRoot, the row components, and the tree derivation remain package-internal behind the slot registration.
+Declaration-aware `slots.inject()` lets a replacing package activate before or after the sidebar. The foot is the `sidebar.settings` seat: the sidebar renders the bottom-pinned layout slot and shares its column state (`wide`). The optional `hiddenAction` owner prop hides only the trigger during a complete footer fold; the settings occupant remains mounted so its modal, drafts and shortcuts keep working. The `/client` exports are the plugin body (`apply`/`inject`) plus the contract types only; SidebarRoot, the row components, and the tree derivation remain package-internal behind the slot registration.
 
 </details>
 

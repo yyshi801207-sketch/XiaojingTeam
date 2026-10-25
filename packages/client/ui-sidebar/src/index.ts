@@ -16,6 +16,7 @@ export function apply(ctx: Context, config: Config = Config({})): void {
     table.push({ kind: 'global', name: SIDEBAR_PRESENTATION_GLOBAL, value: {
       ...(config.primaryActionLabel === undefined ? {} : { primaryActionLabel: config.primaryActionLabel }),
       ...(config.panelNavigation === undefined ? {} : { panelNavigation: config.panelNavigation }),
+      ...(config.footerNavigation === undefined ? {} : { footerNavigation: config.footerNavigation }),
       ...(config.footerActionsPlacement === undefined ? {} : { footerActionsPlacement: config.footerActionsPlacement }),
     } })
   })

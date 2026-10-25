@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop/README.md
 /windows-desktop:
-  en: 9eb0a01625306dd9
-  zh: bf95c4f69c6d98c5
+  en: 2637b47cd3aae82f
+  zh: e3d266a786f70c5a
 /windows-desktop/permanent-installer-identity:
   en: 7303c7f9698a1d53
   zh: 79e42dfa4a1e2dd1

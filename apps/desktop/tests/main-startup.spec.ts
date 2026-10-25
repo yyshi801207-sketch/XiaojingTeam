@@ -173,12 +173,14 @@ const harness = await vi.hoisted(async () => {
   class FakeHost {
     readonly updateTasks = vi.fn(async (_action: 'inspect' | 'lock' | 'unlock') => false)
     readonly inspectQuit = vi.fn(async () => ({ activeTasks: false, scheduledTasks: false }))
+    injections: readonly unknown[] = []
+    readonly bootInjections = vi.fn(async () => this.injections)
     url = 'http://127.0.0.1:3080/?token=test'
     fetch = vi.fn(async () => Response.json({ hasApiKey: true, writable: true, localePreference: null }))
     readonly ready = deferred()
     readonly exited = deferred()
     readonly stopping = deferred()
-    readonly start = vi.fn(() => { hostStarted.resolve(); return this.ready.promise.then(() => ({ url: this.url, injections: [] })) })
+    readonly start = vi.fn(() => { hostStarted.resolve(); return this.ready.promise.then(() => ({ url: this.url, injections: this.injections })) })
     readonly stop = vi.fn(() => {
       this.stopping.resolve()
       this.ready.reject(new Error('child stopped'))
@@ -590,6 +592,54 @@ describe('desktop main startup', () => {
       expect(web.serveWebDocument).not.toHaveBeenCalled()
     },
   )
+  it('reloads with current Host injections after the startup bootstrap revision has been evicted', async () => {
+    await import('../src/main.ts')
+    await harness.preparing.promise
+    harness.prepared.resolve()
+    await harness.hostStarted.promise
+    const host = harness.hosts[0]!
+    const source = (revision: string) => `plugins/??@deepseek-ai/dsh-client-modules/client.js&rev=${revision}`
+    const injections = (revision: string) => [{ kind: 'script', position: 'head', attrs: { src: source(revision) } }]
+    host.injections = injections('startup')
+    host.ready.resolve()
+    expect(await Promise.resolve(invoke(DESKTOP_IPC.boot)))
+      .toEqual({ injections: injections('startup'), streamBaseUrl: 'http://127.0.0.1:3080' })
+    const web = await import('../src/web-document.ts')
+    const handler = harness.protocolHandle.mock.calls[0]![1]
+    let served = source('startup')
+    vi.mocked(web.forwardWebRequest).mockImplementation(async request =>
+      new Response(null, { status: request.url === `dsh-app://app/${served}` ? 200 : 404 }))
+    for (const revision of ['rebuilt-once', 'rebuilt-twice']) {
+      served = source(revision)
+      host.injections = injections(revision)
+      expect((await handler(new Request(`dsh-app://app/${source('startup')}`))).status).toBe(404)
+      const boot = await Promise.resolve(invoke(DESKTOP_IPC.boot))
+      expect(boot).toEqual({ injections: injections(revision), streamBaseUrl: 'http://127.0.0.1:3080' })
+      expect((await handler(new Request(`dsh-app://app/${served}`))).status).toBe(200)
+    }
+    expect(host.bootInjections).toHaveBeenCalledTimes(3)
+  })
+
+  it('rejects document boot when its fresh injection request fails', async () => {
+    await readyForUpdate()
+    const host = harness.hosts[0]!
+    host.bootInjections.mockRejectedValueOnce(new Error('desktop boot: injection request timed out'))
+    await expect(Promise.resolve(invoke(DESKTOP_IPC.boot))).rejects.toThrow('injection request timed out')
+  })
+
+  it('rejects a document snapshot if its Host becomes unavailable during the read', async () => {
+    await readyForUpdate()
+    const host = harness.hosts[0]!
+    const pending = Promise.withResolvers<readonly unknown[]>()
+    host.bootInjections.mockReturnValueOnce(pending.promise)
+    const boot = Promise.resolve(invoke(DESKTOP_IPC.boot))
+    const rejected = expect(boot).rejects.toThrow('Host changed while preparing the document')
+    await vi.advanceTimersByTimeAsync(0)
+    host.onFailure!(new Error('backend exited during document boot'))
+    pending.resolve([{ kind: 'script', attrs: { src: 'plugins/??stale/client.js&rev=old' } }])
+    await rejected
+  })
+
   it.each([true, false])('selects the package manager before Host startup (packaged=%s)', async (packaged) => {
     harness.app.isPackaged = packaged
     await readyForUpdate()
@@ -2040,12 +2090,16 @@ describe('desktop main startup', () => {
     await restarted
     const replacement = harness.hosts[1]!
     replacement.url = 'http://127.0.0.1:3099/?token=replacement'
+    replacement.injections = [{ kind: 'script', attrs: { src: 'plugins/??replacement/client.js&rev=fresh' } }]
     if (mandatory) replacement.updateTasks.mockResolvedValue(true)
     const retry = harness.prepareUpdate()
     expect(replacement.updateTasks).not.toHaveBeenCalled()
     replacement.ready.resolve()
     await vi.waitFor(() => { expect(harness.windows[0]!.urls).toEqual(['dsh-app://app/', 'dsh-app://app/']) })
-    await expect(Promise.resolve(invoke(DESKTOP_IPC.boot))).resolves.toEqual({ injections: [], streamBaseUrl: 'http://127.0.0.1:3099' })
+    await expect(Promise.resolve(invoke(DESKTOP_IPC.boot))).resolves.toEqual({
+      injections: replacement.injections, streamBaseUrl: 'http://127.0.0.1:3099',
+    })
+    expect(replacement.bootInjections).toHaveBeenCalled()
     if (mandatory) await answerMandatory('later')
     await expect(retry).resolves.toBe(false)
     expect(replacement.updateTasks.mock.calls).toEqual([['inspect']])

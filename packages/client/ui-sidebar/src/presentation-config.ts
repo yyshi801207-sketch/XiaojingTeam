@@ -19,6 +19,13 @@ export interface Config {
     /** Initial expansion state before the user toggles the panel group. */
     defaultExpanded?: boolean
   }
+  /** Adds an expandable group around all footer navigation, actions and the settings trigger. */
+  footerNavigation?: {
+    /** Localized heading for the complete footer group. */
+    label: SidebarLabel
+    /** Initial expansion state before the user toggles the footer group. */
+    defaultExpanded?: boolean
+  }
   /** Placement of existing footer actions relative to global panel rows. */
   footerActionsPlacement?: 'before-panels' | 'after-panels'
 }
@@ -33,6 +40,7 @@ export const Config: z<Config> = z.object({
   primaryActionLabel: labelSchema(),
   // An omitted object must stay absent rather than acquire Schemastery's empty-object default.
   panelNavigation: z.union([z.object({ label: labelSchema().required(), defaultExpanded: z.boolean() })]),
+  footerNavigation: z.union([z.object({ label: labelSchema().required(), defaultExpanded: z.boolean() })]),
   footerActionsPlacement: z.union(['before-panels', 'after-panels']),
 })
 

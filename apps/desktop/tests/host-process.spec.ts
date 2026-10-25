@@ -30,6 +30,11 @@ server.listen(0, '127.0.0.1', () => {
   process.send({ type: 'ready', url: 'http://127.0.0.1:' + server.address().port + '/?token=fixture' })
 })
 process.on('message', message => {
+  if (message.type === 'boot-injections') {
+    process.send({ type: 'boot-injections', requestId: message.requestId,
+      injections: [{ kind: 'script', attrs: { src: 'plugins/??fixture/client.js&rev=' + message.requestId } }] })
+    return
+  }
   if (message.type === 'update-tasks') {
     process.send({ type: 'update-tasks', requestId: message.requestId, active: message.action === 'lock' })
     return
@@ -73,6 +78,50 @@ afterEach(async () => {
 })
 
 describe('desktop host process', () => {
+  it('requests fresh document injections over private IPC for each renderer boot', async () => {
+    const host = hostProcess(projectWithHost())
+    await expect(host.bootInjections()).rejects.toThrow('desktop boot: Host is unavailable')
+    await host.start()
+    expect(await Promise.all([host.bootInjections(), host.bootInjections()])).toEqual([
+      [{ kind: 'script', attrs: { src: 'plugins/??fixture/client.js&rev=1' } }],
+      [{ kind: 'script', attrs: { src: 'plugins/??fixture/client.js&rev=2' } }],
+    ])
+    await host.stop(true)
+    await expect(host.bootInjections()).rejects.toThrow('desktop boot: Host is unavailable')
+  })
+
+  it('reports injection collection errors without returning the startup table', async () => {
+    const host = hostProcess(projectWithHost(HTTP_HOST.replace(
+      "injections: [{ kind: 'script', attrs: { src: 'plugins/??fixture/client.js&rev=' + message.requestId } }]",
+      "injections: [], error: 'desktop boot: injection collection failed'",
+    )))
+    await host.start()
+    await expect(host.bootInjections()).rejects.toThrow('desktop boot: injection collection failed')
+  })
+
+  it('expires an unanswered document request without reusing startup injections', async () => {
+    const source = HTTP_HOST.replace(/  if \(message.type === 'boot-injections'\) \{[\s\S]*?\n  \}\n/,
+      "  if (message.type === 'boot-injections') return\n")
+    const host = hostProcess(projectWithHost(source))
+    await host.start()
+    vi.useFakeTimers()
+    try {
+      const pending = expect(host.bootInjections()).rejects.toThrow('desktop boot: injection request timed out')
+      await vi.advanceTimersByTimeAsync(10_000)
+      await pending
+    } finally { vi.useRealTimers() }
+  })
+
+  it('rejects a pending document request when the Host exits', async () => {
+    const source = HTTP_HOST.replace(/  if \(message.type === 'boot-injections'\) \{[\s\S]*?\n  \}\n/,
+      "  if (message.type === 'boot-injections') return\n")
+    const host = hostProcess(projectWithHost(source))
+    const { url } = await host.start()
+    const pending = expect(host.bootInjections()).rejects.toThrow('desktop host exited')
+    await fetch(new URL('/crash', url))
+    await pending
+  })
+
   it('correlates task inspections and admission changes over private IPC', async () => {
     const host = hostProcess(projectWithHost())
     await expect(host.updateTasks('inspect')).rejects.toThrow('Host is unavailable')

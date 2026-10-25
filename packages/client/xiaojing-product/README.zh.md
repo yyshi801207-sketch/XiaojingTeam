@@ -24,7 +24,7 @@ kind: "package-reference"
 <a id="capabilities"></a>
 ## 产品贡献
 
-Team 侧栏从 `src/client/assets/sudo-wordmark.png` 嵌入用户提供的透明 SUDO数豆 Logo，两种主题均保留原图字节与颜色。SVG 仅裁去透明外边距，完整文字与绿色豆子保持比例。展开时使用 148×46 像素框，收起时将完整 Logo 等比放入已有图标位置。浅色模式的会话与导航区域采用纯白背景。用户消息使用浅灰填充、细边框和紧凑圆角，不加载背景图片。控件与选中底色采用石墨黑和中性灰，发送等主要操作使用品牌红，链接使用蓝色强调；深色模式采用中性炭灰底。
+Team 侧栏从 `src/client/assets/sudo-wordmark.png` 嵌入用户提供的透明 SUDO数豆 Logo，两种主题均保留原图字节与颜色。SVG 仅裁去透明外边距，完整文字与绿色豆子保持比例。展开时保留 148 像素宽框，适配共享的 24 像素品牌行；Windows 使用 32 像素高图片和 36 像素高产品按钮，仍放在原有 40 像素行内。收起时将完整 Logo 等比放入已有图标位置。浅色模式的会话与导航区域采用纯白背景。用户消息使用浅灰填充、细边框和紧凑圆角，不加载背景图片。控件与选中底色采用石墨黑和中性灰，发送等主要操作使用品牌红，链接使用蓝色强调；深色模式采用中性炭灰底。
 
 `0.3.3` 更新包含 0.2.1-rc.2 内核的新模型与搜索接口、插件索引管理、内置自动化任务、草稿引用保留、模型推理与字体设置、麦克风选择、协作与上游稳定性修复；保留已有Katcat能力。`0.3.2` 更新详情列出支持复用操作的会话授权，并保留单次审批选项。
 
@@ -34,11 +34,11 @@ Team 侧栏从 `src/client/assets/sudo-wordmark.png` 嵌入用户提供的透明
 
 Katcat桌面端在主工作区内显示这份说明，不先展示独立登录页。设置使用通用入口，不提供账号菜单、账号引导或使用账号认证的模型提供商。
 
-首次使用弹窗通过 `onboarding.content` 显示紧凑的奶油纸色与珊瑚橙插画风格 API Key 说明，使用蓝色 DeepSeek 开放平台链接，并保留密钥管理与安全提示。共享 [Models 引导协调器](../ui-settings-models/README.zh.md#onboarding-coordinator)负责按安装标识确认、检查提供商就绪状态，以及点击“开始使用”后进入的 API Key 编辑器。已有可用提供商时，Katcat 桌面端跳过欢迎和凭据弹窗；不会清除凭据或会话数据。
+首次使用弹窗通过 `onboarding.content` 显示紧凑的白底 API Key 说明，不显示背景图或顶部 Logo。两步配置说明、蓝色 DeepSeek 开放平台链接、密钥管理与安全提示，以及明确的“开始使用”操作均保留。共享 [Models 引导协调器](../ui-settings-models/README.zh.md#onboarding-coordinator)负责按安装标识确认、检查提供商就绪状态，以及点击“开始使用”后进入的 API Key 编辑器。已有可用提供商时，Katcat 桌面端跳过欢迎和凭据弹窗；不会清除凭据或会话数据。
 
 产品图片地址和Katcat的启动 Logo、favicon 默认地址相对于文档 base 解析，使这些资源保持在 Web 部署的公开挂载路径内。
 
-Team 新会话欢迎区从 `src/client/assets/xiaojing-finance-team-hero.png` 嵌入用户提供的双财务机器人及脚下阴影，不修改原图像素。SVG 仅裁去透明边距，将完整插画等比居中放入已有响应式框，保持输入框布局。中文标题为“小兢会计，您的AI财务团队”，英文为“Xiaojing Accounting, your AI finance team.”。引导界面使用 `src/client/assets/katcats-wordmark.png`；favicon 原样保留用户提供的橙色底板与黑色猫形镂空字母，存放为 `xiaojing-character-logo.png`。这些资源文件名属于内部标识。标题独立居中，不受版本角标宽度影响；窄布局中角标移到标题下方。初始 HTML 通过 `DSH_CLIENT_BOOT_LOGO`、`DSH_CLIENT_BOOT_LOGO_ALT` 和 `DSH_CLIENT_FAVICON` 获取品牌与 favicon；未配置这些值的构建保留通用资源。
+Team 新会话欢迎区从 `src/client/assets/xiaojing-finance-team-hero.png` 嵌入用户提供的双财务机器人及脚下阴影，不修改原图像素。SVG 仅裁去透明边距，将完整插画等比居中放入已有响应式框，保持输入框布局。中文标题为“小兢会计，您的AI财务团队”，英文为“Xiaojing Accounting, your AI finance team.”。favicon 原样保留用户提供的橙色底板与黑色猫形镂空字母，存放为 `xiaojing-character-logo.png`。这些资源文件名属于内部标识。标题独立居中，不受版本角标宽度影响；窄布局中角标移到标题下方。初始 HTML 通过 `DSH_CLIENT_BOOT_LOGO`、`DSH_CLIENT_BOOT_LOGO_ALT` 和 `DSH_CLIENT_FAVICON` 获取品牌与 favicon；未配置这些值的构建保留通用资源。
 
 浏览器插件只在 `xiaojing` Client 构建 profile 中注册 `sidebar.brand.mark`、`sidebar.brand.name`、`conversation.hero.brand.mark`、`conversation.hero.brand.content`、`onboarding.content` 和 `settings.section`。产品文案、配色覆盖、版本号标签和默认人格位于本包。仍带有 Finance 元数据的历史空会话也使用同一财务团队欢迎页。“关于 Katcats.AI”只显示产品图标、名称、应用版本号与通过 `DSH_CLIENT_VERSION` 编译注入的 DSH 底座版本号；不显示版本历史、详情入口、介绍和公司页脚。Electron 通过一个受限 preload 方法提供应用实际版本；普通 Web 预览使用必须与 `apps/desktop/identity.json.productVersion` 相同的受检 fallback。测试要求该 fallback 与更新历史首项一致，并拒绝重复版本号。产品层门禁会拒绝版本不一致，也会拒绝把Katcat品牌标记重新写入官方 UI 源码目录。插件生命周期还会在产品 dataset 挂载后同步现有浏览器 `theme-color` 元数据，并在产品插件卸载时恢复通用值。构建 profile 通过通用启动元数据为插件加载前页面选择已登记的 Katcat Logo；缺少该元数据时，shell 仍显示 `HARNESS` 默认内容。`product.json` 通过官方发布标签记录 `dsh-v0.2.1-rc.2` 基线、通用 slot、浏览器资源路径、桌面产品清单和空的产品预设列表。产品层门禁会解析 Finance 与标准模式的声明式组装，只允许 Finance 人格、已声明的 Finance 消费端和产品 skill 目录不同。
 
