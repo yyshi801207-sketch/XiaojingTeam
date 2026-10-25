@@ -375,5 +375,13 @@
   },
   "completedAtUtc": "2026-10-25T10:02:48.575Z",
   "currentUiVerification": "run/tmp/team-current-ui-update-verification.json",
-  "updatedAtUtc": "2026-10-25T12:04:21.116Z"
+  "updatedAtUtc": "2026-10-25T12:04:21.116Z",
+  "currentBuild": {
+    "command": "node scripts/katcats-dev.mjs build",
+    "passed": 9,
+    "failed": 0,
+    "seconds": 43.05,
+    "log": "run/tmp/team-brand-pet-complete-build.log",
+    "runtimeAcceptance": "run/tmp/team-current-ui-update-verification.json"
+  }
 }
