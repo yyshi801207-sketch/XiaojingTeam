@@ -63,7 +63,17 @@
     "packageImportMethod": "copy",
     "sourceDependenciesCopied": false,
     "command": "node scripts/katcats-dev.mjs deps",
-    "log": "run/tmp/team-baseline-deps.log"
+    "log": "run/tmp/team-baseline-deps.log",
+    "isolatedStore": {
+      "configured": "E:\\Projects\\小兢会计Team版\\run\\cache\\pnpm-store\\v11",
+      "realPath": "E:\\Projects\\小兢会计Team版\\run\\cache\\pnpm-store\\v11",
+      "insideProject": true
+    },
+    "isolatedVirtualStore": {
+      "configured": "E:\\Projects\\小兢会计Team版\\node_modules\\.pnpm",
+      "realPath": "E:\\Projects\\小兢会计Team版\\node_modules\\.pnpm",
+      "insideProject": true
+    }
   },
   "runtime": {
     "prepared": true,
@@ -139,5 +149,217 @@
     "elapsedMs": 13755,
     "status": "pass"
   },
-  "verificationStatus": "Focused checks passed; final isolated build and desktop start pending"
+  "verificationStatus": "Complete: independent dependencies and runtime prepared; final build, isolated desktop startup, empty-data checks and clean shutdown verified.",
+  "build": {
+    "command": "node scripts/katcats-dev.mjs build",
+    "log": "run/tmp/team-final-build.log",
+    "sourceCommit": "d03b4157653f863daec52527f26c4f5d919e93c4",
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "gates": [
+      {
+        "name": "native addon",
+        "duration": "0.92s"
+      },
+      {
+        "name": "host compiler",
+        "duration": "2.59s"
+      },
+      {
+        "name": "Host bundle",
+        "duration": "19.53s"
+      },
+      {
+        "name": "Desktop bundle",
+        "duration": "2.80s"
+      },
+      {
+        "name": "client compiler",
+        "duration": "1.24s"
+      },
+      {
+        "name": "client aggregate check",
+        "duration": "12.35s"
+      },
+      {
+        "name": "Client bundle",
+        "duration": "14.14s"
+      },
+      {
+        "name": "Web build",
+        "duration": "9.12s"
+      },
+      {
+        "name": "host aggregate check",
+        "duration": "88.18s"
+      }
+    ],
+    "elapsedSeconds": 91.7
+  },
+  "desktopAcceptance": {
+    "report": "run/tmp/team-final-desktop-smoke.json",
+    "started": true,
+    "closed": true,
+    "mainIdentity": "小兢会计团队版 Dev",
+    "title": "Katcats — 小兢会计团队版",
+    "screenshot": "run/tmp/team-final-desktop-ui.png",
+    "home": "run/home",
+    "agents": "run/agents",
+    "workspace": "run/workspaces",
+    "userData": "run/desktop/app-data/XiaojingAccountingTeam-Dev",
+    "mandatoryStatusErrorCount": 0,
+    "inheritedCredentialEnvironmentVariableCount": 0,
+    "inheritedLegacyBrowserVariableCount": 0,
+    "data": {
+      "bots": 1,
+      "systemMainBots": 1,
+      "customBots": 0,
+      "chats": 0,
+      "inbounds": 0,
+      "deliveries": 0,
+      "credentialRecordIds": [
+        "client-connection/browser-session"
+      ],
+      "modelCredentialRecords": 0,
+      "sessions": {
+        "logs": 1,
+        "headerEvents": 1,
+        "nonHeaderEvents": 0
+      }
+    },
+    "modelConfigured": false,
+    "chatSubmitted": false,
+    "shutdown": {
+      "method": "Electron app.quit through verified own inspector",
+      "expectedProcessIds": [
+        7920,
+        26540,
+        19960
+      ],
+      "remainingProcesses": [],
+      "remainingListeningPorts": [],
+      "allOwnedTestProcessesClosed": true
+    },
+    "limitations": [
+      "No model configured or chat sent; real model and group task execution were not tested.",
+      "Current baseline artwork and default main Bot Katcats label remain; no new visual proposals have been installed.",
+      "An explicit probe of unused native dshOnboarding.hasApiKey failed against a disabled local account RPC; the standard model setup prompt rendered. This probe error did not occur during ordinary startup."
+    ]
+  },
+  "focusedVerification": {
+    "note": "Counts belong to individual reports and overlap; they are not added as unique tests.",
+    "evidence": [
+      {
+        "report": "run/tmp/team-browser-isolation-final-tests.json",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "total": 11
+      },
+      {
+        "report": "run/tmp/team-composition-isolation-tests.json",
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "total": 8
+      },
+      {
+        "report": "run/tmp/team-desktop-identity-final-tests.json",
+        "passed": 79,
+        "failed": 0,
+        "skipped": 0,
+        "total": 79
+      },
+      {
+        "report": "run/tmp/team-desktop-main-tests.json",
+        "passed": 144,
+        "failed": 0,
+        "skipped": 0,
+        "total": 144
+      },
+      {
+        "report": "run/tmp/team-desktop-packaging-isolation-final.json",
+        "passed": 75,
+        "failed": 0,
+        "skipped": 4,
+        "total": 79
+      },
+      {
+        "report": "run/tmp/team-desktop-product-path-final.json",
+        "passed": 23,
+        "failed": 0,
+        "skipped": 0,
+        "total": 23
+      },
+      {
+        "report": "run/tmp/team-desktop-publication-verification.json",
+        "passed": 22,
+        "failed": 0,
+        "skipped": 0,
+        "total": 22,
+        "note": "Aggregation of the latest actually executed per-file reports; not an additional test run."
+      },
+      {
+        "report": "run/tmp/team-desktop-preload-no-policy-tests.json",
+        "passed": 25,
+        "failed": 0,
+        "skipped": 0,
+        "total": 25
+      },
+      {
+        "report": "run/tmp/team-final-prebuild-focused-tests.json",
+        "passed": 30,
+        "failed": 0,
+        "skipped": 0,
+        "total": 30
+      },
+      {
+        "report": "run/tmp/team-desktop-development-app-tests.json",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 1,
+        "total": 2
+      }
+    ],
+    "desktopStaticChecksReport": "run/tmp/team-desktop-isolation-summary.json",
+    "sourceAuditReport": "run/tmp/team-original-source-audit.json"
+  },
+  "developmentGit": {
+    "independentRepository": true,
+    "initialCommit": "a893c679",
+    "sourceCommitBuilt": "d03b4157653f863daec52527f26c4f5d919e93c4",
+    "remotes": [],
+    "sourceHistoryCopied": false,
+    "checkedAtUtc": "2026-10-25T10:02:18.338Z"
+  },
+  "visuals": {
+    "newBrandImagesApplied": false,
+    "status": "Existing baseline imagery and default main Bot name retained while the user reviews three new visual proposals."
+  },
+  "filesystem": {
+    "report": "run/tmp/team-final-filesystem-audit.json",
+    "status": "pass",
+    "completedAtUtc": "2026-10-25T10:02:18.338Z",
+    "directories": 19386,
+    "regularFiles": 201624,
+    "links": 11224,
+    "internalLinks": 11224,
+    "externalLinks": 0,
+    "brokenLinks": 0,
+    "errors": 0,
+    "hardlinkedFileEntries": 0,
+    "totalBytes": 6088135876,
+    "totalGiB": 5.67,
+    "sizeMetric": "Sum of regular-file sizes without following symlinks or junctions; Git object files are included, filesystem allocation overhead is not included.",
+    "snapshotNote": "The audit report is written after the scan; later verification records or commits can change byte totals without changing dependency ownership.",
+    "development": {
+      "directories": 92,
+      "files": 3,
+      "links": 1607,
+      "internalLinks": 1607,
+      "bytes": 204289
+    }
+  },
+  "completedAtUtc": "2026-10-25T10:02:48.575Z"
 }
