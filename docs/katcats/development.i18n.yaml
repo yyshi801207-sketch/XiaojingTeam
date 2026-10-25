@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for development.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/katcats/development.md
+/xiaojing-accounting-team-development-preview:
+  en: 72abf8cb709ce44c
+  zh: 27a8f0695c6b3663
+/xiaojing-accounting-team-development-preview/prepare-the-baseline:
+  en: 64c1f8f0adf6017a
+  zh: 409b202d04d24d43
+/xiaojing-accounting-team-development-preview/open-a-preview:
+  en: 559fa63c35f41ba8
+  zh: 2ff0af475688c6fb
+/xiaojing-accounting-team-development-preview/development-data:
+  en: ab886813912812e7
+  zh: b4597104df07ea6e
+/xiaojing-accounting-team-development-preview/verify-changes:
+  en: 2cd97cad690a5ac1
+  zh: cdc5b7d816e083b7

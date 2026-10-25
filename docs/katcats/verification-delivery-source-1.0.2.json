@@ -1,0 +1,141 @@
+{
+  "checkedAt": "2026-10-25T06:02:45.591Z",
+  "status": "passed-source-verification",
+  "version": "1.0.2",
+  "workspace": "E:/Projects/Katcats.AI/",
+  "sourceIdentity": {
+    "kind": "modified-copy-baseline",
+    "baseline": "dca89bada80b7b4852cc257a3b43ebd8dca6c85e",
+    "dirty": true,
+    "currentCheckoutCommitClaimed": false
+  },
+  "changes": {
+    "messageHandling": "Ordinary messages preserve queued and running member tasks, approvals and accepted work; only the explicit interrupt action uses steer. Budget-paused ordinary messages remain queued until Continue or explicit interruption.",
+    "handoffDisplay": "The per-group handoff switch saves immediately after Host acknowledgement, preserves other setting drafts and hides existing and future handoff/task records while retaining real chat and final files.",
+    "controls": "Pending actions are scoped to the exact chat/run/generation; pause reasons are localized without mislabeling execution errors as manual pause. Explicit interruption remains usable after reconnect.",
+    "finalDelivery": {
+      "guidance": "Final writing replies must provide usable full text; file deliveries must register actual existing final files through present with a brief summary.",
+      "gate": "Presenting an already finished file does not require a new work split; existing unfinished plans, same-step delegation, approval, cancellation and file-existence checks still apply.",
+      "cards": "Group closing replies retain their exact executor Session and validate the real input claim and completed closing output, then use the public deliverables.files Factory to render the original file cards.",
+      "opening": "Preview resolves inside the original worker Session; native actions keep the actual registered Session/event/file coordinates. No arbitrary file:// or model-authored path is promoted into a trusted deliverable.",
+      "visibility": "Final file cards remain visible with handoff display off, survive cold history loads and deduplicate repeated registrations.",
+      "persistence": "No new Session fields or event types; existing member presentation events remain the source of file records."
+    },
+    "windowsCatalog": "Generated TypeScript string literals preserve CRLF data while escaping carriage returns; regression verifies both valid output syntax and actual runtime string values."
+  },
+  "validation": {
+    "focusedReports": [
+      {
+        "report": "run/tmp/katcats-delivery-host-final.json",
+        "passed": 105,
+        "failed": 0,
+        "matchedSnapshots": 12
+      },
+      {
+        "report": "run/tmp/katcats-delivery-claim-host-final.json",
+        "passed": 5,
+        "failed": 0,
+        "matchedSnapshots": 2
+      },
+      {
+        "report": "run/tmp/katcats-final-file-cards-client-face-fix.json",
+        "passed": 110,
+        "failed": 0,
+        "matchedSnapshots": 1
+      },
+      {
+        "report": "run/tmp/katcats-group-file-claim-tests.json",
+        "passed": 21,
+        "failed": 0,
+        "matchedSnapshots": 1
+      },
+      {
+        "report": "run/tmp/katcats-client-catalog-crlf-green.json",
+        "passed": 23,
+        "failed": 0,
+        "matchedSnapshots": 0
+      },
+      {
+        "report": "run/tmp/katcats-queued-composer-reconnect.json",
+        "passed": 90,
+        "failed": 0,
+        "matchedSnapshots": 1
+      },
+      {
+        "report": "run/tmp/katcats-handoff-autosave-regression.json",
+        "passed": 99,
+        "failed": 0,
+        "matchedSnapshots": 11
+      },
+      {
+        "report": "run/tmp/katcats-group-control-reasons-final.json",
+        "passed": 64,
+        "failed": 0,
+        "matchedSnapshots": 4
+      },
+      {
+        "report": "run/tmp/katcats-handoff-real-slots-delivery-final.json",
+        "passed": 29,
+        "failed": 0,
+        "matchedSnapshots": 6
+      }
+    ],
+    "totalsAreNotAdditive": true,
+    "artifacts": {
+      "compilerAndBundleGates": [
+        "run-gates: PASS native addon (0.73s)",
+        "run-gates: PASS host compiler (1.07s)",
+        "run-gates: PASS Host bundle (14.04s)",
+        "run-gates: PASS Desktop bundle (2.31s)",
+        "run-gates: PASS client compiler (6.66s)",
+        "run-gates: PASS Client bundle (9.04s)",
+        "run-gates: PASS Web build (6.50s)"
+      ],
+      "log": "run/tmp/katcats-delivery-source-build-final.log",
+      "artifactEmissionSucceeded": true,
+      "fullInvocationExitCode": 1,
+      "invocationFailure": "The client aggregate rejected an old test registration missing the newly declared file child slot; the fixture was updated and its 29 tests passed."
+    },
+    "finalBuildCheck": {
+      "command": "pnpm run build:check",
+      "exitCode": 0,
+      "passed": 2,
+      "steps": [
+        "run-gates: PASS host aggregate check (13.16s)",
+        "run-gates: PASS client aggregate check (31.27s)"
+      ],
+      "log": "run/tmp/katcats-delivery-final-build-check.log",
+      "afterLatestArtifactEmission": true
+    },
+    "clientCatalog": {
+      "generatedBy": "scripts/gen-client-catalog.ts",
+      "fresh": true,
+      "log": "run/tmp/katcats-delivery-client-catalog-check.log"
+    },
+    "dependencySync": {
+      "offline": true,
+      "ignoredScripts": true,
+      "exitCode": 0,
+      "log": "run/tmp/katcats-delivery-dependency-sync.log"
+    },
+    "review": "Independent review covered exact worker ownership, completed-turn evidence, reconnect and cancellation, retained-reference release and file opening scope."
+  },
+  "preserved": {
+    "priorBaselineVerification": "docs/katcats/verification-group-update-1.0.2.json",
+    "approvedUserBubble": "#9DF29F",
+    "branding": "Katcats.AI",
+    "version": "1.0.2",
+    "petAndStartup": "Existing approved companion placement, scale, drag/reset, startup artwork, progress and collapsed startup sidebar were retained."
+  },
+  "packaging": {
+    "status": "held-by-user",
+    "newInstallerProduced": false,
+    "resumeAutomatically": false,
+    "cancelledRun": "run/tmp/katcats-packaging-1.0.2-queue-controls-paused.json"
+  },
+  "limits": [
+    "Model/tool responses in regression fixtures are scripted; real file creation, present registration, Session history and SlotRegistry/card behavior are exercised.",
+    "Successfully registered files followed by an error or Stop without a completed closing reply remain saved in the worker Session and are not falsely displayed as completed group deliveries.",
+    "The installed application was not restarted or modified. No new installer or packaged-UI acceptance is claimed for these source changes."
+  ]
+}

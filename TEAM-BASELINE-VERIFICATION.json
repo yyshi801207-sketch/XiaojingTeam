@@ -1,0 +1,143 @@
+{
+  "project": "小兢会计团队版",
+  "directory": "E:/Projects/小兢会计Team版",
+  "initialSourceCopy": {
+    "source": "E:\\Projects\\Katcats.AI",
+    "destination": "E:\\Projects\\小兢会计Team版",
+    "publishedReference": "b51279b51d381685a81360e46aa09be800700ff3",
+    "copiedAtUtc": "2026-10-25T09:01:16.408Z",
+    "verifiedAtUtc": "2026-10-25T09:01:21.779Z",
+    "regularFiles": 18124,
+    "symbolicLinks": 14,
+    "bytes": 194478942,
+    "mebibytes": 185.47,
+    "hashAlgorithm": "SHA-256",
+    "allSourceAndDestinationHashesMatch": true,
+    "aggregateDigest": "c465f7a2024c06466ca389c29b0cc311d48d3007892d33e348e4d6a40acc62e3",
+    "excluded": [
+      "node_modules and installed dependencies",
+      "run and all profiles, caches, temporary files, test captures and publishing checkout",
+      "output and packaged installers",
+      "apps/desktop/.desktop-build and compiled lib/dist outputs",
+      "Git/LFS working data, local credentials and environment overrides",
+      "Untracked design exports, old copy checksums and local reports"
+    ],
+    "gitHistoryCopied": false,
+    "gitRemoteCopied": false,
+    "installedDependencies": false,
+    "applicationStarted": false,
+    "brandVisualsChanged": false,
+    "sourceReferenceComparison": {
+      "productSourceMatchesPublishedReferenceIgnoringLineEndings": true,
+      "publicationOnlyMetadataDifferences": [
+        ".gitattributes",
+        ".gitignore"
+      ],
+      "lineEndingOnlyDifferences": 42
+    },
+    "checks": {
+      "sha256": true,
+      "independentRelativeLinks": 14,
+      "launcherSyntaxCheck": true,
+      "launcherTests": {
+        "passed": 12,
+        "failed": 0
+      },
+      "excludedDirectoriesAbsent": [
+        "node_modules",
+        "run",
+        "output",
+        ".git",
+        ".pnpm-store",
+        "apps/desktop/.desktop-build",
+        "apps/web/dist"
+      ],
+      "testCreatedEmptyRuntimeRemoved": true
+    },
+    "completedAtUtc": "2026-10-25T09:04:19.246Z"
+  },
+  "dependencies": {
+    "installed": true,
+    "packageManager": "pnpm@11.28.5",
+    "installation": "fresh locked install in this checkout",
+    "packageImportMethod": "copy",
+    "sourceDependenciesCopied": false,
+    "command": "node scripts/katcats-dev.mjs deps",
+    "log": "run/tmp/team-baseline-deps.log"
+  },
+  "runtime": {
+    "prepared": true,
+    "node": "24.21.0",
+    "python": "3.12.14",
+    "pnpm": "11.28.5",
+    "manifest": "apps/desktop/.desktop-build/targets/win-x64/runtime/primary-runtime/runtime.json",
+    "pythonPackages": {
+      "numpy": "2.3.5",
+      "pandas": "3.0.1",
+      "python-dateutil": "2.9.0.post0",
+      "six": "1.17.0",
+      "tzdata": "2025.2",
+      "python-docx": "1.2.0",
+      "python-pptx": "1.0.2",
+      "openpyxl": "3.1.5",
+      "Pillow": "12.3.0",
+      "lxml": "6.1.3",
+      "XlsxWriter": "3.2.9",
+      "typing_extensions": "4.16.0",
+      "et_xmlfile": "2.0.0"
+    },
+    "smokePassed": true,
+    "log": "run/tmp/team-runtime-prepare.log"
+  },
+  "isolation": {
+    "identity": {
+      "packageName": "@deepseek-ai/dsh-desktop",
+      "productVersion": "1.0.2",
+      "appId": "ai.xiaojing.accounting.team.desktop",
+      "nsisGuid": "c8462347-245f-49dd-8195-e1174bb7e3ef",
+      "installDirectoryName": "XiaojingAccountingTeam-desktop",
+      "executableName": "XiaojingAccountingTeam",
+      "productName": "小兢会计团队版",
+      "installScope": "currentUser",
+      "shortcutName": "小兢会计团队版",
+      "userDataSegments": [
+        "XiaojingAccountingTeam-desktop"
+      ]
+    },
+    "developmentData": "run",
+    "browserExtensionId": "geikjlcdnphdfbncdkfoloeddpkpmmde",
+    "browserBridgePorts": [
+      54170,
+      54179
+    ],
+    "developmentPorts": {
+      "web": 3390,
+      "renderer": 19422,
+      "main": 19429,
+      "host": 19430
+    },
+    "productTelemetryDisabled": true,
+    "legacyAccountAndFeedbackDisabled": true,
+    "legacyAutoUpdatesDisabled": true,
+    "oldPublishTargetsDisabled": true,
+    "gitRemoteConfigured": false,
+    "brandVisualsChanged": false
+  },
+  "originalSourceAudit": {
+    "sourceRoot": "E:/Projects/Katcats.AI",
+    "manifest": "E:\\Projects\\Katcats.AI\\run\\tmp\\xiaojing-team-copied-files.jsonl",
+    "manifestSha256": "c465f7a2024c06466ca389c29b0cc311d48d3007892d33e348e4d6a40acc62e3",
+    "total": 18138,
+    "checked": 18138,
+    "files": 18124,
+    "links": 14,
+    "unchanged": 18138,
+    "changed": [],
+    "missing": [],
+    "errors": [],
+    "completedAt": "2026-10-25T09:37:29.918Z",
+    "elapsedMs": 13755,
+    "status": "pass"
+  },
+  "verificationStatus": "Focused checks passed; final isolated build and desktop start pending"
+}

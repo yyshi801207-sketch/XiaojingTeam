@@ -1,0 +1,130 @@
+{
+  "status": "failed-installed-product-activation",
+  "version": "1.0.2",
+  "project": "E:/Projects/Katcats.AI",
+  "scope": [
+    "current visible Katcats.AI naming",
+    "native menu and About copy",
+    "installer artwork and application icons",
+    "independent installer identity",
+    "local unsigned Windows x64 package"
+  ],
+  "checks": {
+    "fullBuild": {
+      "command": "build:xiaojing via package-target win-x64 --unsigned --build-version 1.0.2",
+      "artifacts": 7,
+      "aggregateChecks": 2,
+      "failed": 0,
+      "log": "run/tmp/katcats-branding-final-build.log",
+      "finalPassAfterAllSourceEdits": true
+    },
+    "isolatedLauncher": {
+      "passed": 12,
+      "command": "node --test scripts/katcats-dev.test.mjs"
+    },
+    "clientBuildEnvironment": {
+      "passed": 9
+    },
+    "clientProduct": {
+      "passed": 12,
+      "report": "run/tmp/katcats-dispatch-domain-mWsBiK/tests.json",
+      "types": "run/tmp/katcats-brand-product-types-wYC5wh/typecheck.json"
+    },
+    "packagingBaseline": {
+      "passed": 64,
+      "report": "run/tmp/katcats-package-baseline-green.json"
+    },
+    "desktopIdentity": {
+      "passed": 233,
+      "skipped": 17,
+      "failed": 0,
+      "logPath": null,
+      "subsequentDeclarationFix": {
+        "packagingTestsPassed": 8,
+        "types": 0
+      }
+    },
+    "installerAssets": {
+      "report": "run/tmp/katcats-installer-art-0II9wU/installer-assets-result.json",
+      "visualReview": true
+    },
+    "humanReadableManifests": {
+      "report": "run/tmp/katcats-brand-manifests-xczXmq/manifests.json"
+    },
+    "productLayerStatic": {
+      "passed": true
+    },
+    "devUi": {
+      "aboutTitle": "Katcats.AI",
+      "version": "1.0.2",
+      "iconAlt": "Katcats.AI",
+      "oldAboutNamePresent": false,
+      "screenshot": "run/tmp/katcats-branding-final/about-panel.png",
+      "draftsPreserved": 35,
+      "mainBotEntryObserved": true,
+      "nativeMenuObservation": {
+        "report": "run/tmp/katcats-branding-final/native-menu.json",
+        "limitation": "Windows global menu contains only hidden developer tools; popup labels covered by focused startup tests."
+      }
+    },
+    "finalNativeBranding": {
+      "passed": 71,
+      "failed": 0,
+      "scope": "installation errors, path errors, companion IPC errors and package legal filename",
+      "logPath": null
+    },
+    "archive": {
+      "passed": 8,
+      "failed": 0,
+      "report": "run/tmp/katcats-final-archive-verification/result.json"
+    },
+    "packagedRuntime": {
+      "exitCode": 0,
+      "cliOfflinePluginLifecycle": true,
+      "docxXlsxPptxPdfAndSkillCli": true,
+      "log": "run/tmp/katcats-packaging-1.0.2.log"
+    },
+    "executableIcons": {
+      "allSevenFramesMatchApprovedIco": true,
+      "report": "run/tmp/katcats-branding-final/executable-icons.json"
+    },
+    "installerPayload": {
+      "passed": true,
+      "log": "run/tmp/katcats-branding-final/installer-payload-test.log",
+      "note": "7-Zip recognizes the application payload in the custom installer; its trailing NSIS data is expected."
+    }
+  },
+  "isolation": {
+    "productId": "ai.katcats.desktop",
+    "nsisGuid": "f41a22b2-ae23-46e1-9d77-7e317f3e8f4f",
+    "installationDirectory": "Katcats-desktop",
+    "documentsWorkspace": "Katcats_Home",
+    "protocol": "katcats-ai",
+    "installedAppNotLaunched": true,
+    "installerNotRun": true,
+    "registryMutation": false,
+    "originalApplicationDataRead": false
+  },
+  "limitations": [
+    "Unsigned local build; no release signing, publication, installation or uninstall verification.",
+    "Dev UI evidence does not represent installed UI."
+  ],
+  "artifact": {
+    "path": "run/tmp/katcats-installer-regression-old/Katcats.AI-1.0.2-missing-chunks.exe",
+    "bytes": 332642193,
+    "sha256": "a7c13bd9fa336ca9844d9595136ae9c9b2dbd443b9e79bcd3d26549f25a15f3f",
+    "signed": false,
+    "productName": "Katcats.AI",
+    "version": "1.0.2",
+    "originalDeliveryPath": "output/releases/windows/1.0.2/Katcats.AI-V1.0.2-Windows-x64-20261025.exe"
+  },
+  "completedAt": "2026-10-24T21:04:37.261Z",
+  "installedProductFailure": {
+    "reason": "Private team package omitted tsdown shared chunks; enabled plugins fail to import.",
+    "evidence": "run/tmp/katcats-package-chunk-gap-mDuYDL/result.json",
+    "hostReproduction": "run/tmp/katcats-packaged-host-JKk2jH/result.json",
+    "validationGap": "Static file and generic runtime checks did not assert product service activation or first-use UI.",
+    "originalInstallerPreserved": "run/tmp/katcats-installer-regression-old/Katcats.AI-1.0.2-missing-chunks.exe"
+  },
+  "supersededBy": "verification-packaged-product-startup-fix-1.0.2.json"
+}

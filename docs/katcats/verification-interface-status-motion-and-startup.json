@@ -1,0 +1,328 @@
+{
+  "version": 1,
+  "status": "passed",
+  "date": "2026-10-25",
+  "scope": "Katcats independent copy only",
+  "items": [
+    {
+      "request": "Current workers with avatar and name rotate when several are active.",
+      "implementation": "GroupWorkerStatus; single member fixed, each actual pending approval belongs to its executor, hover/focus/hidden pauses, reduced motion lists members."
+    },
+    {
+      "request": "Tiny refined group manager identity marker, not a smile.",
+      "implementation": "5–7px rounded diamond with exact saved manager ID, Tooltip and accessible label; focused tests and real isolated browser verification passed."
+    },
+    {
+      "request": "Status icon beside each group name.",
+      "implementation": "Actual current generation, running/awaiting/confirmed completed plus honest paused/stopped/failure states; empty or unpublished results do not count as complete."
+    },
+    {
+      "request": "Reuse Katcat avatar hover animation.",
+      "implementation": "Seven existing 600ms head-specific transforms with reduced motion support; original implementation was available unchanged in this copy."
+    },
+    {
+      "request": "Replace startup artwork and retain progress/status.",
+      "implementation": "Supplied PNG copied byte-for-byte; 1585x992 ratio; removed obsolete separate wordmark; existing loading indicator and text untouched.",
+      "assetSha256": "ea929be2b8066fc6ac4fc4665b9741bad981917e076438ddec136ba5529a6c55"
+    },
+    {
+      "request": "User-sent message bubble uses the exact green selected in the avatar palette.",
+      "implementation": "Exact #10C477 in both themes with #202124 foreground; main Bot, ordinary Bot, group owner, steering and pending submission selectors share the same product theme. Existing Bot, handoff and approval palettes remain unchanged; attachment labels retain the original theme foreground."
+    },
+    {
+      "request": "Approval border must align with the chat composer.",
+      "implementation": "Reuse original composer side-clearance and maximum-width variables; visible approval and composer edges differ by 0px at 1440, 820 and 640 widths in both themes, with no horizontal overflow."
+    }
+  ],
+  "tests": {
+    "aggregateReport": "run/tmp/katcats-interface-motion-final-regression.json",
+    "aggregate": {
+      "passed": 545,
+      "failed": 0
+    },
+    "carouselFix": {
+      "red": "run/tmp/katcats-dispatch-domain-mH4vBO/tests.json",
+      "green": "run/tmp/katcats-dispatch-domain-Jy59BI/tests.json",
+      "passed": 9,
+      "reason": "Equivalent directory snapshots no longer reset the timer."
+    },
+    "startupFocused": {
+      "report": "run/tmp/katcats-startup-paper-tests.json",
+      "passed": 8,
+      "failed": 0
+    },
+    "latestColorAndAlignment": {
+      "report": "run/tmp/katcats-dispatch-domain-fhOYLC/tests.json",
+      "passed": 45,
+      "failed": 0
+    },
+    "coverageEvidence": "The full regression report has 545 passing test executions. Later focused reports cover the revised carousel, diamond marker, exact palette green and approval alignment. These report counts are not added together because their cases overlap."
+  },
+  "history": {
+    "uiAudit": "run/tmp/katcats-historical-ui-audit.json",
+    "covered": 22,
+    "collaboration": "docs/katcats/verification-natural-work-and-interruption.json",
+    "realModelEditablePpt": "43f4eb7ee6c14e109b37c3f2a0d0aa6b57807d046e23692fd6c84e38108b3d96"
+  },
+  "storage": {
+    "roots": 71,
+    "historyRecords": 20,
+    "changes": []
+  },
+  "build": {
+    "artifacts": {
+      "passed": 7,
+      "failed": 0,
+      "seconds": 55.58
+    },
+    "check": {
+      "passed": 2,
+      "failed": 0,
+      "seconds": 14.45
+    }
+  },
+  "browser": {
+    "passed": true,
+    "realModel": false,
+    "report": "run/tmp/katcats-group-chat-web-2h7KTJ/status-visual-result.json",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "checks": [
+      "two actual workers rotate and hover/focus pause",
+      "only exact B pending approval receives approval phase",
+      "reduced motion statically shows actual workers",
+      "completed execution removes live status",
+      "single worker fixed after four seconds",
+      "sidebar original tooltips match real approval running and saved completion",
+      "main ordinary stack and worker hover use inherited motion",
+      "reduced motion disables real hover animation",
+      "saved manager ID controls original message and handoff actor/target marks",
+      "unsaved settings do not alter badges",
+      "same manager private conversation has no group badge",
+      "light dark and narrow layout screenshots",
+      "root zero model turns"
+    ],
+    "visualReview": "Root inspected light, dark narrow and supplied startup artwork screenshots; full handoff and native file preview were also checked in the prior focused browser run.",
+    "finalColorAndAlignment": {
+      "passed": true,
+      "realModel": false,
+      "report": "run/tmp/katcats-group-chat-web-WaqJ0e/user-bubble-result.json",
+      "paletteGreen": "#10c477",
+      "approvalGeometry": [
+        {
+          "theme": "light",
+          "viewport": 1440,
+          "visibleHit": true,
+          "approval": {
+            "x": 362.5,
+            "y": 790,
+            "width": 712,
+            "height": 126
+          },
+          "composer": {
+            "x": 362.5,
+            "y": 974,
+            "width": 712,
+            "height": 98
+          },
+          "leftDelta": 0,
+          "rightDelta": 0,
+          "pageWidth": 1440
+        },
+        {
+          "theme": "light",
+          "viewport": 820,
+          "visibleHit": true,
+          "approval": {
+            "x": 72,
+            "y": 790,
+            "width": 425,
+            "height": 126
+          },
+          "composer": {
+            "x": 72,
+            "y": 974,
+            "width": 425,
+            "height": 98
+          },
+          "leftDelta": 0,
+          "rightDelta": 0,
+          "pageWidth": 820
+        },
+        {
+          "theme": "light",
+          "viewport": 640,
+          "visibleHit": true,
+          "approval": {
+            "x": 72,
+            "y": 790,
+            "width": 545,
+            "height": 126
+          },
+          "composer": {
+            "x": 72,
+            "y": 974,
+            "width": 545,
+            "height": 98
+          },
+          "leftDelta": 0,
+          "rightDelta": 0,
+          "pageWidth": 640
+        },
+        {
+          "theme": "dark",
+          "viewport": 1440,
+          "visibleHit": true,
+          "approval": {
+            "x": 362.5,
+            "y": 790,
+            "width": 712,
+            "height": 126
+          },
+          "composer": {
+            "x": 362.5,
+            "y": 974,
+            "width": 712,
+            "height": 98
+          },
+          "leftDelta": 0,
+          "rightDelta": 0,
+          "pageWidth": 1440
+        },
+        {
+          "theme": "dark",
+          "viewport": 820,
+          "visibleHit": true,
+          "approval": {
+            "x": 72,
+            "y": 790,
+            "width": 425,
+            "height": 126
+          },
+          "composer": {
+            "x": 72,
+            "y": 974,
+            "width": 425,
+            "height": 98
+          },
+          "leftDelta": 0,
+          "rightDelta": 0,
+          "pageWidth": 820
+        },
+        {
+          "theme": "dark",
+          "viewport": 640,
+          "visibleHit": true,
+          "approval": {
+            "x": 72,
+            "y": 790,
+            "width": 545,
+            "height": 126
+          },
+          "composer": {
+            "x": 72,
+            "y": 974,
+            "width": 545,
+            "height": 98
+          },
+          "leftDelta": 0,
+          "rightDelta": 0,
+          "pageWidth": 640
+        }
+      ],
+      "checks": [
+        "real owner messages in main Bot ordinary Bot and group use exact avatar green in both themes",
+        "light and dark rendered dark-text contrast at least 4.5",
+        "ordinary assistant and member replies keep original palette",
+        "handoff and approval keep original palette",
+        "approval border and composer edges align within one pixel at 1440 820 and 640",
+        "original mention chip remains functional",
+        "no core API or message data changes"
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "visualReview": "Root inspected the light 1440 view with settings and the dark 640 view with settings closed. The actual approval is visible, the diamond marker is small, and its borders align with the composer."
+    }
+  },
+  "limits": [
+    "Group automation ownership/listing/detail are implemented; due tasks are not yet dispatched into group-owned member execution.",
+    "OS pinned taskbar icon caches and installed release behavior were not re-tested by this development run.",
+    "The real model PPT run observed an external permission UI change of unknown origin; helpers changed no permissions and clicked no approvals."
+  ],
+  "actualDesktop": {
+    "startup": {
+      "captured": true,
+      "image": "run/tmp/katcats-final-preview-mvmrk385/actual-desktop-startup.png",
+      "result": "run/tmp/katcats-final-preview-mvmrk385/startup-result.json",
+      "naturalWidth": 1585,
+      "naturalHeight": 992,
+      "status": "正在启动",
+      "exitedAfterReady": true
+    },
+    "loaded": {
+      "bodyMarked": true,
+      "green": "#10c477",
+      "userBackgrounds": [
+        "#10c477",
+        "#10c477",
+        "#10c477",
+        "#10c477",
+        "#10c477"
+      ],
+      "managerMarkers": 0,
+      "createGroupAvailable": true,
+      "draftInVisibleInput": true
+    },
+    "running": true,
+    "processSession": 12253,
+    "note": "Final Dev restarted after the prior work settled. The loaded product body and existing user messages resolve #10c477. A nonempty draft remains in the original conversation storage key; its current value differs from the earlier in-memory capture, and neither value was overwritten or automatically sent.",
+    "priorLoaded": {
+      "managerMarkers": 34,
+      "avatarHeadElements": 152,
+      "sidebarStates": [
+        "running",
+        "completed"
+      ],
+      "createGroupAvailable": true
+    },
+    "latestColour": {
+      "background": "#9DF29F",
+      "freshBundleLoaded": true,
+      "chatDraftPreserved": true,
+      "report": "docs/katcats/verification-group-outcome-diagnostics-and-green.json"
+    }
+  },
+  "documentation": {
+    "translationPairs": 2,
+    "markdownFiles": 2240,
+    "links": "passed"
+  },
+  "followupRevision": {
+    "manager": {
+      "report": "run/tmp/katcats-dispatch-domain-vhnyZs/tests.json",
+      "passed": 54,
+      "failed": 0
+    },
+    "bubble": {
+      "report": "run/tmp/katcats-dispatch-domain-fhOYLC/tests.json",
+      "passed": 45,
+      "failed": 0,
+      "exactPaletteGreen": "#10C477"
+    },
+    "deployment": "Final artifacts and aggregate checks passed; actual independent-copy desktop is running the new theme.",
+    "lightMint": {
+      "report": "docs/katcats/verification-user-message-light-mint.json",
+      "background": "#B7EDD6",
+      "currentPageApplied": true,
+      "sourceAndIsolatedBuildPassed": true,
+      "liveBundleReplaced": false
+    },
+    "current": {
+      "report": "docs/katcats/verification-group-outcome-diagnostics-and-green.json",
+      "background": "#9DF29F",
+      "source": "Exact latest supplied WeChat reference",
+      "fullBuildPassed": true,
+      "loaded": true
+    }
+  }
+}

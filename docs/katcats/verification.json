@@ -1,0 +1,53 @@
+{
+  "stage": "P0",
+  "status": "passed",
+  "recordedAt": "2026-10-24T06:44:14.252Z",
+  "checks": [
+    {
+      "command": "node --test scripts/katcats-dev.test.mjs",
+      "result": "12 passed, 0 failed"
+    },
+    {
+      "command": "isolated Vitest: client-build-profile.spec.ts + main-startup.spec.ts",
+      "result": "157 passed, 0 failed"
+    },
+    {
+      "command": "isolated node apps/desktop/scripts/verify-desktop-identity.mjs",
+      "result": "passed"
+    },
+    {
+      "command": "node scripts/katcats-dev.mjs build",
+      "result": "9 gates passed, 0 failed, 0 skipped; 351 client artifacts"
+    },
+    {
+      "command": "scoped documentation pairing and local link checks",
+      "result": "2 bilingual pairs and 4 Markdown documents passed"
+    },
+    {
+      "command": "node scripts/katcats-dev.mjs desktop",
+      "result": "unpackaged preview started; closed and cold-restarted successfully; inspected through own port 19222"
+    }
+  ],
+  "isolation": {
+    "home": "run/home",
+    "agents": "run/agents",
+    "electron": "run/desktop/app-data/Katcats.AI-Dev",
+    "browserSession": "run/desktop/session-data",
+    "workspaces": "run/workspaces",
+    "credentialConfiguration": "User confirmed independently entering a key in the new preview. No credential value inspected."
+  },
+  "preview": {
+    "screenshot": "output/playwright/p0-isolated-desktop.png",
+    "retainedBaselineBranding": "Katcat labels remain until the product UI stages.",
+    "realModelValidation": "Not performed in P0."
+  },
+  "nonBlockingObservations": [
+    "Optional mandatory-status IPC handler is absent when development update policy is omitted; source path already catches this condition.",
+    "Electron reports the existing unpackaged CSP development warning."
+  ],
+  "notes": [
+    "Build uses the source-copy baseline hash because no Git history was copied.",
+    "A generated development login URL was inadvertently returned by the initial launch tool; that preview was stopped before restart. Subsequent tool output redacts login tokens.",
+    "No desktop product packaging, installation, release or Git push performed."
+  ]
+}

@@ -1,0 +1,335 @@
+{
+  "formatVersion": 2,
+  "roots": [
+    {
+      "key": "event:katcats/group-task-lifecycle",
+      "kind": "event",
+      "event": "katcats/group-task-lifecycle",
+      "surface": false,
+      "digest": "b2e773007bb506562cf53b4d5750ec6046cbe18a12465f83a5f9809b197c3cbf",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 28,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 16,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 16,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 29,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "actor",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "chatId",
+                "type": 8,
+                "optional": false
+              },
+              {
+                "name": "deliveryId",
+                "type": 8,
+                "optional": false
+              },
+              {
+                "name": "error",
+                "type": 14,
+                "optional": false
+              },
+              {
+                "name": "eventId",
+                "type": 8,
+                "optional": false
+              },
+              {
+                "name": "generation",
+                "type": 16,
+                "optional": false
+              },
+              {
+                "name": "message",
+                "type": 8,
+                "optional": false
+              },
+              {
+                "name": "parentDeliveryId",
+                "type": 17,
+                "optional": false
+              },
+              {
+                "name": "recovered",
+                "type": 18,
+                "optional": false
+              },
+              {
+                "name": "rootSessionId",
+                "type": 8,
+                "optional": false
+              },
+              {
+                "name": "runId",
+                "type": 8,
+                "optional": false
+              },
+              {
+                "name": "schemaVersion",
+                "type": 19,
+                "optional": false
+              },
+              {
+                "name": "status",
+                "type": 20,
+                "optional": false
+              },
+              {
+                "name": "target",
+                "type": 7,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              3,
+              5,
+              7
+            ]
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "kind",
+                "type": 4,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": "legacy-coordinator"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "kind",
+                "type": 6,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": "owner"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "botId",
+                "type": 8,
+                "optional": false
+              },
+              {
+                "name": "kind",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "sender",
+                "type": 10,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "literal",
+            "value": "member"
+          },
+          {
+            "kind": "union",
+            "types": [
+              11,
+              12
+            ]
+          },
+          {
+            "kind": "primitive",
+            "type": "null"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "avatar",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "botId",
+                "type": 8,
+                "optional": false
+              },
+              {
+                "name": "name",
+                "type": 8,
+                "optional": false
+              },
+              {
+                "name": "role",
+                "type": 8,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "color",
+                "type": 8,
+                "optional": false
+              },
+              {
+                "name": "shape",
+                "type": 8,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              11,
+              15
+            ]
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "code",
+                "type": 8,
+                "optional": false
+              },
+              {
+                "name": "message",
+                "type": 8,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "union",
+            "types": [
+              8,
+              11
+            ]
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "literal",
+            "value": 1
+          },
+          {
+            "kind": "union",
+            "types": [
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "cancelled"
+          },
+          {
+            "kind": "literal",
+            "value": "completed"
+          },
+          {
+            "kind": "literal",
+            "value": "failed"
+          },
+          {
+            "kind": "literal",
+            "value": "unknown"
+          },
+          {
+            "kind": "literal",
+            "value": "passed"
+          },
+          {
+            "kind": "literal",
+            "value": "queued"
+          },
+          {
+            "kind": "literal",
+            "value": "started"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "katcats/group-task-lifecycle"
+          }
+        ]
+      }
+    }
+  ],
+  "types": []
+}

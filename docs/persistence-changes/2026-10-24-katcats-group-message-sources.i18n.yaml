@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for 2026-10-24-katcats-group-message-sources.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/persistence-changes/2026-10-24-katcats-group-message-sources.md
+/:
+  en: 3d5a424ae7d7e46b
+  zh: c22a8e4a62d8cc1a
+/2026-10-24-katcats-group-message-sources:
+  en: 87d06854c4edccbd
+  zh: 14fe807c6bf4c9a1
+/2026-10-24-katcats-group-message-sources/summary:
+  en: 71855dabd9951e14
+  zh: 6a33122b182b5d01
+/2026-10-24-katcats-group-message-sources/table-of-contents:
+  en: 6cf314a069ceb451
+  zh: 9adff678e9ecab3b
+/2026-10-24-katcats-group-message-sources/declaration:
+  en: 6907136f28e48c90
+  zh: 02f8298485f3d8e7
+/2026-10-24-katcats-group-message-sources/compatibility:
+  en: f2c143f30794b993
+  zh: cf49c2aec5e1ef2f
+/2026-10-24-katcats-group-message-sources/verification:
+  en: efcfe12ca6f775de
+  zh: 877f7f357b3e1fcd
+/2026-10-24-katcats-group-message-sources/dev-note:
+  en: b75c8458928b72b9
+  zh: 003ba4e17b4b5269

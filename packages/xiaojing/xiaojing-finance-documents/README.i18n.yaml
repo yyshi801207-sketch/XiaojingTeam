@@ -1,0 +1,46 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/xiaojing/xiaojing-finance-documents/README.md
+/:
+  en: a9838041f1eb0c33
+  zh: a9838041f1eb0c33
+/deepseek-ai-dsh-xiaojing-finance-documents:
+  en: d38cd5648a4d2c08
+  zh: e12c494375bca11c
+/deepseek-ai-dsh-xiaojing-finance-documents/summary:
+  en: f46a69ad272dd354
+  zh: 474de173472df630
+/deepseek-ai-dsh-xiaojing-finance-documents/table-of-contents:
+  en: f1d967a7e5342ebc
+  zh: 86774d5ea1aab22d
+/deepseek-ai-dsh-xiaojing-finance-documents/source-authorization-and-normalization:
+  en: 6376b5c247191df7
+  zh: 96eec20ce48253ee
+/deepseek-ai-dsh-xiaojing-finance-documents/tools-and-mode-isolation:
+  en: ef3d61b6903352ad
+  zh: 0c94e1ec06b2f114
+/deepseek-ai-dsh-xiaojing-finance-documents/persistence-and-removal:
+  en: 6bcca3f808d2ee48
+  zh: 36dad05f06ffcb87
+/deepseek-ai-dsh-xiaojing-finance-documents/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-xiaojing-finance-documents/model-experience/shared-deterministic-document-reader:
+  en: f3ad909f36324fff
+  zh: 9ecac282dcabd36b
+/deepseek-ai-dsh-xiaojing-finance-documents/model-experience/shared-deterministic-document-reader/what-the-model-sees:
+  en: 427c953176fd8bdd
+  zh: ab1ad35884e9b67d
+/deepseek-ai-dsh-xiaojing-finance-documents/model-experience/shared-deterministic-document-reader/token-effect:
+  en: 08dc61caf13e7271
+  zh: e29e70588debb182
+/deepseek-ai-dsh-xiaojing-finance-documents/model-experience/shared-deterministic-document-reader/kv-cache-effect:
+  en: 5aaf9e16b95ac552
+  zh: 0e46f6b4720f166f
+/deepseek-ai-dsh-xiaojing-finance-documents/known-limitations-and-deferred-work:
+  en: 0272cd5a2fb06fa9
+  zh: 5269f198c97d69d1
+/deepseek-ai-dsh-xiaojing-finance-documents/known-limitations-and-deferred-work/dev-note:
+  en: 6c98eefd36da35e8
+  zh: 97b281ca4fb06ce2

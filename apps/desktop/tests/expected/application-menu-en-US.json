@@ -1,0 +1,18 @@
+[
+  {
+    "role": "hide",
+    "label": "Hide 小兢会计团队版"
+  },
+  {
+    "role": "hideOthers",
+    "label": "Hide Others"
+  },
+  {
+    "role": "unhide",
+    "label": "Show All"
+  },
+  {
+    "role": "quit",
+    "label": "Quit 小兢会计团队版"
+  }
+]

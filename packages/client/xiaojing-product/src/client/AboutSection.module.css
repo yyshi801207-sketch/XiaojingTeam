@@ -1,0 +1,38 @@
+.root {
+  max-width: 680px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 12px 0 24px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0 32px;
+  text-align: center;
+}
+
+.appIcon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 4px;
+  object-fit: contain;
+}
+
+.hero h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 32px;
+}
+
+.version {
+  margin: 4px 0 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}

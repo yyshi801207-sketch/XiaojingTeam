@@ -1,0 +1,25 @@
+# Bilingual-pair consistency record for 2026-09-10-finance-destructive-maintenance.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/proposed/feature/2026-09-10-finance-destructive-maintenance.md
+/agent-note-finance-deletion-and-write-off:
+  en: 864be16737fc7aa8
+  zh: 1ca014160032ad86
+/agent-note-finance-deletion-and-write-off/problem:
+  en: 99485bbb1772f501
+  zh: 5706ba2285e0f9af
+/agent-note-finance-deletion-and-write-off/proposal:
+  en: 49decab702b7b967
+  zh: a997af62ad80090f
+/agent-note-finance-deletion-and-write-off/proposal/earlier-implementation-checkpoints:
+  en: a1cf7dda146666e9
+  zh: 33838217780654d0
+/agent-note-finance-deletion-and-write-off/alternatives-considered:
+  en: 494bd2b6f3750afb
+  zh: fe5f192f0a6f4d9f
+/agent-note-finance-deletion-and-write-off/acceptance-criteria:
+  en: 7b54ca5b1b230f2d
+  zh: 54f07747f91d6dc8
+/agent-note-finance-deletion-and-write-off/risks:
+  en: f5d138eaff40eb19
+  zh: 3bc1be31ca24a510

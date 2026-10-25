@@ -1,0 +1,31 @@
+# Bilingual-pair consistency record for development-plan.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/katcats/development-plan.md
+/katcats-ai-development-and-acceptance-plan:
+  en: d661b85c74459e05
+  zh: e12d78565d36e109
+/katcats-ai-development-and-acceptance-plan/product-scope:
+  en: c678ddf507444cb5
+  zh: 5eed88d3e9f210cc
+/katcats-ai-development-and-acceptance-plan/initial-implementation-decisions:
+  en: 968197cfb4adb746
+  zh: e9736486e1249791
+/katcats-ai-development-and-acceptance-plan/stages:
+  en: f9292e12aaf9ce5c
+  zh: 8fa8257e89eaff4b
+/katcats-ai-development-and-acceptance-plan/acceptance-scenarios:
+  en: aeae4525daccefd4
+  zh: 1fbe00f69881d3b6
+/katcats-ai-development-and-acceptance-plan/deepseek-bot-feature-matrix:
+  en: 23a5d0b8ab3c087b
+  zh: b02c6f1f027b2a79
+/katcats-ai-development-and-acceptance-plan/verification-and-execution-policy:
+  en: df75739dadeb2490
+  zh: d38e000ebe7f7e17
+/katcats-ai-development-and-acceptance-plan/current-progress:
+  en: e1b4b5404bc27758
+  zh: 052736f535ee6d85
+/katcats-ai-development-and-acceptance-plan/references:
+  en: b5d572028dffffd3
+  zh: 0a3a468ac1f9a2c1

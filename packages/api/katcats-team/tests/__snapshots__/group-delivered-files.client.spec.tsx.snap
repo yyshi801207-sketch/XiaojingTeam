@@ -1,0 +1,8 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`original delivery Factory inside a verified group worker Session > cold-renders each registered final file once and preserves worker preview and exact native event coordinates 1`] = `
+[
+  "final.mdOpening…Preview in sidebarNative file action",
+  "final.pdfActual registered PDFPreview in sidebarNative file action",
+]
+`;

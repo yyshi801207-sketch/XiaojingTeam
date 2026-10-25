@@ -1,0 +1,46 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write apps/desktop/README.md
+/windows-desktop:
+  en: e50228b9735abe55
+  zh: a0e40260cc6b2a8a
+/windows-desktop/permanent-installer-identity:
+  en: 7303c7f9698a1d53
+  zh: 79e42dfa4a1e2dd1
+/windows-desktop/permanent-user-data-paths:
+  en: 4a750ae8685305be
+  zh: bfa942c0ddb9ed0b
+/windows-desktop/development-preview-isolation:
+  en: 6935c204831d9332
+  zh: 5e02efeb8cc05182
+/windows-desktop/desktop-companion-and-tray-lifecycle:
+  en: d9449b0a1b5a9ecc
+  zh: 0056e6543634b4c7
+/windows-desktop/built-in-automation-runtimes:
+  en: 2885e30bfccb918a
+  zh: bd0484e70979d715
+/windows-desktop/independent-integration-patches:
+  en: f2a0c5dee966bd55
+  zh: 48c3d8bd6fba7a15
+/windows-desktop/release-checks:
+  en: a5c09cf1797cbbcb
+  zh: d596b423a66ee0c3
+/windows-desktop/shell-settings-and-packaging:
+  en: 6ae5674aa4d52b28
+  zh: 39eac23ef659f3cc
+/windows-desktop/known-limitations:
+  en: 8fae0392a30cd5e8
+  zh: 02a3a57c9c98b02f
+/windows-desktop/known-limitations/bundled-workspace-dependencies:
+  en: d5101810c85009c3
+  zh: f3489cb52cac4330
+/windows-desktop/known-limitations/release-versions:
+  en: 7668dbd1761b9769
+  zh: b0f55c3bcbeb5550
+/windows-desktop/known-limitations/upload-updates:
+  en: fec25d6cee9df624
+  zh: f61f86cd3e8cc169
+/windows-desktop/known-limitations/windows-ev-signing:
+  en: 8b7d344022b07dd7
+  zh: 4af5f7d58ea70439

@@ -1,0 +1,43 @@
+{
+  "stage": "P3",
+  "status": "passed",
+  "recordedAt": "2026-10-24T09:20:13Z",
+  "acceptance": {
+    "A08": "passed, including separately configured real DeepSeek",
+    "A09": "isolation, routing, pause, continuation, budget, cancellation and cold recovery passed; approval forwarding remains P4/A11"
+  },
+  "checks": [
+    { "area": "Host", "result": "51 existing member/tool and 13 group-domain tests passed; related Host and focused test typechecks passed" },
+    { "area": "real Loader with explicit scripted Mock", "command": "node run/tmp/katcats-p2-loader-check.mjs", "result": "16 passed, including 10 group cases and 2 new group log snapshots; concurrent groups/private execution, Stop preempting Continue, late receipts, receipt-write failure and cold replay passed" },
+    { "area": "Client", "result": "61 tests across 5 files passed; closed-turn placement retains member replies, pending-to-consumed identity and captured appearance", "evidence": "run/tmp/p3-final-client-tests.log" },
+    { "area": "lint, i18n and metadata", "result": "scoped lint 0 errors and 0 warnings, scoped Client i18n 0 violations; dependency-policy tests 59 passed; aliases, Cordis configurations and Client package checks passed" },
+    { "area": "actual built dependency audit", "command": "node run/tooling/check-p3-built-dependencies.mjs", "result": "43 runtime export uses including built Typert Host metadata; violations []; no new SAFE export classification" },
+    { "area": "latest artifacts followed by aggregate checks", "command": "node run/tooling/build-team-artifacts.mjs; node run/tooling/check-team-build.mjs", "result": "7 artifact gates and 2 aggregate checks passed after final fixes; 353 Client artifacts, 10 public values" },
+    { "area": "fresh browser and cold restart", "command": "node run/tmp/katcats-p3-browser.mjs --verify", "result": "explicit scripted Mock, real tool execution and visible Markdown member replies; group settings, pause/continue/stop/errors and complete cold restart passed; no workaround, page errors 0, console errors 0", "evidence": "run/tmp/katcats-p3-web-dBkdPK/result.json" },
+    { "area": "independent real desktop", "command": "node scripts/katcats-dev.mjs desktop; node run/tooling/check-p3-real-group.mjs", "result": "real DeepSeek completed writing then review through two actual member execution Sessions; both replies remain visible after the coordinator finishes", "evidence": "output/playwright/p3-real-group-result.json" },
+    { "area": "persistence compatibility", "command": "node run/tooling/check-p3-generic-reader.mjs; node run/tooling/check-p3-persistence.mjs --check --json", "result": "generic reader without Katcats preserved all 3 sources, metadata and user-role text; acknowledged same-version change verified with 70 roots, 19 history records and no unacknowledged changes" },
+    { "area": "documentation", "result": "scoped follow-ups passed catalogs, persistence references, README structure/model experience, 22 documentation-standard tests, 1120 bilingual pairs, 2220-file links and default source snippet compilation", "evidence": "run/tmp/katcats-p3-final-doc-results.json" }
+  ],
+  "screenshots": [
+    "output/playwright/p3-real-group-created.png",
+    "output/playwright/p3-real-member-1.png",
+    "output/playwright/p3-real-member-2.png",
+    "output/playwright/p3-real-two-member-collaboration.png",
+    "run/tmp/katcats-p3-web-dBkdPK/02-two-real-member-relays.png",
+    "run/tmp/katcats-p3-web-dBkdPK/08-cold-group-identity-settings-relays.png"
+  ],
+  "persistence": {
+    "teamDomainVersion": 1,
+    "groupDomainVersion": 1,
+    "sessionFormat": "unchanged; source additions acknowledged in docs/persistence-changes/2026-10-24-katcats-group-message-sources.md",
+    "existingData": "existing development members, settings and conversations retained; failure and cold-recovery fixtures use synthetic data",
+    "developmentGroup": "文章协作体验"
+  },
+  "limits": [
+    "P3 validates coordinated text collaboration. Hidden-executor approvals, broader handoffs, memory, directory changes, schedules, capability controls and usage aggregation remain P4.",
+    "Coordinator model choice is still a creation snapshot. The user approved the additional prompt-model admission proposal for P4; it is not implemented in this evidence.",
+    "Initial full doc-sync reported 28 passed and 15 failed. Product-related failures were repaired and checked individually. Five Git-dependent checks remain unavailable because the copy has no .git; no repository was initialized or checks disabled.",
+    "Optional built-output documentation mapping rejects an existing Xiaojing Typert path. Default source compilation passed; the old alias and mapper were preserved.",
+    "Baseline unpackaged desktop mandatory-status IPC and development CSP warnings remain. No packaging, installation, release, commit or push occurred."
+  ]
+}

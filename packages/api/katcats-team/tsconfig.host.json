@@ -1,0 +1,79 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "tsBuildInfoFile": "lib/tsconfig.host.tsbuildinfo"
+  },
+  "include": [
+    "src/*.ts"
+  ],
+  "references": [
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../../vendor/schemastery"
+    },
+    {
+      "path": "../../util/brand"
+    },
+    {
+      "path": "../../storage/storage-domain"
+    },
+    {
+      "path": "../../core/system-prompt"
+    },
+    {
+      "path": "../../typert/protocol"
+    },
+    {
+      "path": "../../util/crypto"
+    },
+    {
+      "path": "../../core/agent"
+    },
+    {
+      "path": "../../core/agent-default-model"
+    },
+    {
+      "path": "../../core/session"
+    },
+    {
+      "path": "../../api/session-controller/tsconfig.host.json"
+    },
+    {
+      "path": "../../api/remote-access/tsconfig.host.json"
+    },
+    {
+      "path": "../../workspace/workspace"
+    },
+    {
+      "path": "../../core/tools"
+    },
+    {
+      "path": "../../llm/llm"
+    },
+    {
+      "path": "../../attachment/attachment"
+    },
+    {
+      "path": "../../client/file-upload/tsconfig.host.json"
+    },
+    {
+      "path": "../../util/time"
+    },
+    {
+      "path": "../../util/values"
+    },
+    {
+      "path": "../../context/session-reference"
+    },
+    {
+      "path": "../../guard/repeat-tool-reminder"
+    },
+    {
+      "path": "../../interaction/user-approval"
+    }
+  ]
+}

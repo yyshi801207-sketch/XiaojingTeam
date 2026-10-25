@@ -1,0 +1,6 @@
+.status { min-width: 0; max-width: 100%; border-radius: 4px; }
+.status:focus-visible { outline: 2px solid var(--dsw-alias-label-secondary); outline-offset: 3px; }
+.members { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; min-width: 0; }
+.member { display: inline-flex; align-items: center; gap: 7px; min-width: 0; line-height: 1.5; }
+.name { color: var(--dsw-alias-label-primary); font-weight: 500; overflow-wrap: anywhere; }
+.count { color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }

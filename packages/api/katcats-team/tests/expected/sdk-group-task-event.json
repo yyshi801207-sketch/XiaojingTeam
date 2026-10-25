@@ -1,0 +1,21 @@
+{
+  "type": "katcats/group-task-lifecycle",
+  "seq": 2,
+  "time": 1792886400000,
+  "data": {
+    "schemaVersion": 1,
+    "eventId": "sdk-delivery:queued",
+    "chatId": "sdk-group",
+    "rootSessionId": "sdk-group-root",
+    "runId": "sdk-run",
+    "generation": 1,
+    "deliveryId": "sdk-delivery",
+    "parentDeliveryId": "sdk-parent-delivery",
+    "actor": { "kind": "member", "botId": "writer", "sender": null },
+    "target": { "kind": "member", "botId": "reviewer", "sender": null },
+    "message": "Review the group draft.",
+    "status": "queued",
+    "recovered": false,
+    "error": null
+  }
+}

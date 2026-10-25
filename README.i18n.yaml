@@ -1,0 +1,22 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write README.md
+/xiaojing-accounting-team:
+  en: 40a5aa9c88cb4392
+  zh: 67ec30735dd994c9
+/xiaojing-accounting-team/develop-locally:
+  en: 338bb18149c3ec8f
+  zh: c253fe74ea2c0744
+/xiaojing-accounting-team/product-isolation:
+  en: ce05f27835736842
+  zh: ccda4eff375f3ab2
+/xiaojing-accounting-team/application-capabilities:
+  en: 14c2ed49883d2458
+  zh: 8f24160f69c0427c
+/xiaojing-accounting-team/verify-and-package:
+  en: 59a05594134b08aa
+  zh: d1e250122e572432
+/xiaojing-accounting-team/attribution-and-license:
+  en: 6217c89ead0f0263
+  zh: f08e90635accbfdc

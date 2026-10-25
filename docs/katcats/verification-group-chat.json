@@ -1,0 +1,102 @@
+{
+  "date": "2026-10-24",
+  "status": "passed",
+  "scope": "Direct member group chat and individual message bubbles in the independent Katcats.AI copy",
+  "behavior": [
+    "The group transcript makes no model requests and has no coordinator persona",
+    "Actual members answer, pass, or queue explicit member handoffs",
+    "Initial broadcast opportunities are deduplicated; explicit A-to-B-to-A handoffs remain bounded by the relay budget",
+    "Member messages show captured avatar, name, timestamp and a separate background, border and rounded bubble",
+    "The original composer, attachments and original executing-Session approvals are retained",
+    "Stop drains owned work and clears its remaining notices without deleting history"
+  ],
+  "checks": {
+    "hostFocusedCases": {
+      "chats.host.spec.ts": 20,
+      "team-loader.host.spec.ts": 25,
+      "memory-loader.host.spec.ts": 8,
+      "group-input.host.spec.ts": 10,
+      "group-storage.spec.ts": 11,
+      "group-transcript.host.spec.ts": 6,
+      "group-member-tools.host.spec.ts": 5
+    },
+    "clientFocusedCases": {
+      "productClient": 90,
+      "sessionTransportRegistry": 6,
+      "actualClientSessions": 50
+    },
+    "dependencyPolicyCases": 60,
+    "documentationStandardCases": 22,
+    "changedSourceLint": "passed, zero errors and warnings in the targeted files",
+    "productClientLocale": "26 files, zero violations",
+    "latestArtifactBuild": {
+      "command": "cmd /c \"node run\\tooling\\build-team-artifacts.mjs\"",
+      "passed": 7,
+      "failed": 0
+    },
+    "latestBuildCheck": {
+      "command": "cmd /c \"node run\\tooling\\check-team-build.mjs\"",
+      "passed": 2,
+      "failed": 0
+    },
+    "actualBuiltDependencyAudit": {
+      "runtimeExportUses": 61,
+      "violations": []
+    },
+    "persistenceComparison": {
+      "roots": 70,
+      "historyRecords": 19,
+      "changes": []
+    },
+    "generatedCordisCatalog": "131 generated files or regions fresh",
+    "generatedPersistenceCatalog": "fresh",
+    "namedDocumentationPairs": 7
+  },
+  "browser": {
+    "result": "../../run/tmp/katcats-group-chat-web-7flNuf/result.json",
+    "passed": true,
+    "realModel": false,
+    "workaroundUsed": false,
+    "pageErrors": [],
+    "consoleErrors": [],
+    "checks": [
+      "No creator Bot or mandatory manager in a new group",
+      "Private history absent from group model requests",
+      "Broadcast, actual pass, exact mention and member handoff",
+      "Real composer PNG and staged-file admission with content order preserved",
+      "Light and dark bubble backgrounds, borders, timestamps and blue links",
+      "Long Markdown and code at 1440px and 820px without page overflow",
+      "Original worker approval allow, reject and Stop",
+      "Identical approval calls followed by Stop and a successfully started new member request",
+      "Double Escape cancels a real member while the transcript has zero turns",
+      "Cold restart preserves identities and history without model redispatch"
+    ],
+    "ownedProcessesClosed": true
+  },
+  "realModel": {
+    "result": "../../output/playwright/direct-group-real-result.json",
+    "passed": true,
+    "credentials": "User-configured independently in Katcats Dev; no credentials or configuration files read",
+    "checks": [
+      "Writer and researcher each reply as themselves",
+      "Natural-language writing instruction receives only the writer's reply without an at-mention",
+      "Member bubbles retain avatar, name, timestamp, background and border",
+      "Final-build cold reopening retains all three replies without sending another message"
+    ],
+    "preview": "Katcats.AI Dev is open on the owned chat bubble acceptance group",
+    "screenshot": "../../output/playwright/direct-group-real-final.png"
+  },
+  "isolation": {
+    "workspace": "E:\\Projects\\Katcats.AI",
+    "originalApplicationsOrConfigurationRead": false,
+    "originalApplicationsOrUserDataChanged": false,
+    "secretsPrintedOrCopied": false,
+    "packagedInstalledOrPublished": false,
+    "gitCommitsOrPushes": false
+  },
+  "limitations": [
+    "The public Session model-selection API cannot cancel an already admitted metadata lookup; Stop waits for that lookup to settle before reporting completion",
+    "The copy has no .git directory, so Git-dependent documentation checks are unavailable",
+    "Remaining P4 capability parity and P5 branding are separate work in the development plan"
+  ]
+}

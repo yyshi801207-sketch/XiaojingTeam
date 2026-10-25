@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for permission-picker-factory.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/katcats/proposals/permission-picker-factory.md
+/reusable-current-session-permission-picker:
+  en: 40988619a7386adc
+  zh: 88a9231f1047edb5
+/reusable-current-session-permission-picker/approved-scope:
+  en: 6ec36ee6f630edc5
+  zh: 76fe69bf552849b2
+/reusable-current-session-permission-picker/product-session-ownership:
+  en: 4382e83260d5259b
+  zh: c2ce73f22d060db7
+/reusable-current-session-permission-picker/isolated-verification:
+  en: e624d2d936f27127
+  zh: 296e48b5d2a62371

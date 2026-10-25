@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for session-model-scope.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/katcats/proposals/session-model-scope.md
+/session-model-selection-scope-proposal:
+  en: 8c49fcbe9da7b2d4
+  zh: 1366a615635ecabe
+/session-model-selection-scope-proposal/verified-limitation:
+  en: 6d0683d1a09c7c7d
+  zh: 1103d12329b6cf12
+/session-model-selection-scope-proposal/minimal-extension:
+  en: 5fe4b9731e3a14a6
+  zh: 45e1823a0289cbc5
+/session-model-selection-scope-proposal/required-implementation-checks:
+  en: 793c09a8cc5bfe24
+  zh: 3ceed00677829310

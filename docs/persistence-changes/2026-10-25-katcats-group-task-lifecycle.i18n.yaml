@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for 2026-10-25-katcats-group-task-lifecycle.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/persistence-changes/2026-10-25-katcats-group-task-lifecycle.md
+/:
+  en: 3d5a424ae7d7e46b
+  zh: c22a8e4a62d8cc1a
+/2026-10-25-katcats-group-task-lifecycle:
+  en: 0486fc0e06320fb8
+  zh: 927dbfb937f7acff
+/2026-10-25-katcats-group-task-lifecycle/summary:
+  en: c2734a3a7403bdb3
+  zh: 99ba697a4c28327d
+/2026-10-25-katcats-group-task-lifecycle/table-of-contents:
+  en: 6cf314a069ceb451
+  zh: 9adff678e9ecab3b
+/2026-10-25-katcats-group-task-lifecycle/declaration:
+  en: 6907136f28e48c90
+  zh: 02f8298485f3d8e7
+/2026-10-25-katcats-group-task-lifecycle/compatibility:
+  en: aeaf122078300aa6
+  zh: 83857f6e1f2ca4b1
+/2026-10-25-katcats-group-task-lifecycle/verification:
+  en: f26d5434f75a8899
+  zh: ac87c8fe27968080
+/2026-10-25-katcats-group-task-lifecycle/dev-note:
+  en: b75c8458928b72b9
+  zh: 003ba4e17b4b5269

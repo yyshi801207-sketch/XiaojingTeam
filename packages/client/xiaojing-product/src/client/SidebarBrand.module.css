@@ -1,0 +1,31 @@
+.avatar {
+  display: none;
+  flex: none;
+  overflow: hidden;
+}
+
+:global([data-sidebar-collapsed='true']) .avatar {
+  display: block;
+}
+
+.name {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  padding-right: 4px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.wordmark {
+  display: block;
+  min-width: 0;
+  width: 132px;
+  max-width: 100%;
+  height: 24px;
+}
+
+:global([data-ds-dark-theme]) .avatar,
+:global([data-ds-dark-theme]) .wordmark {
+  filter: invert(1) hue-rotate(180deg);
+}

@@ -1,0 +1,158 @@
+{
+  "checkedAt": "2026-10-25T04:27:02.260Z",
+  "status": "passed",
+  "version": "1.0.2",
+  "changes": {
+    "startup": "Every launch opens the main Bot with the right sidebar collapsed; manually opened settings and their saved tab remain available.",
+    "avatarTools": "Main Bot can create and update committed avatar shape/color and report the actual saved appearance without replacing Bot identities or conversations.",
+    "companion": {
+      "defaultScale": 0.35,
+      "position": "Centered in the right gutter between the composer and conversation content edge, lower edges aligned; follows first-message phase changes and settled window geometry.",
+      "dragAndReset": "Manual dragging suspends following; reset or next launch restores automatic placement.",
+      "placement": "Coalesced events and equal-bounds checks avoid redundant native placement; no new layout polling."
+    },
+    "groupSettings": {
+      "handoffDisplay": "Per-group switch, enabled by default including old groups without the field; off hides historical and subsequent handoff/task cards while preserving chat, records and ongoing execution.",
+      "permissions": "One selection applies sequentially to exact saved group executor Sessions with one shared risk confirmation and individual outcomes; private chats and other groups remain unchanged.",
+      "relayBudget": "New groups default to sixteen total task starts per round; removed the production eight-task override. Existing saved group limits remain unchanged.",
+      "headings": "Group, Bot and global settings category headings use font weight 600; ordinary field labels and hints keep their existing weight."
+    },
+    "attachments": "File and folder chips, including restored semantic drafts, serialize as complete quoted file references. Group routing excludes file tokens before checking member mentions; original request and transcript text remain intact.",
+    "preserved": [
+      "Approved #9DF29F user message green",
+      "Katcats.AI naming, version and approved application/installer artwork",
+      "Main welcome illustration and tagline without the removed introduction paragraphs",
+      "Startup cover artwork, progress and status"
+    ]
+  },
+  "validation": {
+    "focusedReports": [
+      {
+        "report": "run/tmp/katcats-avatar-tools-final.json",
+        "passed": 75,
+        "failed": 0,
+        "matchedSnapshots": 4
+      },
+      {
+        "report": "run/tmp/katcats-startup-sidebar-collapse-focused.json",
+        "passed": 81,
+        "failed": 0,
+        "matchedSnapshots": 0
+      },
+      {
+        "report": "run/tmp/katcats-companion-gutter-midpoint-green.json",
+        "passed": 69,
+        "failed": 0,
+        "matchedSnapshots": 0
+      },
+      {
+        "report": "run/tmp/katcats-permission-batch-all64.json",
+        "passed": 64,
+        "failed": 0,
+        "matchedSnapshots": 3
+      },
+      {
+        "report": "run/tmp/katcats-group-batch-focused-final.json",
+        "passed": 126,
+        "failed": 0,
+        "matchedSnapshots": 4
+      },
+      {
+        "report": "run/tmp/katcats-handoff-presentation-final.json",
+        "passed": 78,
+        "failed": 0,
+        "matchedSnapshots": 7
+      },
+      {
+        "report": "run/tmp/katcats-group-file-mentions-final.json",
+        "passed": 115,
+        "failed": 0,
+        "matchedSnapshots": 2
+      },
+      {
+        "report": "run/tmp/katcats-handoff-catalog-tests.json",
+        "passed": 25,
+        "failed": 0,
+        "matchedSnapshots": 0
+      }
+    ],
+    "settingsCss": {
+      "passed": 5,
+      "report": "run/tmp/katcats-settings-heading-css-check.json"
+    },
+    "catalogs": {
+      "cordisFresh": 131,
+      "configFresh": 3,
+      "report": "run/tmp/katcats-handoff-catalog-verification.json"
+    },
+    "build": {
+      "passed": 9,
+      "steps": [
+        "run-gates: PASS native addon (0.72s)",
+        "run-gates: PASS host compiler (2.14s)",
+        "run-gates: PASS Host bundle (21.63s)",
+        "run-gates: PASS host aggregate check (21.68s)",
+        "run-gates: PASS Desktop bundle (2.58s)",
+        "run-gates: PASS client compiler (13.05s)",
+        "run-gates: PASS Client bundle (8.67s)",
+        "run-gates: PASS Web build (6.31s)",
+        "run-gates: PASS client aggregate check (69.17s)"
+      ],
+      "log": "run/tmp/katcats-packaging-1.0.2-group-update-final-r3.log",
+      "exitCode": 0
+    },
+    "archive": {
+      "passed": 9,
+      "archiveBytes": 330035097,
+      "report": "E:/Projects/Katcats.AI/output/releases/windows/1.0.2/Katcats.AI-1.0.2-group-update-archive.json",
+      "currentBuiltMainPreloadCompanionStartupBytesMatch": true
+    },
+    "productUi": {
+      "passed": true,
+      "checks": [
+        "packaged product main Bot and primary create action are visible",
+        "main Bot welcome preserves the tagline without the introduction or duties paragraphs",
+        "fresh main Bot startup keeps the right sidebar collapsed",
+        "manual main Bot settings still open and expose its operation permissions",
+        "reload collapses a previously saved expanded sidebar without deleting its settings tab",
+        "original creation dialog saves two ordinary Bots in the Bot section",
+        "group creation saves a separate group sidebar entry and a clean group composer",
+        "new group creation defaults to sixteen total member task starts per round",
+        "group settings section headings are bold and handoff records are enabled by default",
+        "one safe bulk selection updates both exact group member permissions and reports two confirmed successes",
+        "bulk group permissions leave both members’ private chat permissions unchanged",
+        "group handoff display can be saved off, stays off when reopened and can be restored on without model calls"
+      ],
+      "modelCalls": 0,
+      "pageErrors": [],
+      "consoleErrors": [],
+      "usesProductionConfigurationWithoutRelayOverlay": true,
+      "report": "E:/Projects/Katcats.AI/output/releases/windows/1.0.2/Katcats.AI-1.0.2-group-update-ui.json"
+    },
+    "installerPayload": {
+      "exitCode": 0,
+      "everythingOk": true,
+      "nsisOverlayDataWarning": true,
+      "log": "run/tmp/katcats-group-update-1.0.2-payload-test.log"
+    }
+  },
+  "artifact": {
+    "path": "E:/Projects/Katcats.AI/output/releases/windows/1.0.2/Katcats.AI-V1.0.2-Windows-x64-20261025-group-update.exe",
+    "bytes": 333326722,
+    "sha256": "0efef6da370cc8a3dcdb399f5203d21e386c335293ba11dc54fe438470beb2ab",
+    "productName": "Katcats.AI",
+    "productVersion": "1.0.2",
+    "fileVersion": "1.0.2",
+    "signed": false
+  },
+  "previews": {
+    "home": "E:/Projects/Katcats.AI/output/releases/windows/1.0.2/Katcats.AI-1.0.2-group-update-home.png",
+    "settings": "E:/Projects/Katcats.AI/output/releases/windows/1.0.2/Katcats.AI-1.0.2-group-update-settings.png"
+  },
+  "limitations": [
+    "Installer was not executed or installed. Actual user data and installed application were not changed.",
+    "Product UI used the actual archived Host with a fresh synthetic profile and hidden isolated browser; no model messages or external model calls were sent.",
+    "Native companion positioning is covered by geometry, observer and IPC tests; a hardware compositor paint-count measurement was not performed.",
+    "Archive checks inspect prepared installer artwork inputs and approved assets; embedded NSIS bitmap resources were not separately extracted."
+  ]
+}

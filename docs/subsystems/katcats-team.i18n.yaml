@@ -1,0 +1,10 @@
+# Bilingual-pair consistency record for katcats-team.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/subsystems/katcats-team.md
+/katcats-team:
+  en: 59185e6eebcb279a
+  zh: c95a8ce5521c6e20
+/katcats-team/data-ownership:
+  en: 58c1db8a78d16454
+  zh: ad8b3f84f963f2e1

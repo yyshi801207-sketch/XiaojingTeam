@@ -1,0 +1,121 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`unconfirmed group outcome diagnostics > retains the actual 'aborted' reason without retrying, completing or exposing exception text 1`] = `
+{
+  "coldModelCalls": 0,
+  "error": {
+    "code": "KATCATS_CHAT_MEMBER_ABORTED",
+    "message": "The member execution was cancelled before confirming completion. Inspect saved group results before retrying.",
+  },
+  "modelCalls": 1,
+  "state": "unknown",
+  "taskErrors": [
+    {
+      "error": {
+        "code": "KATCATS_CHAT_MEMBER_ABORTED",
+        "message": "The member execution was cancelled before confirming completion. Inspect saved group results before retrying.",
+      },
+      "status": "unknown",
+    },
+  ],
+  "workerEnd": [
+    "aborted",
+  ],
+}
+`;
+
+exports[`unconfirmed group outcome diagnostics > retains the actual 'blocked' reason without retrying, completing or exposing exception text 1`] = `
+{
+  "coldModelCalls": 0,
+  "error": {
+    "code": "KATCATS_CHAT_MEMBER_BLOCKED",
+    "message": "The member could not enter its next step. Its work is unconfirmed; inspect saved group results before retrying.",
+  },
+  "modelCalls": 1,
+  "state": "unknown",
+  "taskErrors": [
+    {
+      "error": {
+        "code": "KATCATS_CHAT_MEMBER_BLOCKED",
+        "message": "The member could not enter its next step. Its work is unconfirmed; inspect saved group results before retrying.",
+      },
+      "status": "unknown",
+    },
+  ],
+  "workerEnd": [
+    "blocked",
+  ],
+}
+`;
+
+exports[`unconfirmed group outcome diagnostics > retains the actual 'error' reason without retrying, completing or exposing exception text 1`] = `
+{
+  "coldModelCalls": 0,
+  "error": {
+    "code": "KATCATS_CHAT_MEMBER_ERROR",
+    "message": "The member execution failed before confirming completion. Inspect saved group results before retrying.",
+  },
+  "modelCalls": 1,
+  "state": "unknown",
+  "taskErrors": [
+    {
+      "error": {
+        "code": "KATCATS_CHAT_MEMBER_ERROR",
+        "message": "The member execution failed before confirming completion. Inspect saved group results before retrying.",
+      },
+      "status": "unknown",
+    },
+  ],
+  "workerEnd": [
+    "error",
+  ],
+}
+`;
+
+exports[`unconfirmed group outcome diagnostics > retains the actual 'malformed-response' reason without retrying, completing or exposing exception text 1`] = `
+{
+  "coldModelCalls": 0,
+  "error": {
+    "code": "KATCATS_CHAT_MEMBER_MALFORMED_RESPONSE",
+    "message": "The model response format was invalid. The member result is unconfirmed; inspect saved group results before retrying.",
+  },
+  "modelCalls": 1,
+  "state": "unknown",
+  "taskErrors": [
+    {
+      "error": {
+        "code": "KATCATS_CHAT_MEMBER_MALFORMED_RESPONSE",
+        "message": "The model response format was invalid. The member result is unconfirmed; inspect saved group results before retrying.",
+      },
+      "status": "unknown",
+    },
+  ],
+  "workerEnd": [
+    "error",
+  ],
+}
+`;
+
+exports[`unconfirmed group outcome diagnostics > retains the actual 'max-tokens' reason without retrying, completing or exposing exception text 1`] = `
+{
+  "coldModelCalls": 0,
+  "error": {
+    "code": "KATCATS_CHAT_MEMBER_MAX_TOKENS",
+    "message": "The member reached its output limit before confirming completion. Inspect saved group results before retrying.",
+  },
+  "modelCalls": 1,
+  "state": "unknown",
+  "taskErrors": [
+    {
+      "error": {
+        "code": "KATCATS_CHAT_MEMBER_MAX_TOKENS",
+        "message": "The member reached its output limit before confirming completion. Inspect saved group results before retrying.",
+      },
+      "status": "unknown",
+    },
+  ],
+  "workerEnd": [
+    "max-tokens",
+  ],
+}
+`;

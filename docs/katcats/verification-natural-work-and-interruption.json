@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "status": "passed",
+  "date": "2026-10-25",
+  "scope": "Katcats independent copy only",
+  "behaviors": [
+    "Public member handoff body is expanded Markdown with authorized file links.",
+    "Ordinary group send steers current group work; durable input precedes cancellation and drain.",
+    "Group business tools wait for actual completed contributions in the recorded member plan."
+  ],
+  "storage": {
+    "declaredTypeRoots": 71,
+    "historyRecords": 20,
+    "changes": [],
+    "verified": true
+  },
+  "tests": {
+    "uniqueCases": 519,
+    "aggregate": {
+      "report": "run/tmp/katcats-natural-work-final-regression.json",
+      "passed": 517,
+      "failed": 2,
+      "reason": "Locale copy changed during this running test process; both failures were in the handoff renderer."
+    },
+    "frozenFocused": {
+      "report": "run/tmp/katcats-dispatch-domain-GOriW9/tests.json",
+      "passed": 34,
+      "failed": 0,
+      "includesBothAggregateFailures": true
+    },
+    "interruptionCases": 9,
+    "latestCoveredCases": {
+      "total": 519,
+      "passed": 519,
+      "failed": 0,
+      "method": "Use the frozen focused report for its two files and aggregate results for every other file; original reports are preserved."
+    },
+    "recordedSessionSnapshot": {
+      "file": "packages/api/katcats-team/tests/group-work.host.spec.ts",
+      "cases": 5,
+      "passed": 5,
+      "origin": "Actual keyless group root Session events projected without dynamic IDs, time or cwd."
+    }
+  },
+  "build": {
+    "artifacts": {
+      "passed": 7,
+      "failed": 0
+    },
+    "check": {
+      "passed": 2,
+      "failed": 0,
+      "afterLatestTestSnapshot": true
+    }
+  },
+  "browser": {
+    "realModel": false,
+    "passed": true,
+    "steering": "run/tmp/katcats-group-chat-web-4wbHSj/steering-result.json",
+    "handoff": "run/tmp/katcats-group-chat-web-4wbHSj/handoff-content-result.json",
+    "visualReview": "Full body through final line, code, table and file link inspected in screenshot."
+  },
+  "docs": {
+    "translationPairs": 9,
+    "upgradeGuideCheck": "passed",
+    "markdownFilesChecked": 2240,
+    "links": "passed",
+    "checkDocsWrapper": "Not run because it writes pair metadata; equivalent read-only constituent checks passed."
+  },
+  "realModel": {
+    "passed": true,
+    "report": "run/tmp/katcats-natural-ppt-real-mvmq8n5b/result.json",
+    "checks": 10,
+    "presentationSha256": "43f4eb7ee6c14e109b37c3f2a0d0aa6b57807d046e23692fd6c84e38108b3d96",
+    "slides": 6,
+    "editableText": true,
+    "visualReview": "Agent and root both inspected every final rendered slide; no obvious clipping or overlap.",
+    "rendered": {
+      "pdf": "E:\\Projects\\Katcats.AI\\run\\tmp\\katcats-natural-ppt-real-mvmq8n5b\\rendered\\mvmqv1v1\\presentation.pdf",
+      "images": [
+        "E:\\Projects\\Katcats.AI\\run\\tmp\\katcats-natural-ppt-real-mvmq8n5b\\rendered\\mvmqv1v1\\images\\page-0001.png",
+        "E:\\Projects\\Katcats.AI\\run\\tmp\\katcats-natural-ppt-real-mvmq8n5b\\rendered\\mvmqv1v1\\images\\page-0002.png",
+        "E:\\Projects\\Katcats.AI\\run\\tmp\\katcats-natural-ppt-real-mvmq8n5b\\rendered\\mvmqv1v1\\images\\page-0003.png",
+        "E:\\Projects\\Katcats.AI\\run\\tmp\\katcats-natural-ppt-real-mvmq8n5b\\rendered\\mvmqv1v1\\images\\page-0004.png",
+        "E:\\Projects\\Katcats.AI\\run\\tmp\\katcats-natural-ppt-real-mvmq8n5b\\rendered\\mvmqv1v1\\images\\page-0005.png",
+        "E:\\Projects\\Katcats.AI\\run\\tmp\\katcats-natural-ppt-real-mvmq8n5b\\rendered\\mvmqv1v1\\images\\page-0006.png"
+      ]
+    },
+    "limitations": [
+      "Test-only blanket Shell prohibition was explicitly withdrawn before execution.",
+      "Permission UI changed during test from an unknown external source. The test helper neither changed permissions nor clicked approvals, so this run does not verify unchanged default permission policy."
+    ]
+  },
+  "limits": [
+    "Synthetic browser cases use Mock model; actual product file tools, approvals and preview are exercised.",
+    "Cancellation cannot undo already started external effects; unknown results remain marked unknown."
+  ],
+  "lint": {
+    "changedSourceAndNewTestFiles": "0 errors, 0 warnings in focused checks",
+    "existingWholeFileFindings": {
+      "file": "packages/api/katcats-team/tests/team-wiring.client.spec.tsx",
+      "count": 40,
+      "rules": [
+        "max-len",
+        "unbound-method"
+      ],
+      "note": "Existing findings on unchanged lines were left in place; no repository-wide lint pass is claimed."
+    }
+  },
+  "historicalUiAudit": "run/tmp/katcats-historical-ui-audit.json"
+}

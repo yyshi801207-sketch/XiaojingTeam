@@ -1,0 +1,53 @@
+.avatar { transform-origin: 50% 65%; overflow: visible; }
+@media (hover: hover) {
+  .avatar:hover, :global(button:hover) .avatar {
+    animation-duration: 600ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    animation-iteration-count: 1;
+    &[data-head='classic'] { animation-name: cat-nod; }
+    &[data-head='round'] { animation-name: cat-bounce; }
+    &[data-head='point'] { animation-name: cat-peek; }
+    &[data-head='fold'] { animation-name: cat-sway; }
+    &[data-head='tilt'] { animation-name: cat-tilt; }
+    &[data-head='fluffy'] { animation-name: cat-shake; }
+    &[data-head='slim'] { animation-name: cat-stretch; }
+  }
+}
+@keyframes cat-nod {
+  0%, 100% { transform: none; }
+  35% { transform: translateY(1px) rotate(5deg); }
+  70% { transform: translateY(-0.5px) rotate(-2deg); }
+}
+@keyframes cat-bounce {
+  0%, 100% { transform: none; }
+  35% { transform: scale(1.12, 0.88); }
+  65% { transform: scale(0.96, 1.06); }
+}
+@keyframes cat-peek {
+  0%, 100% { transform: none; }
+  45% { transform: translateY(-2px) scaleY(1.06); }
+  75% { transform: translateY(0.5px); }
+}
+@keyframes cat-sway {
+  0%, 100% { transform: none; }
+  30% { transform: rotate(-7deg); }
+  65% { transform: rotate(5deg); }
+}
+@keyframes cat-tilt {
+  0%, 100% { transform: none; }
+  40% { transform: rotate(-10deg); }
+  75% { transform: rotate(3deg); }
+}
+@keyframes cat-shake {
+  0%, 100% { transform: none; }
+  20%, 60% { transform: translateX(-1px) rotate(-5deg); }
+  40%, 80% { transform: translateX(1px) rotate(5deg); }
+}
+@keyframes cat-stretch {
+  0%, 100% { transform: none; }
+  40% { transform: translateY(-1px) scale(0.95, 1.12); }
+  75% { transform: scale(1.03, 0.97); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .avatar { animation: none !important; }
+}

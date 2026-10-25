@@ -1,0 +1,14 @@
+{
+  "packageName": "@deepseek-ai/dsh-desktop",
+  "productVersion": "1.0.2",
+  "appId": "ai.xiaojing.accounting.team.desktop",
+  "nsisGuid": "c8462347-245f-49dd-8195-e1174bb7e3ef",
+  "installDirectoryName": "XiaojingAccountingTeam-desktop",
+  "executableName": "XiaojingAccountingTeam",
+  "productName": "小兢会计团队版",
+  "installScope": "currentUser",
+  "shortcutName": "小兢会计团队版",
+  "userDataSegments": [
+    "XiaojingAccountingTeam-desktop"
+  ]
+}

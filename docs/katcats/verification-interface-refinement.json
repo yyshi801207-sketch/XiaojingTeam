@@ -1,0 +1,78 @@
+{
+  "verifiedAt": "2026-10-24T14:44:39.155Z",
+  "status": "passed-for-scope",
+  "scope": "Scoped automation simplification, group settings sections, avatar and sidebar organization, shared Bot/chat menus, safe product deletion and supplied browser/desktop icon",
+  "productTests": {
+    "passed": 405,
+    "failed": 0,
+    "report": "../../run/tmp/katcats-interface-refinement-tests.json",
+    "latestFocusedPassed": 62,
+    "latestFocusedReport": "../../run/tmp/katcats-final-model-wiring-tests.json"
+  },
+  "browser": {
+    "passed": 19,
+    "failed": 0,
+    "report": "../../run/tmp/katcats-interface-web-lsuMjT/result.json",
+    "modelCalls": 0,
+    "scheduledTasksExecuted": 0,
+    "pageErrors": [],
+    "consoleErrors": []
+  },
+  "build": {
+    "artifacts": {
+      "passed": 7,
+      "failed": 0,
+      "seconds": 40.59
+    },
+    "check": {
+      "passed": 2,
+      "failed": 0,
+      "seconds": 126
+    }
+  },
+  "icons": {
+    "report": "../../run/tmp/katcats-app-icon-verification.json",
+    "sourceReusedExactly": true,
+    "sha256": "b40b346dd606ddeceec4db8712e6ef6beecc9bcc930130a5262a57ca5c7a1f70"
+  },
+  "persistence": {
+    "domain": "katcats_chats_v2",
+    "version": 2,
+    "legacyDomain": "katcats_chats",
+    "legacyBytesPreserved": true,
+    "readLegacyOnlyOnFirstImport": true,
+    "fallbackAfterNewDomainCreated": false,
+    "downgradeSupported": false,
+    "guide": "../upgrade-guide/v0.2.1-rc.2/katcats-group-directory-v2/guide.zh.md",
+    "sessionPersistenceTypeDigestsChanged": false
+  },
+  "deletion": {
+    "historyAndFilesRetained": true,
+    "mainBotProtected": true,
+    "botMustBeIdleAndNotInAnyGroup": true,
+    "activeAutomationsMustBeHandledFirst": true,
+    "groupStopsOnlyOwnedWork": true
+  },
+  "limits": [
+    "Group scheduled execution remains unconnected; automation list checks cover association and viewing only.",
+    "Inline rich group tool-result projection remains separate work.",
+    "Whole-repository tests and corpus-wide style checks were not declared all green."
+  ],
+  "isolation": {
+    "workspace": "E:/Projects/Katcats.AI",
+    "otherProductFilesOrConfigurationRead": false,
+    "otherProductsChanged": false,
+    "realSecretsReadOrPrinted": false,
+    "realUserDataUsedForTests": false,
+    "packagedInstalledOrPublished": false
+  },
+  "preview": {
+    "status": "updated-and-verified",
+    "newBotActionVisible": true,
+    "ungroupedPresent": true,
+    "mainBadgePresent": true,
+    "createGroupPresent": true,
+    "faviconMatchesSource": true,
+    "port": 61450
+  }
+}

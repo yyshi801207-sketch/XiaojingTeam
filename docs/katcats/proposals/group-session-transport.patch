@@ -1,0 +1,746 @@
+diff --git a/packages/api/session-controller/README.md b/packages/api/session-controller/README.md
+index 036d7cb..56de75c 100644
+--- a/packages/api/session-controller/README.md
++++ b/packages/api/session-controller/README.md
+@@ -81,6 +81,10 @@ The controller composes `ArchivedSessionGate` through `ctx.plugin`: it loads onc
+ 
+ References keep local Session data, scoped Contexts, and history streams alive, not Host Agents. Ordinary Session retention never adds a catalog row. Retained subagents with a known direct-parent address keep a fallback row and notify list readers even before the parent catalog arrives; these rows do not join Host-list membership. Fork-title assignment sends rename directly and applies the returned title projection without retaining the child or opening its history. Final release withdraws the generation before teardown; later acquisition can create a new generation with the same id. `binding(id)` and `scope(id)` only borrow an existing generation. `retainInfo(id)` observes stable read-only source counts independently of catalog membership and performs no history I/O. Consumer source keys are declaration-merge extensible; navigation and completion acknowledgement belong to UI consumers, not this Controller. See [Client Session references](../../../.agents/notes/implemented/architecture/2026-09-15-client-session-references.md) for ownership and teardown rules. An unknown-mode subagent address permits history reads with direct-parent validation. Successful descriptor restoration determines the displayed mode; failures remain local to the child, and control requests still require a confirmed continuable identity.
+ 
++Client providers can register `sessions.registerTransport(sessionId, { prompt, cancel })` for one catalogued non-subagent Session. Both operations receive their existing request fields and typed results; prompt admission retains its caller cancellation. Other Sessions keep their original Remote routes. Registration is independent of retained Client generations and grants no Host authorization. The provider uses `ctx.effect` to own and await the returned disposer; overlapping claims, unknown ids and subagent ids are refused.
++
++A released claim remains unavailable until explicit re-registration, so it never falls back to the ordinary Agent transport. Release blocks new custom calls, aborts pending prompt admission and awaits captured prompt and cancel handlers before Session scopes are released. Cancellation already in progress completes its own cleanup. A provider error never triggers default delivery; typed Remote failures remain typed, and unexpected exceptions become `session/client-transport-failed`. The composer retains its existing attachment serialization, local echoes, request-id reconciliation and draft restoration.
++
+ <a id="session-media-references"></a>
+ ## Session media references
+ 
+diff --git a/packages/api/session-controller/README.zh.md b/packages/api/session-controller/README.zh.md
+index fdbdade..b2d0ef2 100644
+--- a/packages/api/session-controller/README.zh.md
++++ b/packages/api/session-controller/README.zh.md
+@@ -81,6 +81,10 @@ Client 的首次 `follow`、重连首屏与 `loadOlder()` 至少请求 50 条以
+ 
+ 引用保活本地会话数据、作用域 Context 和历史流，不保活 Host Agent。普通 Session 不因保留引用而添加目录行。已保留且具有明确直接父子地址的 subagent 即使尚未收到父目录，也会保留兜底行并通知列表读取方；这些行不加入 Host 列表成员集合。Fork 标题设置直接发送 rename 并应用返回的标题投影，不 retain 子会话，也不打开其历史。最后一个引用释放时，generation 先退出可访问映射，再执行清理；后续获取可以为同一 id 创建新 generation。`binding(id)` 和 `scope(id)` 只借用已有 generation。`retainInfo(id)` 独立于目录成员关系观察稳定的只读来源计数，不执行历史 I/O。消费方来源键可通过声明合并扩展；导航和完成确认属于 UI 消费方，不属于本控制器。所有权与清理规则见 [Client 会话引用](../../../.agents/notes/implemented/architecture/2026-09-15-client-session-references.zh.md)。 模式未知的子代理地址允许读取历史，但仍校验直接父级。成功恢复 descriptor 后确定展示模式；失败只影响该子会话，控制请求仍要求已确认的 continuable 身份。
+ 
++Client 提供方可以为一个已列入目录的普通 Session 注册 `sessions.registerTransport(sessionId, { prompt, cancel })`。两个操作接收原有请求字段并返回有类型结果，提示消息准入保留调用方取消信号。其他 Session 继续使用原 Remote 路径。注册独立于已保留 Client 实例代次，不授予 Host 权限。提供方通过 `ctx.effect` 持有并等待返回的释放函数；重叠注册、未知 id 和子智能体 id 均被拒绝。
++
++已释放的注册保持不可用，直到显式重新注册，因此不会回落到普通 Agent 发送路径。释放会阻止新的自定义调用，中止尚未完成的提示消息准入，并等待已捕获的提示消息和取消处理器完成，然后才释放 Session 上下文。已开始的取消操作完成其自身清理。提供方错误不会触发默认投递；有类型 Remote 失败保留原类型，意外异常转换为 `session/client-transport-failed`。输入框保留现有附件序列化、本地回显、请求 id 核对和草稿恢复。
++
+ <a id="session-media-references"></a>
+ ## 会话媒体引用
+ 
+diff --git a/packages/api/session-controller/src/client/contract/session-transport.ts b/packages/api/session-controller/src/client/contract/session-transport.ts
+new file mode 100644
+index 0000000..c5a7a39
+--- /dev/null
++++ b/packages/api/session-controller/src/client/contract/session-transport.ts
+@@ -0,0 +1,39 @@
++/** Product-owned prompt and cancellation delivery for one top-level Session. */
++import type { SessionId } from '@deepseek-ai/dsh-session/types'
++import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
++import type {
++  SessionCancelRequest, SessionCancelValue, SessionPromptRequest, SessionPromptValue,
++} from '../../types.ts'
++
++/** Admission and cancellation handlers registered together for one exact Session. */
++export interface SessionTransport {
++  /**
++   * Admit the original request, including its request id and ordered attachments.
++   * @param request - unchanged composer admission request.
++   * @param signal - admission cancellation; omission supplies no caller cancellation.
++   * @returns durable admission, or a structured failure; never request a default-route retry.
++   */
++  prompt(request: SessionPromptRequest, signal?: AbortSignal): Promise<RemoteResult<SessionPromptValue>>
++  /**
++   * Cancel this Session's owned execution; accepted does not imply a model reply.
++   * @param request - exact registered Session identity.
++   * @returns cancellation acknowledgement after the handler's required cleanup.
++   */
++  cancel(request: SessionCancelRequest): Promise<RemoteResult<SessionCancelValue>>
++}
++
++/**
++ * Stop custom calls, abort pending admission and quarantine the id until re-registration.
++ * @returns completion after all captured handlers settle.
++ */
++export type SessionTransportDisposer = () => Promise<void>
++
++declare module '@deepseek-ai/dsh-typert-protocol' {
++  interface RemoteErrorDetailsMap {
++    'session/client-transport-unavailable': { readonly sessionId: SessionId }
++    'session/client-transport-failed': {
++      readonly sessionId: SessionId
++      readonly operation: 'prompt' | 'cancel'
++    }
++  }
++}
+diff --git a/packages/api/session-controller/src/client/contract/sessions.ts b/packages/api/session-controller/src/client/contract/sessions.ts
+index a52d2c1..4836ad3 100644
+--- a/packages/api/session-controller/src/client/contract/sessions.ts
++++ b/packages/api/session-controller/src/client/contract/sessions.ts
+@@ -13,6 +13,7 @@ import type { AgentContext } from '../scope.ts'
+ import type { SessionSearchResultItem } from '../sessions/manager.ts'
+ import type { SessionBinding, SessionListState } from '../sessions/service.ts'
+ import type { SessionFace } from './session.ts'
++import type { SessionTransport, SessionTransportDisposer } from './session-transport.ts'
+ import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
+ import type { SessionReferenceSource } from '../index.ts'
+ 
+@@ -49,6 +50,15 @@ export interface SessionRetainInfo {
+ export interface ISessions {
+   /** Host catalog and local reference-source counts; navigation belongs to view owners. */
+   readonly list: ObservableSnapshot<SessionListState>
++  /**
++   * Replace prompt and cancel delivery for one known top-level Session.
++   * Never-claimed Sessions retain their existing Remote routes; released claims stay unavailable until re-registration.
++   * Handlers cannot claim a subagent, overlap another registration, or change Session identity.
++   * @param sessionId - exact Host-catalogued, non-subagent Session.
++   * @param transport - provider-owned prompt admission and cancellation handlers.
++   * @returns asynchronous disposer; own it through a provider ctx.effect and await release.
++   */
++  registerTransport(sessionId: SessionId, transport: SessionTransport): SessionTransportDisposer
+   /**
+    * Retain an exact Client generation and start its shared initial history opening.
+    * @param target - known identity or durable direct-parent address.
+diff --git a/packages/api/session-controller/src/client/index.ts b/packages/api/session-controller/src/client/index.ts
+index b9600f3..dd41674 100644
+--- a/packages/api/session-controller/src/client/index.ts
++++ b/packages/api/session-controller/src/client/index.ts
+@@ -27,6 +27,7 @@ export type {
+ export { createScope, scopeOf } from './scope.ts'
+ export type { AgentContext, AgentScopeHandle } from './scope.ts'
+ export { SessionCreateError, SessionForkError } from './sessions/service.ts'
++export type { SessionTransport, SessionTransportDisposer } from './contract/session-transport.ts'
+ export type { SessionBinding, SessionListState, SessionSummary } from './sessions/service.ts'
+ export type {
+   SessionListPhase,
+diff --git a/packages/api/session-controller/src/client/sessions/manager.ts b/packages/api/session-controller/src/client/sessions/manager.ts
+index b8bec9b..3715e9f 100644
+--- a/packages/api/session-controller/src/client/sessions/manager.ts
++++ b/packages/api/session-controller/src/client/sessions/manager.ts
+@@ -26,6 +26,7 @@ import { ProjectionValueStore } from './projection-store.ts'
+ import { Session } from './session.ts'
+ import type { SessionRemotes } from './remotes.ts'
+ import type { SessionTarget } from '../contract/sessions.ts'
++import type { SessionTransport } from '../contract/session-transport.ts'
+ 
+ function sessionSeqCursor(value: number): SessionSeqCursor {
+   return value === -1 ? -1 : SessionSeq(value)
+@@ -122,8 +123,14 @@ export class SessionManager {
+     this.listSnapshotCache = this.buildListSnapshot()
+   })
+ 
+-  /** @param remote - generated Remote namespaces used by catalog and history readers. */
+-  constructor(private readonly remote: SessionRemotes) {
++  /**
++   * @param remote - generated Remote namespaces used by catalog and history readers.
++   * @param transport - optional per-id delivery resolver; omission preserves ordinary routes.
++   */
++  constructor(
++    private readonly remote: SessionRemotes,
++    private readonly transport?: (id: SessionId) => SessionTransport | undefined,
++  ) {
+     this.listSnapshotCache = this.buildListSnapshot()
+   }
+ 
+@@ -275,6 +282,7 @@ export class SessionManager {
+       ? undefined
+       : this.agentAvailable(address.parentSessionId)
+     return new Session(sessionId, this.remote, {
++      transport: () => this.transport?.(sessionId),
+       ...(address === undefined ? {} : {
+         address,
+         ...parentAvailable === undefined ? {} : { parentAvailable },
+diff --git a/packages/api/session-controller/src/client/sessions/service.ts b/packages/api/session-controller/src/client/sessions/service.ts
+index b992a34..a39bd64 100644
+--- a/packages/api/session-controller/src/client/sessions/service.ts
++++ b/packages/api/session-controller/src/client/sessions/service.ts
+@@ -12,6 +12,8 @@ import {
+ import type { RemoteFailure, RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
+ import type { SessionEventSource } from '../contract/events.ts'
+ import type { SessionFace } from '../contract/session.ts'
++import type { SessionTransport, SessionTransportDisposer } from '../contract/session-transport.ts'
++import { SessionTransportRegistry } from './transports.ts'
+ import type {
+   AgentContext, ISessions, SessionReference, SessionRetainInfo, SessionRetainOptions, SessionTarget,
+ } from '../contract/sessions.ts'
+@@ -243,6 +245,7 @@ export class ClientSessions implements ISessions {
+   readonly list: SnapshotStore<SessionListState>
+   /** The object-layer instance cluster and frame dispatch entry. */
+   private readonly manager: SessionManager
++  private readonly transports = new SessionTransportRegistry()
+   private readonly scopes = new Map<SessionId, ScopeRecord>()
+   /** Stable per-id sources retained for the Client root lifetime, including across generation replacement. */
+   private readonly retainObservers = new Map<SessionId, RetentionObserver>()
+@@ -257,13 +260,14 @@ export class ClientSessions implements ISessions {
+     private readonly rootCtx: Context,
+     remote: SessionRemotes,
+   ) {
+-    this.manager = new SessionManager(remote)
++    this.manager = new SessionManager(remote, id => this.transports.get(id))
+     this.list = createSnapshotStore<SessionListState>({
+       ids: [], byId: {}, phase: 'pending', projectionsBySession: {},
+     })
+     const disposeManagerProjection = this.manager.subscribe(() => { this.projectList() })
+     rootCtx.effect(() => async () => {
+       this.closed = true
++      await this.transports.dispose()
+       disposeManagerProjection()
+       const scopes = [...this.scopes]
+       this.scopes.clear()
+@@ -282,6 +286,14 @@ export class ClientSessions implements ISessions {
+     rootCtx.reflect.provide('sessions', this, undefined)
+   }
+ 
++  registerTransport(sessionId: SessionId, transport: SessionTransport): SessionTransportDisposer {
++    if (this.closed) throw new Error('Session Controller is disposed')
++    if (!this.list.getSnapshot().ids.includes(sessionId)) throw new Error('Session transport requires a catalogued Session: ' + sessionId)
++    if (this.list.getSnapshot().byId[sessionId]?.origin === 'subagent'
++      || this.manager.subagentAddress(sessionId) !== undefined) throw new Error('Session transport cannot claim a subagent: ' + sessionId)
++    return this.transports.register(sessionId, transport)
++  }
++
+   retain(target: SessionTarget, options: SessionRetainOptions): SessionReference {
+     const { source, signal } = options
+     signal?.throwIfAborted()
+diff --git a/packages/api/session-controller/src/client/sessions/session.ts b/packages/api/session-controller/src/client/sessions/session.ts
+index 09494e0..2e947d3 100644
+--- a/packages/api/session-controller/src/client/sessions/session.ts
++++ b/packages/api/session-controller/src/client/sessions/session.ts
+@@ -33,6 +33,7 @@ import { isRemoteFailure } from '@deepseek-ai/dsh-api-gateway/client'
+ import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
+ import type { RemoteFailure, RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
+ import type { SessionRemotes } from './remotes.ts'
++import type { SessionTransport } from '../contract/session-transport.ts'
+ import { ProjectionValueStore } from './projection-store.ts'
+ import type { ProjectionsBaseline } from './projection-store.ts'
+ import { resolvedClientTimeZone } from '../time-zone.ts'
+@@ -69,6 +70,8 @@ interface PendingHistory {
+ 
+ /** Manager-owned observers of a Session object's local state edges. */
+ export interface SessionOptions {
++  /** Resolve each top-level operation's current registration; omission preserves Remote delivery. */
++  transport?: () => SessionTransport | undefined
+   /** Catalog-discovered address selecting non-activating subagent transport. */
+   address?: SubagentAddress
+   /** Whether the exact direct parent Agent is available in Host summaries; absent until known. */
+@@ -268,13 +271,17 @@ export class Session implements SessionFace {
+     let result: RemoteResult<{ accepted: true }>
+     if (this.address === undefined) {
+       const clientTimeZone = resolvedClientTimeZone()
+-      result = await this.remote.session.prompt({
++      const request = {
+         requestId: requestId ?? randomUUID() as SessionRequestId,
+         sessionId: this.sessionId,
+         mode,
+         content,
+         clientTimeZone,
+-      }, signal)
++      }
++      const transport = this.options.transport?.()
++      result = transport === undefined
++        ? await this.remote.session.prompt(request, signal)
++        : await transport.prompt(request, signal)
+     } else if (content.some(part => part.type === 'file')) {
+       result = {
+         ok: false,
+@@ -346,13 +353,16 @@ export class Session implements SessionFace {
+    */
+   async cancel(): Promise<RemoteResult<{ accepted: true }>> {
+     const address = this.address
++    const transport = address === undefined ? this.options.transport?.() : undefined
+     const result = address !== undefined
+       ? await this.remote.subagents.interruptByParent(
+         address.childSessionId,
+         address.parentSessionId,
+         'continuable',
+       )
+-      : await this.remote.session.cancel({ sessionId: this.sessionId })
++      : transport === undefined
++        ? await this.remote.session.cancel({ sessionId: this.sessionId })
++        : await transport.cancel({ sessionId: this.sessionId })
+     if (!result.ok) {
+       this.promptError = { op: 'stop', error: result.error }
+       this.notifier.markDirty()
+diff --git a/packages/api/session-controller/src/client/sessions/transports.ts b/packages/api/session-controller/src/client/sessions/transports.ts
+new file mode 100644
+index 0000000..ef49ac2
+--- /dev/null
++++ b/packages/api/session-controller/src/client/sessions/transports.ts
+@@ -0,0 +1,108 @@
++/** Exact-Session transport registrations and awaited consumer teardown. */
++import type { SessionId } from '@deepseek-ai/dsh-session/types'
++import { RemoteError, remoteErrorOf, type RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
++import type { SessionTransport, SessionTransportDisposer } from '../contract/session-transport.ts'
++
++interface Registration {
++  readonly transport: SessionTransport
++  readonly abort: AbortController
++  readonly pending: Set<Promise<unknown>>
++  closing: boolean
++  disposal: Promise<void> | undefined
++}
++
++function unavailable(id: SessionId): RemoteResult<never> {
++  return { ok: false,
++    error: new RemoteError('session/client-transport-unavailable', 'Session transport is unavailable', { sessionId: id }) }
++}
++
++function quarantine(id: SessionId): SessionTransport {
++  return { prompt: () => Promise.resolve(unavailable(id)), cancel: () => Promise.resolve(unavailable(id)) }
++}
++
++/** ClientSessions owns registrations independently from retained Session generations. */
++export class SessionTransportRegistry {
++  private readonly entries = new Map<SessionId, Registration>()
++  private readonly quarantined = new Map<SessionId, SessionTransport>()
++  private closed = false
++
++  /**
++   * Resolve custom or quarantined delivery for a previously claimed identity.
++   * @param id - top-level Session identity.
++   * @returns custom or quarantined handlers, or undefined when never claimed.
++   */
++  get(id: SessionId): SessionTransport | undefined {
++    return this.entries.get(id)?.transport ?? this.quarantined.get(id)
++  }
++
++  /**
++   * Claim both delivery operations for one Session.
++   * @param id - exact Session identity; the public service verifies catalog eligibility.
++   * @param implementation - provider-owned admission and cancellation.
++   * @returns idempotent asynchronous release; overlapping registrations throw.
++   */
++  register(id: SessionId, implementation: SessionTransport): SessionTransportDisposer {
++    if (this.closed) throw new Error('Session transports are disposed')
++    if (this.entries.has(id)) throw new Error('Session transport is already registered: ' + id)
++    const abort = new AbortController()
++    const pending = new Set<Promise<unknown>>()
++    if (!this.quarantined.has(id)) {
++      this.quarantined.set(id, quarantine(id))
++    }
++    const invoke = <Value>(
++      operation: 'prompt' | 'cancel',
++      run: () => Promise<RemoteResult<Value>>,
++    ): Promise<RemoteResult<Value>> => {
++      if (entry.closing) return Promise.resolve(unavailable(id))
++      const task = Promise.withResolvers<RemoteResult<Value>>()
++      pending.add(task.promise)
++      void task.promise.then(() => { pending.delete(task.promise) })
++      const failed = (error: unknown): void => {
++        task.resolve({
++          ok: false,
++          error: remoteErrorOf(error) ?? new RemoteError(
++            'session/client-transport-failed', 'Session transport failed',
++            { sessionId: id, operation }, { cause: error },
++          ),
++        })
++      }
++      try { void run().then(task.resolve, failed) } catch (error: unknown) { failed(error) }
++      return task.promise
++    }
++    const entry: Registration = {
++      abort, pending, closing: false, disposal: undefined,
++      transport: {
++        prompt: (request, signal) => invoke('prompt', async () => {
++          const combined = signal === undefined ? abort.signal : AbortSignal.any([signal, abort.signal])
++          combined.throwIfAborted()
++          return implementation.prompt(request, combined)
++        }),
++        cancel: request => invoke('cancel', () => implementation.cancel(request)),
++      },
++    }
++    this.entries.set(id, entry)
++    return () => this.release(id, entry)
++  }
++
++  /**
++   * Stop registration and await every captured provider call before root teardown completes.
++   * @returns provider teardown completion.
++   */
++  async dispose(): Promise<void> {
++    this.closed = true
++    await Promise.all([...this.entries].map(([id, entry]) => this.release(id, entry)))
++  }
++
++  private release(id: SessionId, entry: Registration): Promise<void> {
++    if (entry.disposal !== undefined) return entry.disposal
++    const completion = Promise.withResolvers<void>()
++    entry.disposal = completion.promise
++    entry.closing = true
++    entry.abort.abort(new Error('Session transport is unloading'))
++    void Promise.all([...entry.pending]).then(() => {
++      if (this.entries.get(id) === entry) this.entries.delete(id)
++      completion.resolve()
++    })
++    return completion.promise
++  }
++}
+diff --git a/packages/api/session-controller/tests/session-transports.client.spec.ts b/packages/api/session-controller/tests/session-transports.client.spec.ts
+new file mode 100644
+index 0000000..8c0e9ee
+--- /dev/null
++++ b/packages/api/session-controller/tests/session-transports.client.spec.ts
+@@ -0,0 +1,147 @@
++/** Exact transport ownership, quarantine and asynchronous consumer teardown. */
++import { brandString } from '@deepseek-ai/dsh-brand'
++import type { FileUploadReceiptId } from '@deepseek-ai/dsh-client-file-upload/types'
++import { describe, expect, it, vi } from 'vitest'
++import type { SessionId } from '@deepseek-ai/dsh-session/types'
++import type { SessionCancelValue, SessionPromptRequest } from '../src/types.ts'
++import { RemoteError, type RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
++import type { SessionTransport } from '../src/client/contract/session-transport.ts'
++import { SessionTransportRegistry } from '../src/client/sessions/transports.ts'
++
++const id = 'transport-fixture' as SessionId
++const accepted = { ok: true, value: { accepted: true } } as const
++const request: SessionPromptRequest = {
++  sessionId: id, requestId: 'fixture-request' as SessionPromptRequest['requestId'],
++  mode: 'queue', content: [{ type: 'image', mediaType: 'image/png', data: 'AA==' },
++    { type: 'file', receiptId: brandString<FileUploadReceiptId>('staged-file') }, { type: 'text', text: 'Hello' }], clientTimeZone: 'Asia/Shanghai',
++}
++const handlers = (): SessionTransport => ({
++  prompt: vi.fn(async () => accepted), cancel: vi.fn(async () => accepted),
++})
++
++describe('exact Session transport registrations', () => {
++  it('routes the original request and signal without mutating ordered content', async () => {
++    const registry = new SessionTransportRegistry()
++    const implementation = handlers()
++    const release = registry.register(id, implementation)
++    const transport = registry.get(id)
++    if (transport === undefined) throw new Error('missing registered transport')
++    const caller = new AbortController()
++    await expect(transport.prompt(request, caller.signal)).resolves.toEqual(accepted)
++    expect(implementation.prompt).toHaveBeenCalledWith(request, expect.any(AbortSignal))
++    expect(vi.mocked(implementation.prompt).mock.calls[0]?.[0]).toBe(request)
++    await expect(transport.cancel({ sessionId: id })).resolves.toEqual(accepted)
++    expect(implementation.cancel).toHaveBeenCalledWith({ sessionId: id })
++    await release()
++    expect(await registry.get(id)?.prompt(request)).toMatchObject({
++      ok: false, error: { code: 'session/client-transport-unavailable' },
++    })
++  })
++
++  it('refuses overlap and waits for an already-started cancellation before releasing', async () => {
++    const registry = new SessionTransportRegistry()
++    const gate = Promise.withResolvers<RemoteResult<SessionCancelValue>>()
++    const release = registry.register(id, { ...handlers(), cancel: () => gate.promise })
++    const transport = registry.get(id)
++    if (transport === undefined) throw new Error('missing registered transport')
++    const cancelling = transport.cancel({ sessionId: id })
++    const closing = release()
++    expect(registry.get(id)).toBe(transport)
++    expect(() => registry.register(id, handlers())).toThrow('already registered')
++    expect(await transport.prompt(request)).toMatchObject({
++      ok: false, error: { code: 'session/client-transport-unavailable' },
++    })
++    gate.resolve(accepted)
++    await cancelling
++    await closing
++    const newer = registry.register(id, handlers())
++    await release()
++    expect(registry.get(id)).not.toBeUndefined()
++    await newer()
++  })
++
++  it('aborts admission on provider release and awaits its settlement', async () => {
++    const registry = new SessionTransportRegistry()
++    let observed: AbortSignal | undefined
++    const release = registry.register(id, {
++      ...handlers(),
++      prompt: async (_request, signal) => {
++        if (signal === undefined) throw new Error('missing admission signal')
++        observed = signal
++        await new Promise<void>(resolve => signal.addEventListener('abort', () => { resolve() }, { once: true }))
++        throw new RemoteError('session/client-transport-unavailable', 'Unloading', { sessionId: id })
++      },
++    })
++    const transport = registry.get(id)
++    if (transport === undefined) throw new Error('missing registered transport')
++    const sending = transport.prompt(request)
++    await release()
++    expect(observed?.aborted).toBe(true)
++    expect(await sending).toMatchObject({
++      ok: false, error: { code: 'session/client-transport-unavailable' },
++    })
++    await registry.dispose()
++    expect(() => registry.register(id, handlers())).toThrow('disposed')
++  })
++
++  it('preserves typed failures and reports unexpected handler failures without retry', async () => {
++    const registry = new SessionTransportRegistry()
++    const denied = new RemoteError('session/client-transport-unavailable', 'Unavailable', { sessionId: id })
++    const implementation: SessionTransport = {
++      prompt: vi.fn(async () => { throw denied }),
++      cancel: vi.fn(async () => { throw new Error('Unexpected failure') }),
++    }
++    const release = registry.register(id, implementation)
++    const transport = registry.get(id)
++    if (transport === undefined) throw new Error('missing registered transport')
++    const result = await transport.prompt(request)
++    expect(result.ok ? undefined : result.error).toBe(denied)
++    expect(await transport.cancel({ sessionId: id })).toMatchObject({
++      ok: false, error: { code: 'session/client-transport-failed', details: { sessionId: id, operation: 'cancel' } },
++    })
++    expect(implementation.prompt).toHaveBeenCalledTimes(1)
++    expect(implementation.cancel).toHaveBeenCalledTimes(1)
++    await release()
++  })
++
++  it('tracks a provider before it can synchronously release its registration', async () => {
++    const registry = new SessionTransportRegistry()
++    const gate = Promise.withResolvers<RemoteResult<SessionCancelValue>>()
++    let closing: Promise<void> | undefined
++    const release = registry.register(id, {
++      ...handlers(), cancel: () => { closing = release(); return gate.promise },
++    })
++    const transport = registry.get(id)
++    if (transport === undefined) throw new Error('missing registered transport')
++    const cancelling = transport.cancel({ sessionId: id })
++    expect(closing).toBeDefined()
++    expect(() => registry.register(id, handlers())).toThrow('already registered')
++    gate.resolve(accepted)
++    await cancelling
++    await closing
++    expect(await registry.get(id)?.cancel({ sessionId: id })).toMatchObject({
++      ok: false, error: { code: 'session/client-transport-unavailable' },
++    })
++  })
++
++  it('returns the same release while abort callbacks reenter teardown', async () => {
++    const registry = new SessionTransportRegistry()
++    let repeated: Promise<void> | undefined
++    const release = registry.register(id, {
++      ...handlers(), prompt: async (_request, signal) => {
++        if (signal === undefined) throw new Error('missing admission signal')
++        await new Promise<void>(resolve => signal.addEventListener('abort', () => {
++          repeated = release()
++          resolve()
++        }, { once: true }))
++        return accepted
++      },
++    })
++    const sending = registry.get(id)?.prompt(request)
++    const closing = release()
++    expect(repeated).toBe(closing)
++    await closing
++    await sending
++    expect(registry.get('never-claimed' as SessionId)).toBeUndefined()
++  })
++})
+diff --git a/packages/api/session-controller/tests/sessions-service.client.spec.ts b/packages/api/session-controller/tests/sessions-service.client.spec.ts
+index d92a831..4b73690 100644
+--- a/packages/api/session-controller/tests/sessions-service.client.spec.ts
++++ b/packages/api/session-controller/tests/sessions-service.client.spec.ts
+@@ -1,10 +1,13 @@
+ /** Client catalog projection, explicitly retained scopes, streams, and Host operations. */
+ import { Context } from '@deepseek-ai/cordis'
++import { brandString } from '@deepseek-ai/dsh-brand'
++import type { FileUploadReceiptId } from '@deepseek-ai/dsh-client-file-upload/types'
+ import { describe, expect, vi } from 'vitest'
+ import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
+ import type { SessionReference } from '../src/client/contract/sessions.ts'
+-import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
+-import { LlmAttemptId } from '@deepseek-ai/dsh-llm'
++import type { SessionTransport } from '../src/client/contract/session-transport.ts'
++import { RemoteError, type RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
++import { LlmAttemptId, MessageId } from '@deepseek-ai/dsh-llm'
+ import { RemoteStreamCarrierError } from '@deepseek-ai/dsh-api-gateway/client'
+ import { SESSION_FORMAT_VERSION, SessionSeq } from '@deepseek-ai/dsh-session/types'
+ import { ok, streamHandle, type RemoteMock } from '@deepseek-ai/dsh-remote-mock'
+@@ -12,9 +15,9 @@ import { createClientTest, webApp } from '@deepseek-ai/dsh-client-test-runtime/s
+ import { ClientSessions, SessionCreateError, SessionForkError } from '../src/client/sessions/service.ts'
+ import { scopeOf } from '../src/client/scope.ts'
+ import type {
+-  SessionAssistantStreamBaseline, SessionFollowFrame, SessionFollowRequest,
++  PromptContentPart, SessionAssistantStreamBaseline, SessionCancelValue, SessionFollowFrame, SessionFollowRequest,
+ } from '../src/types.ts'
+-import { FOLLOW, err, followScript, sessionWorld } from './remote/session.client.ts'
++import { FOLLOW, err, fileRef, followScript, imageRef, pushEvent, sessionWorld } from './remote/session.client.ts'
+ 
+ const sid = (s: string): SessionId => s as SessionId
+ /** ClientSessions uses the Gateway client for stream supervision and the native Remote mocks for responses. */
+@@ -78,6 +81,126 @@ async function feedList(b: Bench, rows: FeedRow[]): Promise<void> {
+   await Promise.resolve() // manager notifier flush
+ }
+ 
++describe('product Session transport delivery', () => {
++  it('keeps private delivery unchanged and retires a container echo from its durable human receipt', async ({ bench }) => {
++    const b = bench()
++    await feedList(b, [{ id: 'group', blank: true }, { id: 'private' }])
++    using group = b.svc.retain(sid('group'), { source: 'controllerOperation' })
++    await group.ready
++    const prompt = vi.fn<SessionTransport['prompt']>(async () => ok({ accepted: true }))
++    const cancel = vi.fn<SessionTransport['cancel']>(async () => ok({ accepted: true }))
++    const release = b.svc.registerTransport(sid('group'), { prompt, cancel })
++    const session = group.binding.session
++    const retired = vi.fn()
++    const image = imageRef('group-image')
++    const file = fileRef('group-file')
++    const echo = session.beginSubmission({ mode: 'queue', text: 'Hello members', onRetire: retired,
++      attachments: [{ type: 'image', value: { previewUrl: 'blob:synthetic-group-image' } }, { type: 'file', value: file }] })
++    const content: PromptContentPart[] = [{ type: 'image', mediaType: 'image/png', data: 'AA==' },
++      { type: 'file', receiptId: brandString<FileUploadReceiptId>('staged-group-file') }, { type: 'text', text: 'Hello members' }]
++    expect(await session.prompt(content, 'queue', undefined, echo.requestId)).toEqual(ok({ accepted: true }))
++    expect(prompt.mock.calls[0]?.[0]).toMatchObject({ sessionId: 'group', requestId: echo.requestId, content, mode: 'queue' })
++    expect(session.getSnapshot().blank).toBe(false)
++    expect(session.getSnapshot().pendingSubmissions).toHaveLength(1)
++    await pushEvent(b.mock, {
++      type: 'user/message', seq: SessionSeq(0), time: 1, surfaceOp: 'append',
++      data: { id: MessageId('container-human'), role: 'user', content: [
++        { type: 'image', attachment: image }, { type: 'file', attachment: file }, { type: 'text', text: 'Hello members' }],
++        source: { kind: 'user', rpcId: echo.requestId } },
++    })
++    await expect.poll(() => session.getSnapshot().pendingSubmissions.length).toBe(0)
++    expect(retired).toHaveBeenCalledExactlyOnceWith({ reason: 'observed', attachments: [image, file] })
++    await session.cancel()
++    expect(cancel).toHaveBeenCalledExactlyOnceWith({ sessionId: 'group' })
++    using privateBot = b.svc.retain(sid('private'), { source: 'controllerOperation' })
++    await privateBot.ready
++    expect(privateBot.binding.eventSource.getSnapshot().entries).toHaveLength(0)
++    await privateBot.binding.session.prompt([{ type: 'text', text: 'Private' }], 'queue')
++    await privateBot.binding.session.cancel()
++    expect(b.mock.remote.session.prompt).toHaveBeenCalledTimes(1)
++    expect(b.mock.remote.session.prompt.mock.calls[0]?.[0].sessionId).toBe('private')
++    expect(b.mock.remote.session.cancel).toHaveBeenCalledExactlyOnceWith({ sessionId: 'private' })
++    await release()
++  })
++
++  it('quarantines a released id across retained generations until explicit re-registration', async ({ bench }) => {
++    const b = bench()
++    await feedList(b, [{ id: 'group' }])
++    const first = b.svc.retain(sid('group'), { source: 'controllerOperation' })
++    await first.ready
++    const transport: SessionTransport = { prompt: async () => ok({ accepted: true }), cancel: async () => ok({ accepted: true }) }
++    const release = b.svc.registerTransport(sid('group'), transport)
++    await release()
++    first.release()
++    await expect.poll(() => b.svc.binding(sid('group'))).toBeUndefined()
++    using next = b.svc.retain(sid('group'), { source: 'controllerOperation' })
++    await next.ready
++    expect(await next.binding.session.prompt([{ type: 'text', text: 'Still a group' }], 'queue')).toMatchObject({
++      ok: false, error: { code: 'session/client-transport-unavailable' },
++    })
++    expect(await next.binding.session.cancel()).toMatchObject({ ok: false, error: { code: 'session/client-transport-unavailable' } })
++    expect(b.mock.remote.session.prompt).not.toHaveBeenCalled()
++    expect(b.mock.remote.session.cancel).not.toHaveBeenCalled()
++    const newer = b.svc.registerTransport(sid('group'), transport)
++    await release()
++    expect(await next.binding.session.prompt([{ type: 'text', text: 'Resumed provider' }], 'queue')).toEqual(ok({ accepted: true }))
++    await newer()
++  })
++
++  it('rejects unknown identities, subagents with or without parent metadata, and overlapping claims', async ({ bench }) => {
++    const b = bench()
++    await feedList(b, [{ id: 'normal' }, { id: 'child', parentId: 'normal', origin: 'subagent' }, { id: 'orphan', origin: 'subagent' }])
++    const transport: SessionTransport = { prompt: async () => ok({ accepted: true }), cancel: async () => ok({ accepted: true }) }
++    expect(() => b.svc.registerTransport(sid('missing'), transport)).toThrow('catalogued')
++    expect(() => b.svc.registerTransport(sid('child'), transport)).toThrow('subagent')
++    expect(() => b.svc.registerTransport(sid('orphan'), transport)).toThrow('subagent')
++    const release = b.svc.registerTransport(sid('normal'), transport)
++    expect(() => b.svc.registerTransport(sid('normal'), transport)).toThrow('already registered')
++    await release()
++  })
++
++  it('reports a handler exception through Session errors and restores a failed echo without default fallback', async ({ bench }) => {
++    const b = bench()
++    await feedList(b, [{ id: 'group', blank: true }])
++    using reference = b.svc.retain(sid('group'), { source: 'controllerOperation' })
++    await reference.ready
++    const release = b.svc.registerTransport(sid('group'), {
++      prompt: async () => { throw new Error('Provider rejected admission') },
++      cancel: async () => { throw new Error('Provider cancellation failed') },
++    })
++    const session = reference.binding.session
++    const retired = vi.fn()
++    const echo = session.beginSubmission({ mode: 'queue', text: 'Keep draft', attachments: [], onRetire: retired })
++    expect(await session.prompt([{ type: 'text', text: 'Keep draft' }], 'queue', undefined, echo.requestId)).toMatchObject({
++      ok: false, error: { code: 'session/client-transport-failed', details: { operation: 'prompt' } },
++    })
++    expect(retired).toHaveBeenCalledExactlyOnceWith({ reason: 'failed' })
++    expect(session.getSnapshot()).toMatchObject({ blank: true, pendingSubmissions: [], promptError: { op: 'send' } })
++    expect(await session.cancel()).toMatchObject({ ok: false, error: { code: 'session/client-transport-failed' } })
++    expect(session.getSnapshot().promptError?.op).toBe('stop')
++    expect(b.mock.remote.session.prompt).not.toHaveBeenCalled()
++    expect(b.mock.remote.session.cancel).not.toHaveBeenCalled()
++    await release()
++  })
++
++  it('drains a captured cancellation before disposing Session scopes', async ({ bench }) => {
++    const b = bench()
++    await feedList(b, [{ id: 'group' }])
++    using reference = b.svc.retain(sid('group'), { source: 'controllerOperation' })
++    await reference.ready
++    const gate = Promise.withResolvers<RemoteResult<SessionCancelValue>>()
++    b.unblock.push(() => { gate.resolve(ok({ accepted: true })) })
++    b.svc.registerTransport(sid('group'), { prompt: async () => ok({ accepted: true }), cancel: () => gate.promise })
++    const cancelling = reference.binding.session.cancel()
++    const closing = b.ctx.fiber.dispose()
++    expect(b.svc.binding(sid('group'))).toBeDefined()
++    gate.resolve(ok({ accepted: true }))
++    await cancelling
++    await closing
++    expect(b.svc.binding(sid('group'))).toBeUndefined()
++  })
++})
++
+ describe('list store projection', () => {
+   it('publishes format-status changes and preserves a newer update over an in-flight list', async ({ bench }) => {
+     const b = bench()
+diff --git a/packages/client/ui-conversation/tests/conversation-registry.client.spec.ts b/packages/client/ui-conversation/tests/conversation-registry.client.spec.ts
+index e3d8a81..578eb39 100644
+--- a/packages/client/ui-conversation/tests/conversation-registry.client.spec.ts
++++ b/packages/client/ui-conversation/tests/conversation-registry.client.spec.ts
+@@ -82,6 +82,7 @@ function fakeSessions(ctx: Context): { sessions: ISessions; binding: SessionBind
+   }
+   const sessions: ISessions = {
+     list,
++    registerTransport: () => { throw new Error('unused fake Sessions transport') },
+     searchResultLimit: 50,
+     create: () => Promise.reject(new Error('unused fake Sessions operation')),
+     retain: () => reference,
+diff --git a/packages/client/ui-workspace/tests/workspaces-service.client.spec.ts b/packages/client/ui-workspace/tests/workspaces-service.client.spec.ts
+index e2c895d..da6bab8 100644
+--- a/packages/client/ui-workspace/tests/workspaces-service.client.spec.ts
++++ b/packages/client/ui-workspace/tests/workspaces-service.client.spec.ts
+@@ -160,6 +160,7 @@ class FakeSessions implements ISessions {
+   readonly binding = vi.fn<ISessions['binding']>(sessionId =>
+     this.retained.findLast(item => item.reference.sessionId === sessionId
+       && item.release.mock.calls.length === 0)?.reference.binding)
++  declare readonly registerTransport: ISessions['registerTransport']
+   declare readonly using: ISessions['using']
+   declare readonly retainInfo: ISessions['retainInfo']
+   declare readonly searchResultLimit: ISessions['searchResultLimit']
+diff --git a/packages/test-support/client-runtime/src/sessions.ts b/packages/test-support/client-runtime/src/sessions.ts
+index 47493db..c5dc741 100644
+--- a/packages/test-support/client-runtime/src/sessions.ts
++++ b/packages/test-support/client-runtime/src/sessions.ts
+@@ -321,6 +321,7 @@ export class TestSessions implements ISessions {
+   /** Replaceable search behavior (see {@link TestSessions.stubSearch}). */
+   private searchStub: ((query: string, signal: AbortSignal) => { items: SessionSearchResultItem[]; hasMore: boolean }) | undefined
+   private createStub: ((opts: Parameters<ISessions['create']>[0]) => Promise<SessionId>) | undefined
++  private transportStub: ISessions['registerTransport'] | undefined
+ 
+   /**
+    * @param stabilize - the owning runtime's act wrapper.
+@@ -614,6 +615,20 @@ export class TestSessions implements ISessions {
+     this.createStub = impl
+   }
+ 
++  /**
++   * Install explicit transport-registration behavior for product wiring tests.
++   * @param impl - fixture-owned registration and release.
++   */
++  stubTransportRegistration(impl: ISessions['registerTransport']): void {
++    this.transportStub = impl
++  }
++
++  registerTransport(...args: Parameters<ISessions['registerTransport']>): ReturnType<ISessions['registerTransport']> {
++    if (this.closed) throw new Error('test Session Controller is disposed')
++    if (this.transportStub === undefined) throw new Error('test sessions: transport registration is not stubbed')
++    return this.transportStub(...args)
++  }
++
+   /** Create through the installed test behavior and require a catalogued fixture. */
+   async create(opts?: Parameters<ISessions['create']>[0]): Promise<SessionId> {
+     this.calls.push({ method: 'create', args: [opts] })

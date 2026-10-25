@@ -1,0 +1,700 @@
+diff --git a/packages/client/ui-conversation/src/client/apply.ts b/packages/client/ui-conversation/src/client/apply.ts
+index 8c9f857..b60d7fb 100644
+--- a/packages/client/ui-conversation/src/client/apply.ts
++++ b/packages/client/ui-conversation/src/client/apply.ts
+@@ -30,6 +30,8 @@ import { relativizeToCwd, workspaceTitleOf } from '@deepseek-ai/dsh-util-workspa
+ import { ConversationController, UnsupportedImageMediaTypeError, isImageMediaType } from './service.ts'
+ import type { IConversation } from './service.ts'
+ import { ComposerBlockRegistry } from './input/blocks.ts'
++import { ComposerPresentationRegistry } from './input/presentation.ts'
++import type { ComposerPresentation } from './contract/presentation.ts'
+ import type { ComposerBlock } from './contract/composer-blocks.ts'
+ import { InputHub } from './input/hub.ts'
+ import { ComposerSubmissionPolicy } from './input/submission-policy.ts'
+@@ -294,6 +296,10 @@ export function apply(ctx: Context, config: Config = Config({})): void {
+ 
+   const inputHub = new InputHub(ctx, t)
+   const composerBlocks = new ComposerBlockRegistry()
++  const composerPresentation = new ComposerPresentationRegistry()
++  const absentPresentation = createSnapshotStore<ComposerPresentation | undefined>(undefined)
++  ctx.provide('composerPresentation', composerPresentation)
++  ctx.effect(() => () => { composerPresentation.dispose() }, 'ui-conversation: composer presentation lifecycle')
+ 
+   ctx.inject(['commandUi'], (scope) => {
+     const commands = scope.get('commandUi') as FileCommandRegistry
+@@ -356,6 +362,7 @@ export function apply(ctx: Context, config: Config = Config({})): void {
+     inject: (sessionId: SessionId | undefined): ConversationInjected => ({
+       hooks: {
+         composerBlock: sessionId === undefined ? ABSENT_BLOCK : composerBlocks.storeFor(sessionId),
++        composerPresentation: sessionId === undefined ? absentPresentation : composerPresentation.storeFor(sessionId),
+       },
+       selectWorkspace: workspaceId => workspaceNavigation.openWorkspace(workspaceId, (nextId) => {
+         if (sessionId !== undefined && nextId !== sessionId) {
+diff --git a/packages/client/ui-conversation/src/client/contract/presentation.ts b/packages/client/ui-conversation/src/client/contract/presentation.ts
+new file mode 100644
+index 0000000..d1b5db4
+--- /dev/null
++++ b/packages/client/ui-conversation/src/client/contract/presentation.ts
+@@ -0,0 +1,30 @@
++/** Display-only defaults contributed by the owner of one Session. */
++import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
++import type { SessionId } from '@deepseek-ai/dsh-session/types'
++
++/** Overrides ordinary empty input hints without replacing the editor or execution policy. */
++export interface ComposerPresentation {
++  /** Already localized default hint; blocking, unavailable, queue and plan hints retain precedence. */
++  readonly defaultPlaceholder?: string
++  /** Hide the Hero location/preset row only after its existing input prerequisites are satisfied. */
++  readonly hideWorkspaceRow?: boolean
++}
++
++/** One lifetime-scoped product owner per Session; consumers retain the original composer. */
++export interface ComposerPresentations {
++  /**
++   * Publish one Session's live presentation defaults.
++   * @param sessionId - exact Session being presented, never the global selection.
++   * @param source - localized product snapshot; no model input or permissions are modified.
++   * @returns idempotent disposer restoring the standard presentation.
++   * @throws when another owner already contributes to this Session.
++   */
++  register(sessionId: SessionId, source: ObservableSnapshot<ComposerPresentation>): () => void
++}
++
++declare module '@deepseek-ai/cordis' {
++  interface Context {
++    /** Display-only Session composer defaults; provided by the Conversation plugin. */
++    composerPresentation: ComposerPresentations
++  }
++}
+diff --git a/packages/client/ui-conversation/src/client/contract/slots.ts b/packages/client/ui-conversation/src/client/contract/slots.ts
+index ecb2e90..b402aba 100644
+--- a/packages/client/ui-conversation/src/client/contract/slots.ts
++++ b/packages/client/ui-conversation/src/client/contract/slots.ts
+@@ -17,6 +17,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+ import type { SessionId } from '@deepseek-ai/dsh-session/types'
+ import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
+ import type { ComposerBlock } from './composer-blocks.ts'
++import type { ComposerPresentation } from './presentation.ts'
+ import type { DraftAttachmentId, InputActions, InputNotice, InputState } from './input.ts'
+ import type { ComposerKeyboard, DraftSnapshot, EditSelection } from './draft-editor.ts'
+ import type { createConversationStore } from '../stores.ts'
+@@ -412,7 +413,10 @@ export interface ConversationInjected {
+   /** Connect and open a blank Session in the selected Workspace. */
+   selectWorkspace: (workspaceId: WorkspaceId) => Promise<void>
+   /** Session-addressed composer block source, or the stable absent source. */
+-  hooks: { composerBlock: ObservableSnapshot<ComposerBlock | undefined> }
++  hooks: {
++    composerBlock: ObservableSnapshot<ComposerBlock | undefined>
++    composerPresentation: ObservableSnapshot<ComposerPresentation | undefined>
++  }
+ }
+ 
+ /** Business callbacks injected into the strict Session body. */
+@@ -451,6 +455,8 @@ export interface ComposerBarOwnerProps {
+   /** Open the Workspace picker from the inert composer surface. */
+   onRequestWorkspace?: () => void
+   placeholder?: string
++  /** Product default used only after every actionable state hint. */
++  defaultPlaceholder?: string
+   /** Optional content rendered above the composer surface. */
+   accessory?: ReactNode
+ }
+diff --git a/packages/client/ui-conversation/src/client/index.ts b/packages/client/ui-conversation/src/client/index.ts
+index 229aea3..720b98e 100644
+--- a/packages/client/ui-conversation/src/client/index.ts
++++ b/packages/client/ui-conversation/src/client/index.ts
+@@ -103,6 +103,7 @@ export type {
+ } from './contract/input.ts'
+ export type { ArbitrateKey, ArbitrateOutcome, DraftInput, DraftReference, DraftSnapshot, ReferenceInsert, TokenSpan } from './contract/draft-editor.ts'
+ export type { ComposerBlock, ComposerBlocks } from './contract/composer-blocks.ts'
++export type { ComposerPresentation, ComposerPresentations } from './contract/presentation.ts'
+ 
+ declare module '@deepseek-ai/cordis' {
+   interface Context {
+diff --git a/packages/client/ui-conversation/src/client/input/presentation.ts b/packages/client/ui-conversation/src/client/input/presentation.ts
+new file mode 100644
+index 0000000..d989f57
+--- /dev/null
++++ b/packages/client/ui-conversation/src/client/input/presentation.ts
+@@ -0,0 +1,45 @@
++/** Live display defaults for retained Session composers, owned by one plugin instance. */
++import { createSnapshotStore, type ObservableSnapshot, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
++import type { SessionId } from '@deepseek-ai/dsh-session/types'
++import type { ComposerPresentation, ComposerPresentations } from '../contract/presentation.ts'
++
++/** One provider per Session; registration and disposal update every existing outlet. */
++export class ComposerPresentationRegistry implements ComposerPresentations {
++  private readonly stores = new Map<SessionId, SnapshotStore<ComposerPresentation | undefined>>()
++  private readonly providers = new Map<SessionId, { stop: () => void }>()
++
++  /** @inheritdoc */
++  register(sessionId: SessionId, source: ObservableSnapshot<ComposerPresentation>): () => void {
++    if (this.providers.has(sessionId)) throw new Error('A composer presentation is already registered for this Session')
++    const store = this.storeFor(sessionId)
++    let active = true
++    const publish = (): void => { if (active) store.set(source.getSnapshot()) }
++    const stop = source.subscribe(publish)
++    const provider = { stop: (): void => { active = false; stop() } }
++    this.providers.set(sessionId, provider)
++    publish()
++    return () => {
++      if (this.providers.get(sessionId) !== provider) return
++      provider.stop()
++      this.providers.delete(sessionId)
++      store.set(undefined)
++    }
++  }
++
++  /** @param sessionId - Session whose stable presentation source is requested. @returns the observable display state. */
++  storeFor(sessionId: SessionId): SnapshotStore<ComposerPresentation | undefined> {
++    const existing = this.stores.get(sessionId)
++    if (existing !== undefined) return existing
++    const created = createSnapshotStore<ComposerPresentation | undefined>(undefined)
++    this.stores.set(sessionId, created)
++    return created
++  }
++
++  /** Release every contributor and restore standard hints when the Conversation plugin unloads. */
++  dispose(): void {
++    for (const provider of this.providers.values()) provider.stop()
++    this.providers.clear()
++    for (const store of this.stores.values()) store.set(undefined)
++    this.stores.clear()
++  }
++}
+diff --git a/packages/client/ui-conversation/src/client/skeleton/ConversationContent.tsx b/packages/client/ui-conversation/src/client/skeleton/ConversationContent.tsx
+index 15ab064..2e58432 100644
+--- a/packages/client/ui-conversation/src/client/skeleton/ConversationContent.tsx
++++ b/packages/client/ui-conversation/src/client/skeleton/ConversationContent.tsx
+@@ -22,7 +22,7 @@ function NoConversationWidthControls() {
+ export function ConversationContent(props: ConversationContentProps) {
+   const {
+     sessionId, phase, hero, useSession, useSessions, useSessionStatus,
+-    useWorkspaces, useInput, useComposerBlock, renderSlot, renderSlotChain,
++    useWorkspaces, useInput, useComposerBlock, useComposerPresentation, renderSlot, renderSlotChain,
+     selectWorkspace, t, useFactorySlot,
+   } = props
+   const session = useSession(snapshot => snapshot)
+@@ -37,6 +37,7 @@ export function ConversationContent(props: ConversationContentProps) {
+   // A plugin this package cannot import (ui-model-selection) says this session cannot
+   // send; its reason is already localized by whoever raised it.
+   const composerBlock = useComposerBlock(block => block)
++  const presentation = useComposerPresentation(value => value)
+ 
+   const [pickerOpen, setPickerOpen] = useState(false)
+   const [pendingWorkspaceId, setPendingWorkspaceId] = useState<WorkspaceId | undefined>()
+@@ -147,6 +148,7 @@ export function ConversationContent(props: ConversationContentProps) {
+   const blocked = !inert && composerBlock !== undefined
+   const inputBar = renderSlot('conversation.composer.bar', {
+     variant: hero ? 'hero' : 'composer',
++    ...(presentation?.defaultPlaceholder === undefined ? {} : { defaultPlaceholder: presentation.defaultPlaceholder }),
+     ...(inert
+       ? {
+         disabled: true,
+@@ -159,13 +161,13 @@ export function ConversationContent(props: ConversationContentProps) {
+         // block keeps the model seat live because choosing a model is how the
+         // user clears it.
+         ? { blocked: composerBlock, placeholder: composerBlock.reason }
+-        : hero ? { placeholder: t('placeholder.hero') } : {}),
++        : hero && presentation?.defaultPlaceholder === undefined ? { placeholder: t('placeholder.hero') } : {}),
+   })
+ 
+   const composerBar = (
+     <div className={clsx(css.composerStack, hero && css.composerHero)}>
+       {hero && <HeroShell t={t} renderSlot={renderSlot} />}
+-      {hero && heroWorkspaceRow}
++      {hero && (inert || presentation?.hideWorkspaceRow !== true) && heroWorkspaceRow}
+       {zone !== undefined && renderSlot('conversation.input.dock', zone)}
+       {inputBar}
+     </div>
+diff --git a/packages/client/ui-conversation/src/client/skeleton/InputBar.tsx b/packages/client/ui-conversation/src/client/skeleton/InputBar.tsx
+index ef95796..890afbf 100644
+--- a/packages/client/ui-conversation/src/client/skeleton/InputBar.tsx
++++ b/packages/client/ui-conversation/src/client/skeleton/InputBar.tsx
+@@ -50,7 +50,7 @@ export const InputBar = memo(function InputBar({
+   renderSlot, useBusyEnter, useFileUploads, useNotices, useLexicon, useMenuLauncher, useStopShortcut,
+   useProjection, sessionId, variant, disabled: inert = false, blocked,
+   workspacePickerOpen = false, onRequestWorkspace,
+-  placeholder, accessory,
++  placeholder, defaultPlaceholder, accessory,
+ }: InputBarProps) {
+   const input = useInput(s => s)
+   const notice = useNotices(s => s)
+@@ -369,7 +369,7 @@ export const InputBar = memo(function InputBar({
+       // (the gate never consults plan mode), so the actionable hint wins.
+       : canSteerQueue
+         ? t('placeholder.steerQueue')
+-        : planActive ? t('placeholder.plan') : t('placeholder.default'))
++        : planActive ? t('placeholder.plan') : defaultPlaceholder ?? t('placeholder.default'))
+ 
+   return (
+     <div className={clsx(css.root, variant === 'hero' && css.hero)}>
+diff --git a/packages/client/ui-layout/src/client/AppFrame.tsx b/packages/client/ui-layout/src/client/AppFrame.tsx
+index 5614947..c8bf3c6 100644
+--- a/packages/client/ui-layout/src/client/AppFrame.tsx
++++ b/packages/client/ui-layout/src/client/AppFrame.tsx
+@@ -162,7 +162,9 @@ export function AppFrame({
+   const sidebarPreference = sidebarCollapsed
+     ? 0
+     : layoutInfo.sidebar === 0 ? SIDEBAR_DEFAULT : layoutInfo.sidebar
+-  const rightbarPreference = layoutInfo.rightbar ?? viewport * RIGHTBAR_DEFAULT_RATIO
++  const rightbarPreference = layoutInfo.rightbarWidthContext === null
++    ? layoutInfo.rightbar ?? viewport * RIGHTBAR_DEFAULT_RATIO
++    : layoutInfo.rightbarWidths[layoutInfo.rightbarWidthContext] ?? RIGHTBAR_MIN
+   // Desktop reopen controls occupy the frame's shell.leading seat (macOS) or
+   // the Windows caption row; neither platform keeps an icon rail.
+   const darwin = document.documentElement.dataset.platform === 'darwin'
+diff --git a/packages/client/ui-layout/src/client/service.ts b/packages/client/ui-layout/src/client/service.ts
+index 9afb139..3e8fb44 100644
+--- a/packages/client/ui-layout/src/client/service.ts
++++ b/packages/client/ui-layout/src/client/service.ts
+@@ -49,8 +49,9 @@ export interface ILayout {
+    *   including beneath a fullscreen overlay.
+    * @param fullscreen - whether the panel covers the frame and hides its outer
+    *   resize handle; independent of the underlying grid track.
++   * @param widthContext - optional provider identity using its own minimum-first width preference for this run.
+    */
+-  openRightbar(track: boolean, fullscreen: boolean): void
++  openRightbar(track: boolean, fullscreen: boolean, widthContext?: string): void
+   /** Report the right panel as hidden: no track, no handle. */
+   closeRightbar(): void
+ }
+@@ -101,8 +102,8 @@ export class LayoutController implements ILayout {
+   }
+ 
+   /** Report the right panel's track and fullscreen presentation. */
+-  openRightbar(track: boolean, fullscreen: boolean): void {
+-    this.panels.openRightbar(track, fullscreen)
++  openRightbar(track: boolean, fullscreen: boolean, widthContext?: string): void {
++    this.panels.openRightbar(track, fullscreen, widthContext)
+   }
+ 
+   /** Report the right panel as hidden: no track, no handle. */
+diff --git a/packages/client/ui-layout/src/client/stores.ts b/packages/client/ui-layout/src/client/stores.ts
+index 3a53caf..3b0260e 100644
+--- a/packages/client/ui-layout/src/client/stores.ts
++++ b/packages/client/ui-layout/src/client/stores.ts
+@@ -31,6 +31,10 @@ type LayoutInfo = {
+    * the frame and closing the panel preserve this preference.
+    */
+   rightbar: number | null
++  /** Current minimum-first provider; null retains the ordinary width preference. */
++  rightbarWidthContext: string | null
++  /** Runtime-only widths of minimum-first providers; no persisted format changes. */
++  rightbarWidths: Record<string, number>
+   /**
+    * Whether the right panel is drawn at all, in either presentation.
+    *
+@@ -62,7 +66,7 @@ type LayoutActions = {
+   toggleSidebar: (draft: LayoutState) => void
+   setViewportWidth: (draft: LayoutState, width: number) => void
+   setRightbar: (draft: LayoutState, px: number) => void
+-  openRightbar: (draft: LayoutState, track: boolean, fullscreen: boolean) => void
++  openRightbar: (draft: LayoutState, track: boolean, fullscreen: boolean, widthContext?: string) => void
+   closeRightbar: (draft: LayoutState) => void
+ }
+ 
+@@ -84,6 +88,8 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
+         viewportWidth: window.innerWidth,
+         narrowExpanded: false,
+         rightbar: null,
++        rightbarWidthContext: null,
++        rightbarWidths: {},
+         rightbarShown: false,
+         rightbarTrack: false,
+         rightbarFullscreen: false,
+@@ -122,14 +128,20 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
+       },
+       setRightbar: (d, px: number) => {
+         d.layoutInfo.rightbarInstant = false
+-        d.layoutInfo.rightbar = clampWidth(px, RIGHTBAR_MIN, Math.max(RIGHTBAR_MIN, d.layoutInfo.viewportWidth * RIGHTBAR_MAX_RATIO))
++        const width = clampWidth(px, RIGHTBAR_MIN, Math.max(RIGHTBAR_MIN, d.layoutInfo.viewportWidth * RIGHTBAR_MAX_RATIO))
++        const context = d.layoutInfo.rightbarWidthContext
++        if (context === null) d.layoutInfo.rightbar = width
++        else d.layoutInfo.rightbarWidths[context] = width
+       },
+-      openRightbar: (d, track: boolean, fullscreen: boolean) => {
++      openRightbar: (d, track: boolean, fullscreen: boolean, widthContext?: string) => {
+         if (!d.layoutInfo.rightbarShown || d.layoutInfo.rightbarTrack !== track || d.layoutInfo.rightbarFullscreen !== fullscreen) {
+           d.layoutInfo.rightbarInstant = d.layoutInfo.rightbarFullscreen && !fullscreen
+         }
+         if (!d.layoutInfo.rightbarShown && d.layoutInfo.viewportWidth < SIDEBAR_AUTO_COLLAPSE) d.layoutInfo.narrowExpanded = false
+-        d.layoutInfo.rightbar ??= Math.max(RIGHTBAR_MIN, Math.round(d.layoutInfo.viewportWidth * RIGHTBAR_DEFAULT_RATIO))
++        d.layoutInfo.rightbarWidthContext = widthContext ?? null
++        if (widthContext === undefined) {
++          d.layoutInfo.rightbar ??= Math.max(RIGHTBAR_MIN, Math.round(d.layoutInfo.viewportWidth * RIGHTBAR_DEFAULT_RATIO))
++        } else d.layoutInfo.rightbarWidths[widthContext] ??= RIGHTBAR_MIN
+         d.layoutInfo.rightbarShown = true
+         d.layoutInfo.rightbarTrack = track
+         d.layoutInfo.rightbarFullscreen = fullscreen
+@@ -137,6 +149,7 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
+       closeRightbar: (d) => {
+         if (d.layoutInfo.rightbarShown) d.layoutInfo.rightbarInstant = d.layoutInfo.rightbarFullscreen
+         d.layoutInfo.rightbarShown = false
++        d.layoutInfo.rightbarWidthContext = null
+         d.layoutInfo.rightbarTrack = false
+         d.layoutInfo.rightbarFullscreen = false
+       },
+diff --git a/packages/client/ui-sidebar/package.json b/packages/client/ui-sidebar/package.json
+index 9277d4a..4885957 100644
+--- a/packages/client/ui-sidebar/package.json
++++ b/packages/client/ui-sidebar/package.json
+@@ -49,6 +49,7 @@
+     "@deepseek-ai/cordis": "workspace:~"
+   },
+   "devDependencies": {
++    "@deepseek-ai/schemastery": "workspace:~",
+     "@deepseek-ai/dsh-api-workspace-controller": "workspace:*",
+     "@deepseek-ai/dsh-client-locale": "workspace:*",
+     "@deepseek-ai/dsh-client-store": "workspace:*",
+diff --git a/packages/client/ui-sidebar/src/client/SidebarRoot.tsx b/packages/client/ui-sidebar/src/client/SidebarRoot.tsx
+index cbb5e7e..833d8cf 100644
+--- a/packages/client/ui-sidebar/src/client/SidebarRoot.tsx
++++ b/packages/client/ui-sidebar/src/client/SidebarRoot.tsx
+@@ -16,10 +16,10 @@
+  * scrollbar indirection away while it is elsewhere, so a list the user is not
+  * pointing at carries no bar.
+  */
+-import { useEffect, useRef, useState } from 'react'
++import { useEffect, useId, useRef, useState } from 'react'
+ import clsx from 'clsx'
+ import {
+-  FishLogo, IconNewChatOutlineMedium, IconNewChatOutlineRegular, IconPanelLeftOutlineRegular, isDarwinDesktop, ShortcutKeys, Tooltip,
++  FishLogo, IconChevronDownOutlineRegular, IconChevronRightOutlineRegular, IconNewChatOutlineMedium, IconNewChatOutlineRegular, IconPanelLeftOutlineRegular, isDarwinDesktop, ShortcutKeys, Tooltip,
+ } from '@deepseek-ai/dsh-client-ui-primitives'
+ import type { InjectFace, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+ import type {
+@@ -92,12 +92,18 @@ export function SidebarRoot({
+   toggleSidebar,
+   selectPanel,
+   usePanels,
++  usePresentation,
+   useShortcuts,
+   usePanelInfo,
+   t,
+   renderSlot,
+ }: SidebarRootComponentProps) {
+   const panels = usePanels(snapshot => snapshot)
++  const presentation = usePresentation(snapshot => snapshot)
++  const panelsId = useId()
++  const [panelsExpanded, setPanelsExpanded] = useState(() => presentation.panelNavigation?.defaultExpanded ?? true)
++  const primaryLabel = presentation.primaryActionLabel ?? t('session.new.label')
++  const primaryText = presentation.primaryActionLabel ?? t('session.new')
+   const shortcut = useShortcuts(rows => rows.find(row => row.id === 'sidebar.left.toggle'))
+   const newShortcut = useShortcuts(rows => rows.find(row => row.id === 'session.new'))
+   const toggleLabel = collapsed ? t('toggle.open') : t('toggle.collapse')
+@@ -196,6 +202,10 @@ export function SidebarRoot({
+     </Tooltip>
+   )
+ 
++  const footerActions = <div className={css.footerActions}>{renderSlot('sidebar.footer.action', { wide })}</div>
++  const panelRows = panels.map(({ id, label }) => <PanelRow key={id} id={id} label={label} wide={wide}
++    usePanelInfo={usePanelInfo} selectPanel={selectPanel} renderSlot={renderSlot} />)
++
+   return (
+     <div
+       ref={column}
+@@ -244,7 +254,7 @@ export function SidebarRoot({
+               <button
+                 type="button"
+                 className={clsx(css.brand, css.wide)}
+-                aria-label={t('session.new.label')}
++                aria-label={primaryLabel}
+                 aria-keyshortcuts={newShortcut?.aria}
+                 onClick={() => { startSession() }}
+               >
+@@ -256,11 +266,11 @@ export function SidebarRoot({
+       </div>
+ 
+       {/* The label fades before the hover/focus shortcut, including on translucent backgrounds. */}
+-      <Tooltip label={t('session.new.label')} shortcutKeys={newShortcut?.keys} delayMs={500} side={captionTooltipSide} disabled={wide}>
++      <Tooltip label={primaryLabel} shortcutKeys={newShortcut?.keys} delayMs={500} side={captionTooltipSide} disabled={wide}>
+         <button
+           type="button"
+           className={css.newSession}
+-          aria-label={t('session.new.label')}
++          aria-label={primaryLabel}
+           aria-keyshortcuts={newShortcut?.aria}
+           onClick={() => { startSession() }}
+         >
+@@ -268,7 +278,7 @@ export function SidebarRoot({
+             {wide
+               ? <IconNewChatOutlineMedium size={14} />
+               : <IconNewChatOutlineRegular size={windowsTitlebar ? 16 : 18} />}
+-            {wide && <span className={clsx(css.newSessionLabel, css.wide)}>{t('session.new')}</span>}
++            {wide && <span className={clsx(css.newSessionLabel, css.wide)}>{primaryText}</span>}
+           </span></span>
+           {wide && newShortcut !== undefined && newShortcut.keys.length > 0 && <span className={css.newSessionShortcut} aria-hidden="true">
+             <ShortcutKeys keys={newShortcut.keys} />
+@@ -287,24 +297,23 @@ export function SidebarRoot({
+ 
+       {/* Footer actions and panel navigation stack above Settings in both widths. */}
+       <div className={css.footArea}>
+-        <div className={css.footerActions}>
+-          {renderSlot('sidebar.footer.action', { wide })}
+-        </div>
++        {presentation.footerActionsPlacement !== 'after-panels' && footerActions}
+         {panels.length > 0 && (
+-          <nav className={css.panelList} aria-label={t('panels.label')}>
+-            {panels.map(({ id, label }) => (
+-              <PanelRow
+-                key={id}
+-                id={id}
+-                label={label}
+-                wide={wide}
+-                usePanelInfo={usePanelInfo}
+-                selectPanel={selectPanel}
+-                renderSlot={renderSlot}
+-              />
+-            ))}
++          <nav className={css.panelList} aria-label={presentation.panelNavigation?.label ?? t('panels.label')}>
++            {wide && presentation.panelNavigation !== undefined ? <>
++              <button type="button" className={css.panelRow} aria-expanded={panelsExpanded} aria-controls={panelsId}
++                onClick={() => { setPanelsExpanded(value => !value) }}>
++                <span className={css.panelGlyph} aria-hidden="true">
++                  {panelsExpanded ? <IconChevronDownOutlineRegular size={16} /> : <IconChevronRightOutlineRegular size={16} />}
++                </span>
++                <span className={css.panelTitle}>{presentation.panelNavigation.label}</span>
++              </button>
++              <div id={panelsId} className={panelsExpanded ? css.panelList : undefined}
++                hidden={!panelsExpanded} style={{ marginBottom: 0 }}>{panelRows}</div>
++            </> : panelRows}
+           </nav>
+         )}
++        {presentation.footerActionsPlacement === 'after-panels' && footerActions}
+         <div className={css.settingsArea}>
+           {renderSlot('sidebar.settings', { wide })}
+         </div>
+diff --git a/packages/client/ui-sidebar/src/client/contract/slots.ts b/packages/client/ui-sidebar/src/client/contract/slots.ts
+index c6ba475..36db7e0 100644
+--- a/packages/client/ui-sidebar/src/client/contract/slots.ts
++++ b/packages/client/ui-sidebar/src/client/contract/slots.ts
+@@ -110,6 +110,13 @@ export interface SidebarFooterActionOwnerProps {
+   wide: boolean
+ }
+ 
++/** Resolved product presentation; missing fields retain the standard sidebar. */
++export interface SidebarPresentation {
++  readonly primaryActionLabel?: string
++  readonly panelNavigation?: { readonly label: string; readonly defaultExpanded: boolean }
++  readonly footerActionsPlacement?: 'before-panels' | 'after-panels'
++}
++
+ /**
+  * Registrant-private injected share (arrives via the register inject
+  * factory). The renderer binds the panel metadata source to usePanels.
+@@ -126,7 +133,11 @@ export type SidebarRootInjected = {
+   /** Select the global panel addressed by a sidebar row. */
+   selectPanel: (id: MainPanelId) => void
+   /** Private reactive sources bound to framework selector hooks. */
+-  hooks: { panels: ObservableSnapshot<readonly SidebarPanelMetadata[]>; shortcuts: ObservableSnapshot<readonly ShortcutCatalogEntry[]> }
++  hooks: {
++    panels: ObservableSnapshot<readonly SidebarPanelMetadata[]>
++    shortcuts: ObservableSnapshot<readonly ShortcutCatalogEntry[]>
++    presentation: ObservableSnapshot<SidebarPresentation>
++  }
+ }
+ 
+ /**
+diff --git a/packages/client/ui-sidebar/src/client/index.ts b/packages/client/ui-sidebar/src/client/index.ts
+index 3cd24cf..94208c5 100644
+--- a/packages/client/ui-sidebar/src/client/index.ts
++++ b/packages/client/ui-sidebar/src/client/index.ts
+@@ -10,9 +10,11 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
+ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+ // Type-only: pulls the Session root standard-props merge.
+ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+-import type { SidebarPanelMetadata, SidebarRootInjected } from './contract/slots.ts'
++import type { SidebarPanelMetadata, SidebarPresentation, SidebarRootInjected } from './contract/slots.ts'
+ import { HeaderLeadingControls } from './HeaderLeadingControls.tsx'
+ import { SidebarRoot } from './SidebarRoot.tsx'
++import type { Config as SidebarConfig } from '../presentation-config.ts'
++export { Config } from '../presentation-config.ts'
+ import { en, zh, type SidebarKey } from './locales.ts'
+ 
+ export type {
+@@ -41,10 +43,23 @@ export const inject = ['slots', 'layout', 'uiWorkspace', 'locale', 'shortcuts']
+ 
+ /** Registers the sidebar shell and its service callbacks.
+  * @param ctx - Client root context.
++ * @param config - optional product presentation; omission keeps the standard sidebar.
+  */
+-export function apply(ctx: ClientContext): void {
++export function apply(ctx: ClientContext, config: SidebarConfig = {}): void {
+   const workspaceNavigation = ctx.get('uiWorkspace') as unknown as WorkspaceNavigation
+   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-sidebar: dictionaries')
++  const presentation = createSnapshotStore<SidebarPresentation>({})
++  const syncPresentation = (): void => {
++    presentation.set({
++      ...(config.primaryActionLabel === undefined ? {} : { primaryActionLabel: ctx.locale.resolveText(config.primaryActionLabel) }),
++      ...(config.panelNavigation === undefined ? {} : { panelNavigation: {
++        label: ctx.locale.resolveText(config.panelNavigation.label), defaultExpanded: config.panelNavigation.defaultExpanded ?? true,
++      } }),
++      ...(config.footerActionsPlacement === undefined ? {} : { footerActionsPlacement: config.footerActionsPlacement }),
++    })
++  }
++  ctx.effect(() => ctx.locale.subscribe(syncPresentation), 'ui-sidebar: presentation labels')
++  syncPresentation()
+   const panels = createSnapshotStore<readonly SidebarPanelMetadata[]>([])
+   const syncPanels = (): void => {
+     const next = ctx.slots.entriesOfSlot('sidebar.panellist').map(({ options }) => {
+@@ -71,7 +86,7 @@ export function apply(ctx: ClientContext): void {
+       if (id === 'plugins' || id === 'schedules') ctx.get('productAnalytics')?.track('sidebar_menu_click', { menu_name: id === 'plugins' ? 'plugin' : 'cron' })
+       ctx.layout.selectPanel(id)
+     },
+-    hooks: { panels, shortcuts: ctx.shortcuts.catalog },
++    hooks: { panels, presentation, shortcuts: ctx.shortcuts.catalog },
+   })
+   ctx.slots.inject('sidebar', () => ctx.slots.register({
+     name: 'sidebar',
+diff --git a/packages/client/ui-sidebar/src/index.ts b/packages/client/ui-sidebar/src/index.ts
+index 9b3516b..7eb959b 100644
+--- a/packages/client/ui-sidebar/src/index.ts
++++ b/packages/client/ui-sidebar/src/index.ts
+@@ -1,4 +1,6 @@
+ /** Host loader entry for the browser-only sidebar plugin. */
+ 
++export { Config } from './presentation-config.ts'
++
+ /** Provides no host-side behavior. */
+ export function apply(): void {}
+diff --git a/packages/client/ui-sidebar/src/presentation-config.ts b/packages/client/ui-sidebar/src/presentation-config.ts
+new file mode 100644
+index 0000000..e63bdf3
+--- /dev/null
++++ b/packages/client/ui-sidebar/src/presentation-config.ts
+@@ -0,0 +1,28 @@
++/** Optional product-neutral presentation for the shared sidebar. */
++import z from '@deepseek-ai/schemastery'
++
++/** Locale-owned labels; lowercase locale ids include the required English fallback. */
++export type SidebarLabel = { readonly en: string; readonly [locale: string]: string }
++
++/** Optional presentation only; navigation and panel registrations remain unchanged. */
++export interface Config {
++  /** Replaces the New Session button's visible and accessible label. */
++  primaryActionLabel?: SidebarLabel
++  /** Adds an expandable group around the registered global panel rows. */
++  panelNavigation?: { label: SidebarLabel; defaultExpanded?: boolean }
++  /** Placement of existing footer actions relative to global panel rows. */
++  footerActionsPlacement?: 'before-panels' | 'after-panels'
++}
++
++const label = z.intersect([
++  z.object({ en: z.string().pattern(/\S/).required() }),
++  z.dict(z.string().pattern(/\S/)),
++])
++
++/** Validate optional presentation at the configuration boundary. */
++export const Config: z<Config> = z.object({
++  primaryActionLabel: label,
++  // An omitted object must stay absent rather than acquire Schemastery's empty-object default.
++  panelNavigation: z.union([z.object({ label: label.required(), defaultExpanded: z.boolean() })]),
++  footerActionsPlacement: z.union(['before-panels', 'after-panels']),
++})
+diff --git a/packages/client/ui-sidebar/tsconfig.json b/packages/client/ui-sidebar/tsconfig.json
+index 788b1b7..5149de6 100644
+--- a/packages/client/ui-sidebar/tsconfig.json
++++ b/packages/client/ui-sidebar/tsconfig.json
+@@ -8,6 +8,7 @@
+     "src"
+   ],
+   "references": [
++    { "path": "../../../vendor/schemastery" },
+     {
+       "path": "../../api/workspace-controller/tsconfig.client.json"
+     },
+diff --git a/packages/client/ui-sidebar-right/src/client/index.ts b/packages/client/ui-sidebar-right/src/client/index.ts
+index 5974b81..209421d 100644
+--- a/packages/client/ui-sidebar-right/src/client/index.ts
++++ b/packages/client/ui-sidebar-right/src/client/index.ts
+@@ -186,8 +186,8 @@ export function apply(ctx: ClientContext): void {
+       },
+     }
+     const injected: Omit<SidebarRightInjected, 'keyedHooks' | 'occurrence' | 'closeTab' | 'measureRoom'> = {
+-      syncPresentation({ shown, track, fullscreen }) {
+-        if (shown) layout.openRightbar(track, fullscreen)
++      syncPresentation({ shown, track, fullscreen, widthContext }) {
++        if (shown) layout.openRightbar(track, fullscreen, widthContext)
+         else layout.closeRightbar()
+       },
+       reportAutoFullscreen: (value) => { autoFullscreen = value },
+diff --git a/packages/client/ui-sidebar-right/src/client/shell/SidebarRight.tsx b/packages/client/ui-sidebar-right/src/client/shell/SidebarRight.tsx
+index 484dfe4..be578da 100644
+--- a/packages/client/ui-sidebar-right/src/client/shell/SidebarRight.tsx
++++ b/packages/client/ui-sidebar-right/src/client/shell/SidebarRight.tsx
+@@ -36,7 +36,7 @@ import type {
+ } from '@deepseek-ai/dsh-client-ui-slots'
+ import type {} from '../contract/slots.ts'
+ import type { DockIntents, DockMode, FloatRect, TabId, TabRecord, TabRenderer } from '@deepseek-ai/dsh-client-ui-dockkit'
+-import { canSplit, dockPaneIds, DockLayout, findPaneContentTab } from '@deepseek-ai/dsh-client-ui-dockkit'
++import { activeDockPaneId, canSplit, dockPaneIds, DockLayout, findPaneContentTab, getPane } from '@deepseek-ai/dsh-client-ui-dockkit'
+ import type { HalvesFit, LayoutState, PaneId } from '@deepseek-ai/dsh-client-ui-dockkit'
+ import type { SessionId } from '@deepseek-ai/dsh-session/types'
+ import { GUIDE_KIND, pageAddress } from '../contract/seed.ts'
+@@ -64,6 +64,8 @@ export interface SidebarRightPresentation {
+   readonly track: boolean
+   /** Whether the panel fills the viewport, independently of its retained track. */
+   readonly fullscreen: boolean
++  /** Minimum-first provider of the active docked tab, when explicitly configured. */
++  readonly widthContext?: string
+ }
+ 
+ /** What this package needs from its host beyond the framework shares. */
+@@ -356,6 +358,11 @@ export function RightbarSeat({
+   // One store instance per session, so this map holds this session's surface.
+   const shortcuts = useShortcuts(entries => entries)
+   const surface = useStore(state => state.bySession[sessionId])
++  const tabTypes = useTabTypes(entries => entries)
++  const pane = surface === undefined ? undefined : getPane(surface.layout, activeDockPaneId(surface.layout))
++  const focusedTab = pane?.activeTabId === undefined ? undefined : surface?.layout.tabs[pane.activeTabId]
++  const widthProvider = tabTypes.find(type => type.kind === focusedTab?.kind)
++  const widthContext = widthProvider?.initialWidth === 'minimum' ? widthProvider.id : undefined
+   const shown = active && surface !== undefined && surface.layout.expanded
+   const autoFullscreen = viewportWidth < 768
+   const fullscreen = autoFullscreen || surface?.layout.mode === 'fullscreen'
+@@ -395,7 +402,7 @@ export function RightbarSeat({
+           && animation.playState !== 'finished' && animation.playState !== 'idle')
+         : []
+       if (entering.length === 0) {
+-        syncPresentation({ shown, track, fullscreen })
++        syncPresentation({ shown, track, fullscreen, ...(widthContext === undefined ? {} : { widthContext }) })
+         return
+       }
+       // Cancellation can replace the transition or remove it for reduced motion.
+@@ -403,7 +410,7 @@ export function RightbarSeat({
+     }
+     reportWhenCovered()
+     return () => { disposed = true }
+-  }, [sessionId, shown, track, fullscreen, syncPresentation, active])
++  }, [sessionId, shown, track, fullscreen, widthContext, syncPresentation, active])
+   // Leaving is part of that report: a seat that unmounts with its session must
+   // hand the track back rather than leave one sized for a surface nobody draws.
+   useLayoutEffect(() => active
+diff --git a/packages/client/ui-sidebar-right/src/client/tab-registry.ts b/packages/client/ui-sidebar-right/src/client/tab-registry.ts
+index 724209b..7491643 100644
+--- a/packages/client/ui-sidebar-right/src/client/tab-registry.ts
++++ b/packages/client/ui-sidebar-right/src/client/tab-registry.ts
+@@ -106,6 +106,8 @@ export interface SidebarRightTabDefinition {
+   readonly multiple?: boolean
+   /** Lazily keep a visited body mounted through hiding, Session changes and docking; default false. */
+   readonly keepMounted?: boolean
++  /** Start this provider's docked width at the layout minimum; subsequent manual widths last for this application run. */
++  readonly initialWidth?: 'minimum'
+   /**
+    * Resource-address globs this type recognizes; omit for a page type, which is
+    * opened by kind and recognizes no address.
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index 39d85c0..181c7d7 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -5896,6 +5896,9 @@ importers:
+ 
+   packages/client/ui-sidebar:
+     devDependencies:
++      '@deepseek-ai/schemastery':
++        specifier: workspace:~
++        version: link:../../../vendor/schemastery
+       '@deepseek-ai/cordis':
+         specifier: workspace:~
+         version: link:../../../vendor/cordis

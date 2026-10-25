@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "scope": "Katcats.AI independent copy: actual delegated member results before dependent artifacts",
+  "status": "passed",
+  "checkedAt": "2026-10-24T17:33:23.893Z",
+  "behavior": [
+    "Delegation awaits a distinct available member executor and a durable published result, rather than returning queued.",
+    "Delegation uses an exclusive tool batch; dependent tools in the same model response are refused regardless of call order or invalid member-request arguments.",
+    "The next model step receives actual completed replies and published message IDs before producing dependent artifacts.",
+    "Busy targets are refused without an accepted task; returning a reply resumes the waiting caller.",
+    "Failures, uncertain history, Stop and cold recovery cannot masquerade as completed member results.",
+    "Live budget and owner pauses preserve owned waits for Continue; queued new owner questions can supersede budget-blocked chains."
+  ],
+  "tests": {
+    "product": {
+      "passed": 495,
+      "total": 495,
+      "report": "run/tmp/katcats-member-results-product-regression.json"
+    },
+    "newIntegrationCases": 11,
+    "newDomainCases": 7,
+    "sourceLint": {
+      "files": 8,
+      "errors": 0,
+      "warnings": 0
+    },
+    "artifactBuild": {
+      "passed": 7,
+      "failed": 0,
+      "seconds": 40.02
+    },
+    "aggregateBuildCheck": {
+      "passed": 2,
+      "failed": 0,
+      "seconds": 22.38
+    },
+    "persistence": {
+      "roots": 71,
+      "historyRecords": 20,
+      "changes": []
+    }
+  },
+  "browser": {
+    "passed": true,
+    "realModel": false,
+    "checks": 12,
+    "report": "run/tmp/katcats-group-chat-web-MskgsH/member-results-result.json",
+    "screenshots": [
+      "run/tmp/katcats-group-chat-web-MskgsH/member-results-01-b-approval-parent-waits-no-final-or-c-execution.png",
+      "run/tmp/katcats-group-chat-web-MskgsH/member-results-03-actual-product-written-file-opens-native-preview.png"
+    ],
+    "pageErrors": [],
+    "consoleErrors": []
+  },
+  "documentation": {
+    "readme": "packages/api/katcats-team/README.md",
+    "upgradeGuide": "docs/upgrade-guide/v0.2.1-rc.2/katcats-member-results/guide.md",
+    "checks": "Existing seven Katcats document pairs and eight local-link files pass; the member-results guide and README named pairs, guide format and links pass."
+  },
+  "limitations": [
+    "Deterministic integration/browser tests use explicit Mock providers; a separate short test also passed using the current real model through the normal Dev UI.",
+    "The test deliverable is Markdown. This change does not test PPTX generation or PowerPoint rendering.",
+    "No storage schema or Session event types changed. No data migration is needed."
+  ],
+  "realModel": {
+    "passed": true,
+    "realModel": true,
+    "groupName": "协作修复验收-mvmodri8",
+    "checks": [
+      {
+        "name": "new-group-scoped-workspace",
+        "passed": true
+      },
+      {
+        "name": "actual-distinct-eight-character-markers-and-full-originals",
+        "passed": true,
+        "markers": [
+          "B7k2m9Q4",
+          "C4x8n2R7"
+        ]
+      },
+      {
+        "name": "final-file-written-after-both-member-files",
+        "passed": true
+      },
+      {
+        "name": "group-final-file-link-opens-real-preview",
+        "passed": true
+      },
+      {
+        "name": "actual-b-and-c-replies-before-a-completion-claim",
+        "passed": true
+      },
+      {
+        "name": "all-three-real-task-cards-completed",
+        "passed": true
+      },
+      {
+        "name": "original-permissions-preserved-and-no-manual-approval-actions",
+        "passed": true
+      }
+    ],
+    "durationMs": 59327,
+    "aClaimedCompletionBeforeBothMembers": false,
+    "report": "run/tmp/katcats-member-results-real-mvmodri8/result.json",
+    "screenshot": "run/tmp/katcats-member-results-real-mvmodri8/group-and-final-file-preview.png",
+    "deliverable": "run/workspaces/chats/chat-022a46c2-1253-48c9-b90a-a15c0c96292f/final-proof.md",
+    "previewLeftOpen": true
+  }
+}

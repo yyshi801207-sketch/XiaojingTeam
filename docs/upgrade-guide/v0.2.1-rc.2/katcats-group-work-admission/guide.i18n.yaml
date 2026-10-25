@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.1-rc.2/katcats-group-work-admission/guide.md
+/:
+  en: 6d8a657a66a7fb6d
+  zh: 2ea223cee2b01d3a
+/katcats-ai-group-work-requires-member-contributions:
+  en: 7c2cc9a6b0189cea
+  zh: 96beedd00702e691
+/katcats-ai-group-work-requires-member-contributions/change:
+  en: 7686d734a6e5a49e
+  zh: 5d9a3a1a2df5ba87
+/katcats-ai-group-work-requires-member-contributions/migration:
+  en: 7e2b1be54cdd7b1f
+  zh: dc68f226b54d17d4

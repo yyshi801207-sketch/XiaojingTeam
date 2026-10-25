@@ -1,0 +1,106 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/api/katcats-team/README.md
+/:
+  en: c7ec3a87ab8f3c30
+  zh: 353bdb1f3b895821
+/katcats-team:
+  en: cc874e674008f885
+  zh: 84ff73493f85277d
+/katcats-team/summary:
+  en: 5d7d0a06ea676c14
+  zh: 48789149431449e2
+/katcats-team/table-of-contents:
+  en: a8ffe06b464b9bee
+  zh: 2c8da220ee827f39
+/katcats-team/configuration-and-ownership:
+  en: 5132b259c6462e1b
+  zh: 4ff2b0d2b8367001
+/katcats-team/conversational-members:
+  en: 6f3c043ddf24b7ce
+  zh: 6a34dbbfe79b9338
+/katcats-team/group-conversations:
+  en: 731addc7ac9d706d
+  zh: 4682596b3fdd8d51
+/katcats-team/saved-memories:
+  en: 5ad09d4dd7848006
+  zh: 816844952c4b6ab8
+/katcats-team/automation-task-lists:
+  en: 180330c44d822965
+  zh: 9c3ab02063eaf1af
+/katcats-team/persistence-and-recovery:
+  en: 2289d81ec27f24c6
+  zh: 861a1c4064902470
+/katcats-team/model-experience:
+  en: 215e7ba838619b7b
+  zh: 215e7ba838619b7b
+/katcats-team/model-experience/member-identity:
+  en: 71c2aa9805d54ed9
+  zh: b2c318af174331b8
+/katcats-team/model-experience/member-identity/what-the-model-sees:
+  en: c233d3d3d0211dd9
+  zh: ff426a4d35789e78
+/katcats-team/model-experience/member-identity/what-the-model-sees/general-assistant-role:
+  en: 5b6ff7c58f4c0a63
+  zh: 31d3ad20e122f746
+/katcats-team/model-experience/member-identity/token-effect:
+  en: 7f6f444e7428136c
+  zh: b55c6d10107eb881
+/katcats-team/model-experience/member-identity/kv-cache-effect:
+  en: 1b134469d26be5ce
+  zh: 19d0eadffe3c4855
+/katcats-team/model-experience/model-selection:
+  en: 730551a9f690451f
+  zh: 1acab0ee7ca60e77
+/katcats-team/model-experience/model-selection/what-the-model-sees:
+  en: 4cfc1810cc256a08
+  zh: f77d9101c81a6c82
+/katcats-team/model-experience/model-selection/token-effect:
+  en: bdb054c2438b122d
+  zh: f913b9784b5822f3
+/katcats-team/model-experience/model-selection/kv-cache-effect:
+  en: 3e278bca4432416e
+  zh: d061c1a3d1ccbf53
+/katcats-team/model-experience/conversational-tools:
+  en: d82e345b89535730
+  zh: 6ad528b901ffc29a
+/katcats-team/model-experience/conversational-tools/what-the-model-sees:
+  en: b00ff9f44137edd3
+  zh: f916d1b61b9d91c2
+/katcats-team/model-experience/conversational-tools/token-effect:
+  en: 4d6b2f823de0b039
+  zh: f3dbba0fe3b52d86
+/katcats-team/model-experience/conversational-tools/kv-cache-effect:
+  en: 492aa2fa3135def7
+  zh: 2de5622facfa0b97
+/katcats-team/model-experience/group-chat:
+  en: a4a085a9a69f7513
+  zh: d3d96c393ca679ab
+/katcats-team/model-experience/group-chat/what-the-model-sees:
+  en: 18f0d09fdc10c7e6
+  zh: f83cb57a910a349a
+/katcats-team/model-experience/group-chat/token-effect:
+  en: 1d0170a513230d35
+  zh: 08c4c61468a3c53e
+/katcats-team/model-experience/group-chat/kv-cache-effect:
+  en: 71aa2c343bfc21c9
+  zh: dd511c349680d670
+/katcats-team/model-experience/scoped-memories:
+  en: a4c46e2476705d3e
+  zh: 527c88805aa2b2b1
+/katcats-team/model-experience/scoped-memories/what-the-model-sees:
+  en: 70ed63cd8b16367a
+  zh: 6b83c9655549a0ac
+/katcats-team/model-experience/scoped-memories/token-effect:
+  en: a1920a69b7d5b6b6
+  zh: d640e43b239c041f
+/katcats-team/model-experience/scoped-memories/kv-cache-effect:
+  en: e3d8379b63322b55
+  zh: f198c12be9844e96
+/katcats-team/known-limitations-and-deferred-work:
+  en: 4552fb76f42825f2
+  zh: 54e3c32f00ac4a2b
+/katcats-team/known-limitations-and-deferred-work/dev-note:
+  en: 0a1253c6f7b5e8b9
+  zh: 9f56528562c7c914

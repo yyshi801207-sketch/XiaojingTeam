@@ -1,0 +1,236 @@
+{
+  "version": 1,
+  "status": "passed",
+  "date": "2026-10-25",
+  "scope": "Katcats independent copy only",
+  "actualFailure": {
+    "source": "Public application katcatsChats/snapshot, session/projections and session/page APIs; no direct Session file reads",
+    "deliveryId": "delivery-71ca1615-bab8-43dd-9b73-62aa742f38eb",
+    "workerSessionId": "session-2afd0357-f37f-4588-b17d-335f318bf5ac",
+    "deliveryGeneration": 2,
+    "inputSeq": 28,
+    "turn": 2,
+    "endSeq": 51,
+    "turnEnd": "error",
+    "errorCode": "MALFORMED_RESPONSE",
+    "fixedSourceMessageMatched": true,
+    "classification": "Tool input was invalid JSON in the model response",
+    "oldDeliveryMutated": false,
+    "automaticRetry": false,
+    "limitation": "Earlier successful steps had already run; this diagnosis does not imply the whole task had no side effects."
+  },
+  "changes": {
+    "diagnostics": "Five fixed safe categories from actual recorded turn endings, including exact MALFORMED_RESPONSE code; original exception text is never copied to group diagnostics.",
+    "presentation": "One semantic explanation for matching pause/error reasons; distinct necessary hints and collapsed code/details remain.",
+    "bubble": {
+      "previous": "#10C477",
+      "current": "#9DF29F",
+      "foreground": "#202124",
+      "source": "Exact dominant green sampled from the latest supplied WeChat screenshot",
+      "referencePath": "D:/Temp/Administrator/codex-clipboard-9067e8a8-f61b-4341-97cb-ed8a7a0e3c1f.png",
+      "matchingPixels": 109425,
+      "avatarPaletteUnchanged": true
+    }
+  },
+  "tests": {
+    "latestHost": {
+      "report": "run/tmp/katcats-malformed-diagnostics-green.json",
+      "passed": 5,
+      "failed": 0
+    },
+    "relatedHostRegression": {
+      "report": "run/tmp/katcats-outcome-diagnostics-regression.json",
+      "passed": 71,
+      "failed": 0
+    },
+    "latestUi": {
+      "report": "run/tmp/katcats-dispatch-domain-aT4KaA/tests.json",
+      "passed": 43,
+      "failed": 0
+    },
+    "independentReview": "No concrete P1/P2 defect found; unknown/paused, no automatic retry, strict completion evidence and safe error handling retained."
+  },
+  "build": {
+    "targetHostAndClient": "passed",
+    "artifacts": {
+      "passed": 7,
+      "failed": 0,
+      "seconds": 37.56
+    },
+    "check": {
+      "passed": 2,
+      "failed": 0,
+      "seconds": 13.35
+    },
+    "finalClientReferenceColour": {
+      "passed": true,
+      "seconds": 0.146,
+      "metadataArtifactCount": 353
+    }
+  },
+  "browser": {
+    "report": "run/tmp/katcats-group-chat-web-PcQQIi/user-bubble-result.json",
+    "passed": true,
+    "realModel": false,
+    "background": "#9DF29F",
+    "foreground": "#202124",
+    "contrast": 11.986,
+    "geometryCases": 6,
+    "approvalGeometry": [
+      {
+        "theme": "light",
+        "viewport": 1440,
+        "visibleHit": true,
+        "approval": {
+          "x": 362.5,
+          "y": 790,
+          "width": 712,
+          "height": 126
+        },
+        "composer": {
+          "x": 362.5,
+          "y": 974,
+          "width": 712,
+          "height": 98
+        },
+        "leftDelta": 0,
+        "rightDelta": 0,
+        "pageWidth": 1440
+      },
+      {
+        "theme": "light",
+        "viewport": 820,
+        "visibleHit": true,
+        "approval": {
+          "x": 72,
+          "y": 790,
+          "width": 425,
+          "height": 126
+        },
+        "composer": {
+          "x": 72,
+          "y": 974,
+          "width": 425,
+          "height": 98
+        },
+        "leftDelta": 0,
+        "rightDelta": 0,
+        "pageWidth": 820
+      },
+      {
+        "theme": "light",
+        "viewport": 640,
+        "visibleHit": true,
+        "approval": {
+          "x": 72,
+          "y": 790,
+          "width": 545,
+          "height": 126
+        },
+        "composer": {
+          "x": 72,
+          "y": 974,
+          "width": 545,
+          "height": 98
+        },
+        "leftDelta": 0,
+        "rightDelta": 0,
+        "pageWidth": 640
+      },
+      {
+        "theme": "dark",
+        "viewport": 1440,
+        "visibleHit": true,
+        "approval": {
+          "x": 362.5,
+          "y": 790,
+          "width": 712,
+          "height": 126
+        },
+        "composer": {
+          "x": 362.5,
+          "y": 974,
+          "width": 712,
+          "height": 98
+        },
+        "leftDelta": 0,
+        "rightDelta": 0,
+        "pageWidth": 1440
+      },
+      {
+        "theme": "dark",
+        "viewport": 820,
+        "visibleHit": true,
+        "approval": {
+          "x": 72,
+          "y": 790,
+          "width": 425,
+          "height": 126
+        },
+        "composer": {
+          "x": 72,
+          "y": 974,
+          "width": 425,
+          "height": 98
+        },
+        "leftDelta": 0,
+        "rightDelta": 0,
+        "pageWidth": 820
+      },
+      {
+        "theme": "dark",
+        "viewport": 640,
+        "visibleHit": true,
+        "approval": {
+          "x": 72,
+          "y": 790,
+          "width": 545,
+          "height": 126
+        },
+        "composer": {
+          "x": 72,
+          "y": 974,
+          "width": 545,
+          "height": 98
+        },
+        "leftDelta": 0,
+        "rightDelta": 0,
+        "pageWidth": 640
+      }
+    ],
+    "errors": [],
+    "consoleErrors": [],
+    "preview": "run/tmp/katcats-group-chat-web-PcQQIi/user-bubble-final-sampled-color-closeup.png"
+  },
+  "deployment": {
+    "userAuthorizedDiscardingSettings": true,
+    "userRequestedImmediateReload": true,
+    "groupActivitiesProcessingBeforeQuit": 0,
+    "chatDraftScopesPreservedInMemory": 1,
+    "restartedProcessSession": 12253,
+    "loaded": true,
+    "actual": {
+      "ready": "complete",
+      "green": "#9df29f",
+      "referenceStylePresent": true,
+      "draftScopes": [
+        {
+          "present": true,
+          "unchanged": true
+        }
+      ],
+      "preRestartDrafts": [
+        {
+          "present": true,
+          "unchanged": true
+        }
+      ]
+    },
+    "draftDataInReport": false,
+    "running": true
+  },
+  "documentation": {
+    "translationPair": "passed",
+    "localLinks": "passed"
+  }
+}

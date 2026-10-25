@@ -1,0 +1,25 @@
+# Bilingual-pair consistency record for prompt-model-admission.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/katcats/proposals/prompt-model-admission.md
+/prompt-model-admission-proposal:
+  en: 72fb62a2602019b3
+  zh: 55f9858009ea40a0
+/prompt-model-admission-proposal/verified-limitation:
+  en: 2bc3d0ff8a385021
+  zh: 235e9b2ddc8c9928
+/prompt-model-admission-proposal/proposed-api-change:
+  en: b074e2ea9926949e
+  zh: e96b119fbaa0012a
+/prompt-model-admission-proposal/ordering-and-failures:
+  en: 5ec757c9ed7dfa11
+  zh: bb7aea9065333e60
+/prompt-model-admission-proposal/affected-consumers-and-exclusions:
+  en: 9c8bc85285fa2533
+  zh: a57398b8bd256115
+/prompt-model-admission-proposal/required-focused-acceptance:
+  en: a63a20b7fd2e44c9
+  zh: 9ec6619aa3c1e3e1
+/prompt-model-admission-proposal/review-evidence:
+  en: 2e114cb4a9c7ca5d
+  zh: ddd752996083f0c9

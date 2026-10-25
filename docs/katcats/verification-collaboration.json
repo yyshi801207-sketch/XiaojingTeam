@@ -1,0 +1,141 @@
+{
+  "date": "2026-10-24",
+  "status": "passed-for-scope",
+  "scope": "Owner questions, queued follow-ups, direct member collaboration, bounded automatic handoffs and actual shared-file delivery in the independent Katcats.AI copy",
+  "fixes": [
+    "A new owner message renews an automatically exhausted group run without requiring Continue",
+    "Queued owner questions take priority over older automatic handoffs and retain their order and stable input identities",
+    "Existing deliveries and completed results retain their original run identities; superseded unexecuted targets have explicit audit records",
+    "Cold recovery classifies interrupted work per group instead of changing unrelated safe pause reasons",
+    "Manual pauses, uncertain failures and Stop keep their distinct recovery rules",
+    "The status row shares the original composer's width and centering"
+  ],
+  "checks": {
+    "productPackage": {
+      "result": "../../run/tmp/katcats-mechanism-unit-final.json",
+      "passed": 239,
+      "failed": 0,
+      "loaderCasesIncluded": 34,
+      "domainCasesIncluded": 20,
+      "memberFileLinkCasesIncluded": 9
+    },
+    "sharedGui": {
+      "uniquePassedCases": 258,
+      "results": [
+        {
+          "result": "../../run/tmp/katcats-clean-gui-integrated.json",
+          "passed": 77,
+          "failed": 0,
+          "entireReportPassed": true
+        },
+        {
+          "result": "../../run/tmp/katcats-clean-gui-focused.json",
+          "selectedSuites": ["packages/client/ui-chat/tests/chat-view.client.spec.tsx"],
+          "passed": 167,
+          "failed": 0,
+          "entireReportPassed": false,
+          "reportTotals": { "passed": 183, "failed": 54 }
+        },
+        {
+          "result": "../../run/tmp/katcats-clean-gui-baseline-classification.json",
+          "selectedSuites": [
+            "packages/client/ui-shortcuts/tests/commands.client.spec.ts",
+            "packages/client/web/tests/boot.client.spec.ts"
+          ],
+          "passed": 14,
+          "failed": 0,
+          "entireReportPassed": false,
+          "reportTotals": { "passed": 14, "failed": 1 }
+        }
+      ],
+      "profile": "Default-profile checks under a fresh synthetic project-owned home; product checks use the Katcats development profile",
+      "fixtureRepair": "Typed team/chat/usage responses and self-mounted namespace ownership preserve actual Client mounting, cancellation and strict unmatched-RPC checks"
+    },
+    "latestArtifactBuild": {
+      "command": "cmd /c \"node run\\tooling\\build-team-artifacts.mjs\"",
+      "passed": 7,
+      "failed": 0,
+      "seconds": 44.9
+    },
+    "latestBuildCheck": {
+      "command": "cmd /c \"node run\\tooling\\check-team-build.mjs\"",
+      "passed": 2,
+      "failed": 0,
+      "seconds": 72.74
+    },
+    "sourceTypesAndTargetedLint": "Passed for the changed runtime, tests, Client copy and shared test support",
+    "documentation": "Affected English/Chinese pairs and local links checked"
+  },
+  "deterministicBrowser": {
+    "model": "Explicit Mock; real product services, tool execution, filesystem, approvals and renderers",
+    "cases": [
+      {
+        "result": "../../run/tmp/katcats-group-chat-web-p4r5ri/budget-result.json",
+        "passed": true,
+        "scope": "Budget renewal, two queued questions during real in-flight work, manual Pause/Continue, and four composer-alignment layouts",
+        "maximumHorizontalAlignmentErrorPx": 0
+      },
+      {
+        "result": "../../run/tmp/katcats-group-chat-web-OQ2ed1/result.json",
+        "passed": true,
+        "scope": "Group context, mentions, actual pass, handoffs, attachments, original approvals, Stop, double Escape and cold recovery"
+      },
+      {
+        "result": "../../run/tmp/katcats-group-chat-web-2X1hnk/file-task-result.json",
+        "passed": true,
+        "scope": "Actual member read/write tools produce draft, review and final files; the delivered file opens and a follow-up reads it back"
+      }
+    ],
+    "workaroundUsed": false,
+    "testScriptsWriteMemberArtifacts": false,
+    "pageErrors": [],
+    "consoleErrors": [],
+    "ownedTestProcessesClosed": true
+  },
+  "realModel": {
+    "model": "Independently configured DeepSeek in Katcats Dev",
+    "groupName": "任务交付验收",
+    "taskResult": "../../output/playwright/task-delivery-real/result.json",
+    "budgetResult": "../../output/playwright/task-delivery-real/budget-result.json",
+    "passed": true,
+    "checks": [
+      "Two actual members answer an ordinary group question as themselves",
+      "A natural-language follow-up retains the project code and selects the relevant writer",
+      "Writer saves a real draft, reviewer reads it and saves review, writer reads the review and saves the final file",
+      "A later owner question retrieves the actual final content and working file link",
+      "A one-reply budget pauses the old work; the next owner mention receives an immediate contextual reply without Continue",
+      "Cold reopening retains all eleven message identities and all three file hashes; the final file still opens without sending a message"
+    ],
+    "artifacts": ["acceptance-draft.md", "acceptance-review.md", "acceptance-final.md"],
+    "testScriptsWriteMemberArtifacts": false,
+    "screenshot": "../../output/playwright/task-delivery-real/cold-final-preview.png",
+    "helperCorrections": [
+      "Wait for the asynchronous preview body after the preview shell is ready",
+      "Select the actual delivered filename button rather than a guessed display label; the owner follow-up was sent once"
+    ]
+  },
+  "broaderGuiStatus": {
+    "allGreenClaimed": false,
+    "initialRun": { "profile": "xiaojing", "passed": 11044, "failed": 66, "skipped": 2 },
+    "classification": [
+      "The initial run imposed the development product profile on generic official-profile tests; affected chat, account, settings, shortcut and boot checks pass under the default test profile",
+      "New product streams exposed a shared-fixture integration gap; typed responses and self-mounted namespace handling fix it, with the strict checks retained",
+      "Legacy source styles outside the changed feature still fail some corpus-wide style checks",
+      "The license-bundle test did not reach content verification because the direct Windows test launcher lacks npm_execpath; no packaging was attempted to bypass this",
+      "The whole GUI corpus was not rerun after the focused profile and fixture corrections"
+    ]
+  },
+  "deferred": [
+    "Inline visualize and other rich tool-result cards remain in the executing member Session and are not yet projected into the group; working Markdown file previews do not establish rich-card compatibility",
+    "Remaining P4 capability parity and P5 branding remain separate work"
+  ],
+  "isolation": {
+    "workspace": "E:\\Projects\\Katcats.AI",
+    "originalApplicationsOrConfigurationRead": false,
+    "originalApplicationsOrUserDataChanged": false,
+    "credentialsReadPrintedOrCopied": false,
+    "productPackagedInstalledOrPublished": false,
+    "gitCommitsOrPushes": false,
+    "preview": "Katcats.AI Dev is open on the owned task-delivery acceptance group with the final file preview"
+  }
+}

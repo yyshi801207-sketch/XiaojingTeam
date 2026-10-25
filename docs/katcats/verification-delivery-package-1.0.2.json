@@ -1,0 +1,183 @@
+{
+  "checkedAt": "2026-10-25T07:25:37.364Z",
+  "status": "passed",
+  "version": "1.0.2",
+  "sourceIdentity": {
+    "kind": "modified-copy-baseline",
+    "baseline": "dca89bada80b7b4852cc257a3b43ebd8dca6c85e",
+    "dirty": true,
+    "currentCheckoutCommitClaimed": false
+  },
+  "changes": {
+    "messageHandling": "Ordinary messages preserve queued and running member tasks, approvals and accepted work; only the explicit interrupt action uses steer. Budget-paused ordinary messages remain queued until Continue or explicit interruption.",
+    "handoffDisplay": "The per-group handoff switch saves immediately after Host acknowledgement, preserves other setting drafts and hides existing and future handoff/task records while retaining real chat and final files.",
+    "controls": "Pending actions are scoped to the exact chat/run/generation; pause reasons are localized without mislabeling execution errors as manual pause. Explicit interruption remains usable after reconnect.",
+    "finalDelivery": {
+      "guidance": "Final writing replies must provide usable full text; file deliveries must register actual existing final files through present with a brief summary.",
+      "gate": "Presenting an already finished file does not require a new work split; existing unfinished plans, same-step delegation, approval, cancellation and file-existence checks still apply.",
+      "cards": "Group closing replies retain their exact executor Session and validate the real input claim and completed closing output, then use the public deliverables.files Factory to render the original file cards.",
+      "opening": "Preview resolves inside the original worker Session; native actions keep the actual registered Session/event/file coordinates. No arbitrary file:// or model-authored path is promoted into a trusted deliverable.",
+      "visibility": "Final file cards remain visible with handoff display off, survive cold history loads and deduplicate repeated registrations.",
+      "persistence": "No new Session fields or event types; existing member presentation events remain the source of file records."
+    },
+    "windowsCatalog": "Generated TypeScript string literals preserve CRLF data while escaping carriage returns; regression verifies both valid output syntax and actual runtime string values."
+  },
+  "preserved": {
+    "priorBaselineVerification": "docs/katcats/verification-group-update-1.0.2.json",
+    "approvedUserBubble": "#9DF29F",
+    "branding": "Katcats.AI",
+    "version": "1.0.2",
+    "petAndStartup": "Existing approved companion placement, scale, drag/reset, startup artwork, progress and collapsed startup sidebar were retained."
+  },
+  "validation": {
+    "focusedReports": [
+      {
+        "report": "run/tmp/katcats-delivery-host-final.json",
+        "passed": 105,
+        "failed": 0,
+        "matchedSnapshots": 12
+      },
+      {
+        "report": "run/tmp/katcats-delivery-claim-host-final.json",
+        "passed": 5,
+        "failed": 0,
+        "matchedSnapshots": 2
+      },
+      {
+        "report": "run/tmp/katcats-final-file-cards-client-face-fix.json",
+        "passed": 110,
+        "failed": 0,
+        "matchedSnapshots": 1
+      },
+      {
+        "report": "run/tmp/katcats-group-file-claim-tests.json",
+        "passed": 21,
+        "failed": 0,
+        "matchedSnapshots": 1
+      },
+      {
+        "report": "run/tmp/katcats-client-catalog-crlf-green.json",
+        "passed": 23,
+        "failed": 0,
+        "matchedSnapshots": 0
+      },
+      {
+        "report": "run/tmp/katcats-queued-composer-reconnect.json",
+        "passed": 90,
+        "failed": 0,
+        "matchedSnapshots": 1
+      },
+      {
+        "report": "run/tmp/katcats-handoff-autosave-regression.json",
+        "passed": 99,
+        "failed": 0,
+        "matchedSnapshots": 11
+      },
+      {
+        "report": "run/tmp/katcats-group-control-reasons-final.json",
+        "passed": 64,
+        "failed": 0,
+        "matchedSnapshots": 4
+      },
+      {
+        "report": "run/tmp/katcats-handoff-real-slots-delivery-final.json",
+        "passed": 29,
+        "failed": 0,
+        "matchedSnapshots": 6
+      }
+    ],
+    "totalsAreNotAdditive": true,
+    "build": {
+      "passed": 9,
+      "failed": 0,
+      "exitCode": 0,
+      "steps": [
+        "run-gates: PASS native addon (0.90s)",
+        "run-gates: PASS host compiler (1.17s)",
+        "run-gates: PASS host aggregate check (22.19s)",
+        "run-gates: PASS Host bundle (23.07s)",
+        "run-gates: PASS Desktop bundle (2.86s)",
+        "run-gates: PASS client compiler (1.27s)",
+        "run-gates: PASS client aggregate check (7.47s)",
+        "run-gates: PASS Client bundle (10.65s)",
+        "run-gates: PASS Web build (8.04s)"
+      ],
+      "log": "run/tmp/katcats-packaging-1.0.2-delivery-final.log"
+    },
+    "archive": {
+      "passed": 10,
+      "bytes": 330460056,
+      "sha256": "e4063e416fbe24cc361a959ce3d3f88e9287aa7e3b0144d4ac2386c12f8a03f4",
+      "report": "E:/Projects/Katcats.AI/output/releases/windows/1.0.2/Katcats.AI-1.0.2-delivery-fix-archive.json",
+      "currentDeliveryAndCompanionBytesMatch": true
+    },
+    "standardProductUi": {
+      "passed": true,
+      "checks": [
+        "packaged product main Bot and primary create action are visible",
+        "main Bot welcome preserves the tagline without the introduction or duties paragraphs",
+        "fresh main Bot startup keeps the right sidebar collapsed",
+        "manual main Bot settings still open and expose its operation permissions",
+        "reload collapses a previously saved expanded sidebar without deleting its settings tab",
+        "original creation dialog saves two ordinary Bots in the Bot section",
+        "group creation saves a separate group sidebar entry and a clean group composer",
+        "new group creation defaults to sixteen total member task starts per round",
+        "group settings section headings are bold and handoff records are enabled by default",
+        "one safe bulk selection updates both exact group member permissions and reports two confirmed successes",
+        "bulk group permissions leave both members’ private chat permissions unchanged",
+        "persisted synthetic lifecycle events render two task cards and one full handoff beside ordinary chat",
+        "handoff toggle saves automatically, hides existing and subsequent records, stays off on navigation and restores all cards without hiding chat",
+        "ordinary Enter persists one queued message without unpausing the group, confirms receipt and exposes the separate explicit interrupt action"
+      ],
+      "modelCalls": 0,
+      "pageErrors": [],
+      "consoleErrors": [],
+      "report": "E:/Projects/Katcats.AI/output/releases/windows/1.0.2/Katcats.AI-1.0.2-delivery-fix-ui.json"
+    },
+    "actualFileDeliveryUi": {
+      "passed": true,
+      "checks": [
+        "real packaged write and present tools produce one completed worker receipt and original group file card; root zero model turns",
+        "original file card opens and renders the actual generated Markdown content through its producing worker Session",
+        "a later ordinary broadcast directly presents the existing second file without another write or plan; reviewer really passes",
+        "handoff display off preserves the registered final file card",
+        "same Bot private chat and other group do not inherit the file card",
+        "navigation and cold browser reload reconstruct two cards with handoff off, no model redispatch or private/foreign history mutation"
+      ],
+      "errors": [],
+      "fixture": {
+        "chatId": "chat-0cc0f2bc-8bac-4966-a92c-92b6720514fd",
+        "worker": "session-afaddd83-8abb-4b9e-b762-fed6074cd85f"
+      },
+      "report": "E:/Projects/Katcats.AI/output/releases/windows/1.0.2/Katcats.AI-1.0.2-delivery-fix-files-ui.json",
+      "preview": "E:/Projects/Katcats.AI/output/releases/windows/1.0.2/Katcats.AI-1.0.2-delivery-fix-preview.png",
+      "handoffsOffPreview": "E:/Projects/Katcats.AI/output/releases/windows/1.0.2/Katcats.AI-1.0.2-delivery-fix-handoffs-off.png",
+      "limitations": [
+        "External model responses are scripted; actual packaged tools, permissions, persistence, transport, cards and preview are unchanged.",
+        "Cold verification reloads the browser and retained Session, not the Host process. Native desktop opening is deliberately not triggered."
+      ]
+    },
+    "installerPayload": {
+      "exitCode": 0,
+      "everythingOk": true,
+      "expectedNsisOverlayWarning": true,
+      "log": "run/tmp/katcats-delivery-fix-1.0.2-payload-test.log"
+    }
+  },
+  "artifact": {
+    "path": "E:/Projects/Katcats.AI/output/releases/windows/1.0.2/Katcats.AI-V1.0.2-Windows-x64-20261025-delivery-fix.exe",
+    "bytes": 332993627,
+    "sha256": "d50d1220deb422a5fa22d3a597da9b0a442453fa22be25d2f87c141c86c961e5",
+    "checksum": "E:/Projects/Katcats.AI/output/releases/windows/1.0.2/Katcats.AI-V1.0.2-Windows-x64-20261025-delivery-fix.exe.sha256",
+    "productName": "Katcats.AI",
+    "productVersion": "1.0.2",
+    "fileVersion": "1.0.2",
+    "signed": false,
+    "installerExecuted": false
+  },
+  "limits": [
+    "Existing installed application and user profiles were not read or modified. No installer was run.",
+    "Browser/retained Session reload was verified; the added file-card browser case did not restart its Host or open an external native application.",
+    "Workflow responses are scripted in regression and actual-ASAR tests; real file IO, presentation tools, group routing, file cards and preview are exercised."
+  ]
+}

@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for group-member-mentions.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/katcats/proposals/group-member-mentions.md
+/group-member-mention-proposal:
+  en: 39a771bec0eb87ca
+  zh: 4cea261e8d17500f
+/group-member-mention-proposal/status-and-verified-limitation:
+  en: 98cf9be720bdf699
+  zh: ed5076fcfd864b2e
+/group-member-mention-proposal/proposed-discovery-api:
+  en: 2682fe6518119330
+  zh: a5f166be0a039c8c
+/group-member-mention-proposal/product-integration:
+  en: d546cd903d5f9d7d
+  zh: cd34e4b32a6fcd82
+/group-member-mention-proposal/required-verification:
+  en: e72a13f55e24e2dd
+  zh: ad70d84aab5679e3

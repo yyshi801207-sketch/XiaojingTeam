@@ -1,0 +1,37 @@
+# Bilingual-pair consistency record for group-session-transport.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/katcats/proposals/group-session-transport.md
+/group-session-transport-proposal:
+  en: 432303f7b15a89c8
+  zh: 24221f1f8b538e40
+/group-session-transport-proposal/summary:
+  en: 25fc1ea7fc9c7dfa
+  zh: 17cff7af3f126ed7
+/group-session-transport-proposal/contents:
+  en: 7d9b2372b49967d9
+  zh: a0d618cfb775ae6e
+/group-session-transport-proposal/verified-limitation:
+  en: 93fefc17caf85d70
+  zh: f93da15d20fc3e32
+/group-session-transport-proposal/candidate-api:
+  en: 157cd26516ed97ca
+  zh: ae53f4ff6847b5b7
+/group-session-transport-proposal/lifetime-and-failures:
+  en: 950e65e21387e659
+  zh: e93e4872a2bcdfe0
+/group-session-transport-proposal/product-responsibilities:
+  en: 3959e1d0be9eca68
+  zh: a77c5765e11e912c
+/group-session-transport-proposal/files-and-consumers:
+  en: 50bc71a2ae5286ad
+  zh: 5b97192119913521
+/group-session-transport-proposal/required-acceptance:
+  en: 312c2728f5094b95
+  zh: be61f4c5f1a92667
+/group-session-transport-proposal/review-evidence:
+  en: bc3359d09ef3bf93
+  zh: 4d055e7cd0238de0
+/group-session-transport-proposal/dev-note:
+  en: d4c5b3e0c39acc61
+  zh: c5264fe6d1e34b9d

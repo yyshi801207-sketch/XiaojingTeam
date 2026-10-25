@@ -1,0 +1,53 @@
+.avatar {
+  display: grid;
+  grid-template-columns: repeat(2, 15px);
+  grid-auto-rows: 15px;
+  align-content: center;
+  justify-content: center;
+  justify-items: center;
+  gap: 2px;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.avatar[data-count='1'] {
+  grid-template-columns: 1fr;
+  grid-auto-rows: auto;
+}
+
+.avatar[data-count='3'] .member:first-child {
+  grid-column: 1 / -1;
+}
+
+.avatar[data-large] {
+  grid-template-columns: repeat(2, 30px);
+  grid-auto-rows: 30px;
+  gap: 4px;
+  width: 64px;
+  height: 64px;
+}
+
+.avatar[data-large][data-count='1'] {
+  grid-template-columns: 1fr;
+  grid-auto-rows: auto;
+}
+
+.member {
+  display: grid;
+  place-items: center;
+}
+
+.count {
+  display: grid;
+  place-items: center;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 8px;
+  line-height: 1;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.avatar[data-large] .count {
+  font-size: 16px;
+}

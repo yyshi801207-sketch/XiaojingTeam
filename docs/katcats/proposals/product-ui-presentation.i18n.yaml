@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for product-ui-presentation.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/katcats/proposals/product-ui-presentation.md
+/product-ui-presentation-proposal:
+  en: 59cf6ace8dae178d
+  zh: 35980ee935f29e83
+/product-ui-presentation-proposal/status-and-verified-limits:
+  en: a0044b4e2b3bbde0
+  zh: a63f17e845d62de4
+/product-ui-presentation-proposal/proposed-extension-points:
+  en: e637a6c72cc81ebe
+  zh: fa53bfddef603eeb
+/product-ui-presentation-proposal/proposed-extension-points/sidebar-configuration:
+  en: bb4dbf78926acc7a
+  zh: ad7f505c63c26a93
+/product-ui-presentation-proposal/proposed-extension-points/right-panel-width:
+  en: 83cdbfda7119e19d
+  zh: b34c83b91b272517
+/product-ui-presentation-proposal/proposed-extension-points/session-composer-presentation:
+  en: 32dfe10aaadf5824
+  zh: ed424f679a07f058
+/product-ui-presentation-proposal/required-verification-after-authorization:
+  en: 443d0b367e14f147
+  zh: fd2a1010f0a943fe
+/product-ui-presentation-proposal/proposal-checks:
+  en: db92d6a837000491
+  zh: 11b0000159f18079

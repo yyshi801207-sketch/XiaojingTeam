@@ -1,0 +1,125 @@
+diff --git a/packages/api/session-controller/src/commands.ts b/packages/api/session-controller/src/commands.ts
+index cca2108..67769f8 100644
+--- a/packages/api/session-controller/src/commands.ts
++++ b/packages/api/session-controller/src/commands.ts
+@@ -4,6 +4,7 @@ import { modelAvailable } from './catalog.ts'
+ import { randomUUID } from 'node:crypto'
+ import type { Context } from '@deepseek-ai/cordis'
+ import { brandString } from '@deepseek-ai/dsh-brand'
++import { scopeTarget } from '@deepseek-ai/dsh-scope'
+ import type { Agent, ModelSelection as AgentModelSelection } from '@deepseek-ai/dsh-agent'
+ import { AttachmentError } from '@deepseek-ai/dsh-attachment'
+ import type {
+@@ -158,21 +159,7 @@ export class SessionCommandController {
+     const agent = await this.resolveAgent(request.sessionId)
+     return this.agents.serializeImageAdmission(agent, async () => {
+       try {
+-        await this.requireModel(request)
+-        const resolved = await this.ctx.llm.resolveCallConfig({
+-          provider: request.provider,
+-          model: request.model,
+-          ...(request.reasoningEffort === undefined
+-            ? {}
+-            : { reasoningEffort: ReasoningEffortId(request.reasoningEffort) }),
+-        })
+-        const selected: AgentModelSelection = {
+-          provider: resolved.provider,
+-          model: resolved.model,
+-          ...(resolved.reasoningEffort === undefined
+-            ? {}
+-            : { reasoningEffort: resolved.reasoningEffort }),
+-        }
++        const selected = await this.resolveModelSelection(request)
+         this.agents.selectForNextRequest(agent, selected)
+         if (request.scope !== 'session') {
+           void this.ctx.agentDefaultModel.saveSelection(selected).catch((error: unknown) => {
+@@ -324,6 +311,14 @@ export class SessionCommandController {
+     const hasImage = request.content.some(part => part.type === 'image')
+     const admit = async (): Promise<SessionPromptValue> => {
+       try {
++        if (hasPromptRequest(agent, request.requestId)) return { accepted: true }
++        const policy = this.ctx.waterfall(
++          scopeTarget(agent, agent), 'api-session/prompt-model', agent, () => undefined,
++        )
++        if (policy !== undefined) {
++          const selected = await this.resolveModelSelection(policy)
++          this.agents.selectForNextRequest(agent, selected)
++        }
+         if (hasImage) {
+           const current = this.agents.selectionFor(agent).current
+           const model = await this.ctx.llm.resolveModelInfo(current.provider, current.model)
+@@ -361,7 +356,38 @@ export class SessionCommandController {
+       }
+       return { accepted: true }
+     }
+-    return hasImage ? this.agents.serializeImageAdmission(agent, admit) : admit()
++    return this.agents.serializeImageAdmission(agent, admit)
++  }
++
++  private async resolveModelSelection(selection: {
++    readonly provider: string
++    readonly model: string
++    readonly reasoningEffort?: string
++  }): Promise<AgentModelSelection> {
++    try {
++      await this.requireModel(selection)
++      const resolved = await this.ctx.llm.resolveCallConfig({
++        provider: selection.provider,
++        model: selection.model,
++        ...(selection.reasoningEffort === undefined
++          ? {}
++          : { reasoningEffort: ReasoningEffortId(selection.reasoningEffort) }),
++      })
++      return {
++        provider: resolved.provider,
++        model: resolved.model,
++        ...(resolved.reasoningEffort === undefined
++          ? {}
++          : { reasoningEffort: resolved.reasoningEffort }),
++      }
++    } catch (error) {
++      if (remoteErrorOf(error) !== undefined) throw error
++      throw new RemoteError(
++        'session/model-unavailable',
++        error instanceof Error ? error.message : String(error),
++        { provider: selection.provider, model: selection.model },
++      )
++    }
+   }
+ 
+   private async requireModel(selection: Pick<AgentModelSelection, 'provider' | 'model'>): Promise<void> {
+diff --git a/packages/api/session-controller/src/index.ts b/packages/api/session-controller/src/index.ts
+index 234fb17..453f4b3 100644
+--- a/packages/api/session-controller/src/index.ts
++++ b/packages/api/session-controller/src/index.ts
+@@ -2,7 +2,8 @@
+ 
+ import { hostname } from 'node:os'
+ import { resolve } from 'node:path'
+-import type { Agent } from '@deepseek-ai/dsh-agent'
++import type { Agent, ModelSelection } from '@deepseek-ai/dsh-agent'
++import type { Scoped } from '@deepseek-ai/dsh-scope'
+ import type {} from '@deepseek-ai/dsh-fs'
+ import { Context } from '@deepseek-ai/cordis'
+ import z from '@deepseek-ai/schemastery'
+@@ -78,6 +79,20 @@ declare module '@deepseek-ai/cordis' {
+     /** Host Session business API and Remote namespace owner. */
+     sessionController: SessionController
+   }
++
++  interface Events {
++    /**
++     * Resolve an optional Session model before prompt and image admission.
++     * Host-only, synchronous, and Agent-scoped; listeners must delegate with
++     * next() and return undefined to retain the installed selection. Listeners
++     * must not call selectModel or enqueue another admission operation.
++     * @param agent - live Agent receiving the submitted prompt.
++     * @param next - remaining policies; the default returns undefined.
++     * @returns a model to validate and install for this Session, or no change.
++     * @mode waterfall
++     */
++    'api-session/prompt-model'(this: Scoped<Agent>, agent: Agent, next: () => ModelSelection | undefined): ModelSelection | undefined
++  }
+ }
+ 
+ /**

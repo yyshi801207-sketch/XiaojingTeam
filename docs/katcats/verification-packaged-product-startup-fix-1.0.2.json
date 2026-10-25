@@ -1,0 +1,94 @@
+{
+  "status": "passed",
+  "version": "1.0.2",
+  "issue": "Installed product showed the generic Workspace/Agent interface instead of Katcats Bot and group UI.",
+  "confirmedCause": {
+    "firstMissingStage": "private npm tarball whitelist",
+    "missingChunks": [
+      "lib/chats-CnTnCPKJ.js",
+      "lib/memory-CwDm69hn.js"
+    ],
+    "productModeWasPresent": true,
+    "developmentModeWasAbsent": true,
+    "teamImportsFailedWith": "ERR_MODULE_NOT_FOUND",
+    "comparison": "run/tmp/katcats-package-chunk-gap-mDuYDL/result.json",
+    "host": "run/tmp/katcats-packaged-host-JKk2jH/result.json"
+  },
+  "changes": [
+    "Private package includes generated root JavaScript chunks while retaining required explicit Typert entries.",
+    "Package-set preparation checks the reachable relative-import closure before writing or deleting outputs.",
+    "An assembled-runtime smoke now boots a fresh isolated packaged Host and browser, asserts real team activation and main/private/group UI, and performs zero model calls."
+  ],
+  "checks": {
+    "workspacePolicy": {
+      "passed": 144,
+      "failed": 0
+    },
+    "packageSet": {
+      "passed": 13,
+      "failed": 0
+    },
+    "realTarball": {
+      "fixedPositive": "run/tmp/katcats-fixed-tarball-closure-result.json",
+      "originalFaultyTarballRejected": true
+    },
+    "uiRed": {
+      "result": "run/tmp/katcats-packaged-ui-uc7Tgd/case-brChaG/ui-result.json",
+      "screenshot": "run/tmp/katcats-packaged-ui-uc7Tgd/case-brChaG/failure.png",
+      "usesActualPackagedHost": true,
+      "usesActualLauncherEnvironment": true,
+      "developmentModePresent": false,
+      "modelCalls": 0
+    },
+    "buildLog": "run/tmp/katcats-packaging-1.0.2-fixed.log",
+    "fullBuild": {
+      "artifactsPassed": 7,
+      "aggregateChecksPassed": 2,
+      "failed": 0,
+      "log": "run/tmp/katcats-packaging-1.0.2-fixed.log"
+    },
+    "archive": {
+      "passed": 8,
+      "failed": 0,
+      "reachableTeamJavaScriptModules": 11,
+      "fileCount": 27402,
+      "report": "run/tmp/katcats-final-archive-verification/result.json"
+    },
+    "uiGreen": {
+      "automatic": true,
+      "root": "actual packaged app.asar/dsh",
+      "result": "apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts/katcats-product-smoke/case-ZLnQwA/ui-result.json",
+      "productMode": "1",
+      "developmentModePresent": false,
+      "modelCalls": 0,
+      "activeTeamServices": 3,
+      "createdBots": 2,
+      "createdGroupChats": 1,
+      "allComposerScopesPassed": true,
+      "errors": []
+    },
+    "manualUi": {
+      "exitCode": 0,
+      "result": "run/tmp/katcats-packaged-ui-wIlqQm/case-TgiJEo/ui-result.json"
+    },
+    "installerPayload": {
+      "passed": true,
+      "log": "run/tmp/katcats-fixed-installer-payload-test.log"
+    }
+  },
+  "isolation": {
+    "realInstalledAppNotLaunchedByAgent": true,
+    "realUserDataNotRead": true,
+    "registryNotModified": true,
+    "allTestDataSynthetic": true
+  },
+  "artifact": {
+    "path": "output/releases/windows/1.0.2/Katcats.AI-V1.0.2-Windows-x64-20261025-fixed.exe",
+    "bytes": 333201846,
+    "sha256": "76595d452887ba026c0fa9835fe118077720ca7769e4c178f02e6361a3f7f8ea",
+    "signed": false,
+    "version": "1.0.2",
+    "preview": "output/releases/windows/1.0.2/Katcats.AI-1.0.2-fixed-first-start.png"
+  },
+  "completedAt": "2026-10-24T21:41:07.782Z"
+}

@@ -1,0 +1,74 @@
+{
+  "stage": "P1",
+  "status": "passed",
+  "recordedAt": "2026-10-24T08:10:52Z",
+  "acceptance": ["A03", "A04", "A05", "A06 fixed model selection"],
+  "checks": [
+    {
+      "command": "isolated Vitest: members.host.spec.ts and team-loader.host.spec.ts",
+      "result": "36 passed, including 3 real Loader and cold-persistence tests and 2 inline Session snapshots"
+    },
+    {
+      "command": "isolated Vitest: team-model.client.spec.ts, team-forms.client.spec.tsx and team-wiring.client.spec.tsx",
+      "result": "31 passed; covers blank hero and regular composer, delayed sidebar adoption and stale navigation"
+    },
+    {
+      "command": "isolated Vitest: session-models.host.spec.ts and remote-access.host.spec.ts",
+      "result": "37 passed for the approved Session-only model selection extension"
+    },
+    {
+      "command": "package Host and Client typechecks, scoped lint and Client i18n checks",
+      "result": "passed; scoped lint reported 0 errors and 0 warnings"
+    },
+    {
+      "command": "workspace constraints, source aliases, Cordis composition and Client package metadata checks",
+      "result": "passed; private package exception is limited to this development package"
+    },
+    {
+      "command": "node run/tooling/build-team-artifacts.mjs, then node run/tooling/check-team-build.mjs",
+      "result": "7 artifact gates and 2 aggregate checks passed; 353 Client artifacts and 10 public values"
+    },
+    {
+      "command": "node run/tooling/check-session-model-scope-built.mjs",
+      "result": "3 accepted scope forms, 5 invalid scopes rejected, unauthorized caller rejected through generated strict Gateway decoding"
+    },
+    {
+      "command": "node run/tmp/katcats-p1-browser.mjs --verify",
+      "result": "fresh synthetic profile passed creation with immediate settings, edits, logical grouping and complete Web/browser cold restart; no second-click workaround; page errors 0, console errors 0",
+      "evidence": "run/tmp/katcats-p1-web-djvdCn/result.json"
+    },
+    {
+      "command": "node scripts/katcats-dev.mjs desktop; node run/tooling/inspect-p1.mjs",
+      "result": "independent desktop reopened; editable assigned-workspace composer, main/default groups/settings and creation cancellation verified"
+    },
+    {
+      "command": "own desktop private-chat, model-menu and light/dark preview checks",
+      "result": "one real DeepSeek private reply received; model choices enabled; both themes reviewed and original light preference restored"
+    }
+  ],
+  "screenshots": [
+    "output/playwright/p1-members-light.png",
+    "output/playwright/p1-members-dark.png",
+    "output/playwright/p1-create-bot-dark.png",
+    "output/playwright/p1-real-private-chat.png",
+    "output/playwright/p1-browser-first-open.png",
+    "output/playwright/p1-browser-cold-restored.png"
+  ],
+  "isolation": {
+    "desktopHome": "run/home",
+    "syntheticBrowserHome": "fresh run/tmp fixture; no real credentials or model streaming",
+    "otherProducts": "No original application, protected home, configuration or credential inspected or modified.",
+    "existingMember": "The user's existing Bot was preserved; its private history and all credential values were not inspected."
+  },
+  "resolvedChecks": [
+    "Registered each member's filesystem Workspace so blank conversations have an editable composer.",
+    "Moved settings expansion to the shared composer lifecycle to cover blank and populated conversations without timing delays.",
+    "Corrected a test-only InputState fixture after the aggregate Client check rejected it; the final normal build checks passed."
+  ],
+  "limits": [
+    "A stored follow-global value currently means no explicit override; automatic following of later global model changes remains P4.",
+    "Conversational creation, group execution and later team features have not passed their stages.",
+    "Branding remains the copied Katcat baseline until P5.",
+    "No desktop packaging, installation, release, Git commit or push performed."
+  ]
+}

@@ -1,0 +1,86 @@
+diff --git a/packages/client/ui-input-trigger/src/types.ts b/packages/client/ui-input-trigger/src/types.ts
+--- a/packages/client/ui-input-trigger/src/types.ts
++++ b/packages/client/ui-input-trigger/src/types.ts
+@@ -165,6 +165,15 @@ export interface InputTriggerSource {
+   readonly order?: number
+   /** Whether the menu renders the source-title row; defaults to true. */
+   readonly showGroupTitle?: boolean
++  /**
++   * Claim candidate discovery for this Session and trigger. When any source
++   * claims, only claiming sources contribute candidates, accept menu picks,
++   * and match a leading token on Space. Reference codecs, Enter adjudication,
++   * restoration and previews remain registered independently.
++   * @param session - stable Session identity; read only synchronous owned state.
++   * @returns whether this source participates in exclusive discovery.
++   */
++  exclusive?(session: ClientSessionContext): boolean
+   candidates(session: ClientSessionContext, req: CandidateRequest): Promise<readonly InputTriggerCandidate[]>
+   /**
+    * Synchronous breadcrumb rendered above this source's group, re-polled on
+diff --git a/packages/client/ui-input-trigger/src/client/service.ts b/packages/client/ui-input-trigger/src/client/service.ts
+--- a/packages/client/ui-input-trigger/src/client/service.ts
++++ b/packages/client/ui-input-trigger/src/client/service.ts
+@@ -100,7 +100,12 @@ export class InputTriggerService extends Service implements InputTriggerServiceC
+       actx: binding.ctx,
+       sessionId: id,
+       roster: {
+-        sources: trigger => live.sources.filter(s => s.trigger === trigger).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
++        sources: (trigger) => {
++          const sources = live.sources.filter(source => source.trigger === trigger)
++            .sort((left, right) => (left.order ?? 0) - (right.order ?? 0))
++          const claimed = sources.filter(source => source.exclusive?.({ sessionId: id }) === true)
++          return claimed.length > 0 ? claimed : sources
++        },
+         all: () => live.sources,
+       },
+     })
+diff --git a/packages/client/ui-input-trigger/src/client/controller.ts b/packages/client/ui-input-trigger/src/client/controller.ts
+--- a/packages/client/ui-input-trigger/src/client/controller.ts
++++ b/packages/client/ui-input-trigger/src/client/controller.ts
+@@ -425,11 +425,13 @@ export class InputTriggerController {
+   sourceRemoved(source: InputTriggerSource): void {
+     const state = this.menu.getSnapshot()
+     if (state.open && state.hit !== null && state.hit.trigger === source.trigger) {
++      this.stopFetch()
+       this.reduce({ type: 'source-failed', generation: state.generation, source: source.name })
+     }
+     this.lexiconOffs.get(source)?.()
+     this.lexiconOffs.delete(source)
+     this.refreshLexicon()
++    this.refreshOpenMenu()
+   }
+ 
+   /**
+@@ -444,6 +446,7 @@ export class InputTriggerController {
+     source.warm?.(projection)
+     this.watchLexicon(source, projection)
+     this.refreshLexicon()
++    this.refreshOpenMenu()
+   }
+ 
+   /** External dismiss (e.g. pointer outside the composer area). */
+@@ -460,7 +463,14 @@ export class InputTriggerController {
+     const launched = this.launcher.getSnapshot()
+     const roster = this.deps.roster.sources(this.hit.trigger)
+       .filter(source => launched === null || source.name === launched)
+-    if (roster.length === 0) return
++    if (roster.length === 0) {
++      this.stopFetch()
++      this.reduce({ type: 'close' })
++      return
++    }
++    this.stopFetch()
++    this.menu.set(seedGroups(this.menu.getSnapshot(), roster))
++    this.refreshHeaders(this.hit, roster)
+     this.fetchCandidates(this.hit, roster)
+   }
+ 
+@@ -530,7 +540,7 @@ export class InputTriggerController {
+       // open menu, so one source cannot contribute its previous catalog.
+       void Promise.resolve().then(() => {
+         if (this.disposed || this.hit !== hit || !this.menu.getSnapshot().open) return
+-        this.fetchCandidates(hit, this.deps.roster.sources(hit.trigger))
++        this.refreshOpenMenu()
+       })
+     }))
+   }

@@ -1,0 +1,115 @@
+.handoff {
+  min-width: 0;
+  margin: 12px 0;
+  padding: 12px 16px;
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  border-radius: 16px;
+  background: var(--dsw-alias-bg-module-platform);
+  color: var(--dsw-alias-label-primary);
+}
+.handoffDetails { min-width: 0; }
+.handoffDetails summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.handoffDetails summary::after { content: '+'; margin-inline-start: auto; color: var(--dsw-alias-label-tertiary); }
+.handoffDetails[open] summary::after { content: '−'; }
+.handoffDetails summary:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--dsw-alias-label-secondary);
+  outline-offset: 3px;
+}
+.handoffSource { color: var(--dsw-alias-label-tertiary); }
+.handoffBody {
+  min-width: 0;
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.65;
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+.handoffBody pre, .handoffBody table { max-width: 100%; overflow-x: auto; }
+.handoffBody pre { white-space: pre; overflow-wrap: normal; }
+.handoffBody img { max-width: 100%; height: auto; }
+.record {
+  min-width: 0;
+  margin: 8px 0 12px 40px;
+  padding: 12px 14px;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: 12px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: var(--dsw-alias-label-primary);
+}
+.participant {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.arrow { color: var(--dsw-alias-label-tertiary); }
+.status {
+  margin-inline-start: auto;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+}
+.instructions { margin-top: 8px; }
+.instructions summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  cursor: pointer;
+}
+.instructions summary::before {
+  flex: 0 0 auto;
+  color: var(--dsw-alias-label-tertiary);
+  content: '+';
+}
+.instructions[open] summary::before { content: '−'; }
+.instructions summary:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--dsw-alias-label-secondary);
+  outline-offset: 3px;
+}
+.label { flex: 0 0 auto; color: var(--dsw-alias-label-tertiary); }
+.preview {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.instructions[open] .preview { display: none; }
+.fullInstructions { margin: 7px 0 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+}
+.progress li { display: inline-flex; align-items: baseline; gap: 5px; }
+.progress time { font-variant-numeric: tabular-nums; }
+.notice { margin: 8px 0 0; overflow-wrap: anywhere; }
+@media (width < 600px) {
+  .handoff { padding: 10px 12px; }
+  .record { margin-inline-start: 0; padding: 10px 12px; }
+}

@@ -1,0 +1,80 @@
+{
+  "verifiedAt": "2026-10-24T13:39:35.629Z",
+  "status": "passed-for-scope",
+  "scope": "Katcats independent product interface details and current-group member mentions",
+  "tests": {
+    "product": {
+      "passed": 304,
+      "failed": 0,
+      "result": "../../run/tmp/katcats-interface-product-tests.json"
+    },
+    "triggerApi": {
+      "passed": 157,
+      "failed": 0,
+      "result": "../../run/tmp/katcats-exclusive-package-tests.json"
+    },
+    "presentationApi": {
+      "passed": 419,
+      "failed": 0,
+      "result": "../../run/tmp/presentation-api-buildcheck-1792848285852.json"
+    },
+    "artifactBuild": {
+      "passed": 7,
+      "failed": 0,
+      "command": "cmd /c \"node run\\tooling\\build-team-artifacts.mjs\""
+    },
+    "buildCheck": {
+      "passed": 2,
+      "failed": 0,
+      "command": "cmd /c \"node run\\tooling\\check-team-build.mjs\""
+    }
+  },
+  "browser": {
+    "passed": true,
+    "checked": [
+      "primary action creates Bots and main composer uses its dedicated guidance",
+      "plugin and automation navigation is folded initially and usage remains below the expanded rows",
+      "96px main cat without a gray background",
+      "first-chat hero uses exact provided PNG and two-line slogan",
+      "hidden list scrollbar, contextual more-below action, and custom groups before chats",
+      "ordinary, custom and group-chat sections all fold and unfold",
+      "UI move and remove-to-ordinary preserve Bot Session and files",
+      "settings start at 300px and support dragging with a 300px minimum",
+      "Bot task entry retains draft and private ownership; hidden scrollbar reaches Save",
+      "group members fold; group task and native detail preserve settings draft; group Save reachable",
+      "all three composer placeholders; group @ menus exclude global paths and isolate memberships with keyboard picks",
+      "central list contains all four authoritative tasks once, separated by private/group/unlinked owner",
+      "provided hero and slogan render in the dark theme"
+    ],
+    "result": "../../run/tmp/katcats-interface-web-FRJy6T/result.json",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "realModel": false
+  },
+  "limitations": [
+    "Group scheduling execution is not connected; this change associates and displays authoritative existing tasks only.",
+    "Original attachment, permission, preset and model controls remain available. Inline rich group tool-result projection remains separate work.",
+    "The whole repository test corpus was not rerun or declared all green."
+  ],
+  "isolation": {
+    "project": "E:/Projects/Katcats.AI",
+    "originalProductDataOrConfigurationRead": false,
+    "originalProductsChanged": false,
+    "realCredentialsReadOrPrinted": false,
+    "userDataUsedForTests": false,
+    "packagedOrInstalled": false,
+    "publishedOrPushed": false
+  },
+  "preview": {
+    "status": "updated-and-verified",
+    "workspace": "E:/Projects/Katcats.AI",
+    "newBotActionVisible": true,
+    "toolsInitiallyFolded": true,
+    "originalComposerPresent": true,
+    "userDraftBeforeRestart": {
+      "settings": false,
+      "message": false
+    },
+    "port": 50347
+  }
+}

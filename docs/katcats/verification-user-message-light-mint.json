@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "date": "2026-10-25",
+  "request": "Lighten user message green so dark text stands out.",
+  "source": "packages/api/katcats-team/src/client/user-message-theme.module.css",
+  "background": "#B7EDD6",
+  "foreground": "#202124",
+  "avatarPaletteGreen": "#10C477",
+  "contrast": 12.34110227726169,
+  "sourceUpdated": true,
+  "isolatedBuild": {
+    "passed": true,
+    "output": "run/tmp/katcats-user-mint-build-mvmtbs3a/client.js",
+    "sourceSha": "afcf1d2ac28393003ac16f235c1c59f601f5b9b212a7857a9485e1100c95c374",
+    "compiledSha": "5ea096978b6247b0a3f38bbd497818d4a41732e8eff2702d06d6b1d9b08ba31c",
+    "compiledContainsMint": true,
+    "retainsAvatarPalette": true
+  },
+  "aggregateBuildCheck": {
+    "passed": 2,
+    "failed": 0,
+    "seconds": 25.92
+  },
+  "browser": {
+    "passed": true,
+    "realModel": false,
+    "report": "run/tmp/katcats-group-chat-web-CXHBps/user-bubble-result.json",
+    "pageErrors": [],
+    "consoleErrors": []
+  },
+  "documentation": {
+    "translationPair": "passed"
+  },
+  "actualDesktop": {
+    "existingStyleUpdatedInPlace": true,
+    "background": "#b7edd6",
+    "restarted": false,
+    "taskStopped": false
+  },
+  "deployment": {
+    "liveBundleReplaced": false,
+    "reason": "Existing app has a paused group and retained unsaved settings; full bundle HMR would tear down the UI. Source and isolated compiled artifact are ready, and the active page uses the updated existing stylesheet."
+  }
+}

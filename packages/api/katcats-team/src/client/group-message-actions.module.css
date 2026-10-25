@@ -1,0 +1,2 @@
+.interrupt { white-space: nowrap; color: var(--dsw-alias-label-secondary); font-weight: 400; }
+.receipt { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 8px; padding: 4px 8px 0; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 1.5; }

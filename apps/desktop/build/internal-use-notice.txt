@@ -1,0 +1,10 @@
+小兢会计团队版
+开源与使用说明
+
+发布方：瑞华云数豆科技
+
+小兢会计团队版 是基于 DeepSeek Harness 二次开发的独立桌面智能体，提供界面、品牌及办公场景扩展，不是 DeepSeek 官方产品，也不代表底层框架由瑞华云数豆科技开发。
+
+DeepSeek Harness 使用 MIT License。其版权声明、MIT License 全文及第三方依赖声明会随应用安装在 legal 目录中。
+
+软件源码按 MIT License 分发。模型 API 调用由服务商单独计费，请自行保管 API Key，并在授予文件或服务访问权限前确认操作范围。

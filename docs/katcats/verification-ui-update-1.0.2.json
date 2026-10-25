@@ -1,0 +1,110 @@
+{
+  "checkedAt": "2026-10-25T02:37:22.718Z",
+  "status": "passed",
+  "version": "1.0.2",
+  "changes": {
+    "mainBotWelcome": "Removed introduction and duties paragraphs; illustration, tagline and composer remain.",
+    "companion": {
+      "defaultScale": 0.35,
+      "savedValidScalePreserved": true,
+      "automaticPosition": "16 DIP to the right of composer, lower edges aligned; follows measured geometry after move/resize settles.",
+      "manualDrag": "Stops automatic following until reset or next application launch.",
+      "reset": "Returns to default composer-relative position and resumes automatic following.",
+      "narrowWindow": "Moves above the right edge of the composer if the gutter cannot contain the full character.",
+      "redundantPlacement": "Same bounds do not call setContentBounds; bursts coalesce after 150ms; no new placement polling."
+    },
+    "startup": {
+      "imageDimensions": [
+        1585,
+        992
+      ],
+      "layout": "Proportional cover with centered edge cropping, preserving progress and status.",
+      "cssSha256": "296ffdc985651241a350419c48e7b643c1ad7a234f5fadcfa47444254cb21e80"
+    }
+  },
+  "validation": {
+    "welcomeAndWiring": {
+      "passed": 65,
+      "log": "run/tmp/katcats-main-tagline-tests.log"
+    },
+    "companion": {
+      "passed": 77,
+      "report": "run/tmp/katcats-companion-right35-focused.json"
+    },
+    "webDocument": {
+      "passed": 8,
+      "report": "run/tmp/katcats-startup-cover-web-document.json"
+    },
+    "build": {
+      "passed": 9,
+      "steps": [
+        "run-gates: PASS native addon (0.95s)",
+        "run-gates: PASS host compiler (2.82s)",
+        "run-gates: PASS Host bundle (27.40s)",
+        "run-gates: PASS host aggregate check (28.73s)",
+        "run-gates: PASS Desktop bundle (3.18s)",
+        "run-gates: PASS client compiler (2.26s)",
+        "run-gates: PASS client aggregate check (7.01s)",
+        "run-gates: PASS Client bundle (11.66s)",
+        "run-gates: PASS Web build (7.78s)"
+      ],
+      "log": "run/tmp/katcats-packaging-1.0.2-companion-right35.log"
+    },
+    "archive": {
+      "passed": 9,
+      "report": "run/tmp/katcats-final-archive-verification/result.json",
+      "currentMainPreloadCompanionAndStartupBytesMatch": true
+    },
+    "productUi": {
+      "passed": true,
+      "evidence": "E:/Projects/Katcats.AI/apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts/katcats-product-smoke/case-y7gAvN/",
+      "checks": [
+        "packaged product main Bot and primary create action are visible",
+        "main Bot welcome preserves the tagline without the introduction or duties paragraphs",
+        "original creation dialog saves two ordinary Bots in the Bot section",
+        "group creation saves a separate group sidebar entry and a clean group composer"
+      ],
+      "modelCalls": 0
+    },
+    "startupRender": {
+      "passed": true,
+      "viewports": [
+        [
+          1280,
+          900
+        ],
+        [
+          1920,
+          1080
+        ],
+        [
+          1440,
+          1080
+        ]
+      ],
+      "report": "run/tmp/katcats-startup-cover-7bNq2f/result.json"
+    },
+    "installerPayload": {
+      "exitCode": 0,
+      "everythingOk": true,
+      "log": "run/tmp/katcats-ui-update-1.0.2-payload-test.log"
+    }
+  },
+  "artifact": {
+    "path": "E:/Projects/Katcats.AI/output/releases/windows/1.0.2/Katcats.AI-V1.0.2-Windows-x64-20261025-ui-update.exe",
+    "bytes": 333195163,
+    "sha256": "3e5ab555592513e397e659b8f89fd63c057bff0bff74b7c5ac8ddff9f21d8671",
+    "productName": "Katcats.AI",
+    "productVersion": "1.0.2",
+    "signed": false
+  },
+  "previews": {
+    "home": "E:/Projects/Katcats.AI/output/releases/windows/1.0.2/Katcats.AI-1.0.2-ui-update-home.png",
+    "startup": "E:/Projects/Katcats.AI/output/releases/windows/1.0.2/Katcats.AI-1.0.2-ui-update-startup.png"
+  },
+  "limitations": [
+    "Installer was not executed or installed, and actual user data was not read or changed.",
+    "Product UI used the archived Host and an isolated hidden browser with zero model calls; it was not the installed Electron shell.",
+    "Startup renders used isolated Electron static documents; native companion positioning used focused geometry/IPC tests, not a hardware compositor paint-count measurement."
+  ]
+}

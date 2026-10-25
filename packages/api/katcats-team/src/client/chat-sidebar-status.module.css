@@ -1,0 +1,18 @@
+.status {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.status[data-chat-status='idle'],
+.status[data-chat-status='syncing'] {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.status[data-chat-status='completed'] {
+  color: var(--dsw-alias-state-success-primary);
+}

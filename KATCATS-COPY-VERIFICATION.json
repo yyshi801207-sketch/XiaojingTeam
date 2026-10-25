@@ -1,0 +1,43 @@
+{
+  "source": "E:\\Projects\\小兢会计0.3.3-个性版",
+  "destination": "E:\\Projects\\Katcats.AI",
+  "sourceHead": "dca89bada80b7b4852cc257a3b43ebd8dca6c85e",
+  "regularFiles": 18017,
+  "symbolicLinks": 14,
+  "bytes": 363759605,
+  "mebibytes": 346.9,
+  "excluded": [
+    {
+      "path": ".npmrc",
+      "reason": "local configuration or environment file"
+    }
+  ],
+  "additionalAssets": 155,
+  "topLevelCounts": {
+    ".agents": 4021,
+    ".github": 60,
+    "apps": 1979,
+    "benchmarks": 47,
+    "design": 141,
+    "docs": 855,
+    "examples": 3,
+    "native": 79,
+    "packages": 8375,
+    "patches": 9,
+    "python": 49,
+    "scripts": 418,
+    "snapshots": 1804,
+    "vendor": 78,
+    "website": 32,
+    "视觉资产": 14
+  },
+  "copiedAtUtc": "2026-10-24T05:48:54.642Z",
+  "hashAlgorithm": "SHA-256",
+  "verifiedFiles": 18017,
+  "sourceGitStatusUnchanged": true,
+  "sourceFilesModified": false,
+  "gitHistoryCopied": false,
+  "installedDependencies": false,
+  "applicationStarted": false,
+  "note": "Independent source snapshot only. Application identity, user-data paths and runtime isolation must be configured before launch."
+}

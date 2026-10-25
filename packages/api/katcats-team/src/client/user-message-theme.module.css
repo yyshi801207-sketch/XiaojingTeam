@@ -1,0 +1,24 @@
+/* Rebind only the original user-content bubble token; other message kinds keep their palette. */
+body[data-katcats-user-bubbles] {
+  --katcats-user-bubble: #9df29f;
+  --katcats-message-label: var(--dsw-alias-label-primary);
+}
+
+body[data-katcats-user-bubbles] :is(
+  [data-chat-flow-kind="user"],
+  [data-chat-flow-kind="steering"],
+  [data-submission-echo="true"],
+  [data-pending-steering="true"]
+) {
+  --dsw-specific-bubble: var(--katcats-user-bubble);
+  --dsw-alias-label-primary: #202124;
+}
+
+body[data-katcats-user-bubbles] :is(
+  [data-chat-flow-kind="user"],
+  [data-chat-flow-kind="steering"],
+  [data-submission-echo="true"],
+  [data-pending-steering="true"]
+) [data-message-attachments] {
+  --dsw-alias-label-primary: var(--katcats-message-label);
+}

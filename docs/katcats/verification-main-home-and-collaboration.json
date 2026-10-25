@@ -1,0 +1,89 @@
+{
+  "verifiedAt": "2026-10-24T16:48:00.683Z",
+  "status": "passed-for-scope",
+  "scope": "Default main Bot entry, welcome text, personal-team tagline, simplified composer, scoped permission settings, visible group task lifecycle and public member speech before approval",
+  "productTests": {
+    "passed": 488,
+    "failed": 0,
+    "report": "../../run/tmp/katcats-main-and-group-regression-tests.json",
+    "permissionFactoryPassed": 47,
+    "permissionSettingsPassed": 14,
+    "groupTaskAndRuntimePassed": 121,
+    "groupTaskAndRuntimeReport": "../../run/tmp/presentation-api-buildcheck-1792858747978.json"
+  },
+  "browser": {
+    "startup": {
+      "passed": 10,
+      "report": "../../run/tmp/katcats-startup-web-ZA4jj0/result.json",
+      "mainOnlyFirstOpen": true,
+      "reloadAndColdOpenDefaultMain": true,
+      "mainSessionAndHistoryPreserved": true,
+      "scopedPermissionIsolation": true
+    },
+    "approvalAndProgress": {
+      "passed": true,
+      "report": "../../run/tmp/katcats-group-chat-web-Cmaykt/progress-result.json",
+      "speechVisibleBeforeApprovalDecision": true,
+      "actualStartedTaskWithoutCompletionReceipt": true,
+      "allowDenyStopAndColdRecovery": true,
+      "originalMessageIdsPreserved": true,
+      "rootModelRequests": 0,
+      "duplicateOrRedispatchedWork": false,
+      "ownedProcessesClosed": true
+    },
+    "pageErrors": [],
+    "consoleErrors": [],
+    "realModel": false
+  },
+  "build": {
+    "artifacts": {
+      "passed": 7,
+      "failed": 0,
+      "seconds": 64.17
+    },
+    "check": {
+      "passed": 2,
+      "failed": 0,
+      "seconds": 22.08
+    }
+  },
+  "sdk": {
+    "typescriptPassed": 82,
+    "pythonPassed": 30,
+    "pythonReport": "../../run/tmp/katcats-python-sdk-1792859709560/verification.json",
+    "sharedTaskEventRetainedWithoutCreatingAssistantReply": true,
+    "recordedTextTurnSnapshot": "Windows adds diagnose-windows-sandbox-acl skill-catalog content to the existing recording; this check did not pass and no golden or normalizer was changed."
+  },
+  "persistence": {
+    "newEvent": "katcats/group-task-lifecycle",
+    "checkedRoots": 71,
+    "historyRecords": 20,
+    "unacknowledgedChanges": [],
+    "guide": "../upgrade-guide/v0.2.1-rc.2/katcats-group-task-history/guide.zh.md",
+    "existingHistoryGenerationsPreserved": true
+  },
+  "limits": [
+    "This round uses synthetic models; no new live DeepSeek API call was made.",
+    "Only actual public tool-bearing assistant text is published early; tool-only responses remain represented by task activity, without fabricated speech.",
+    "Group scheduled execution and inline rich tool-result projection remain separate work.",
+    "The existing Windows SDK recorded-snapshot difference is recorded above; whole-repository checks were not declared all green."
+  ],
+  "isolation": {
+    "workspace": "E:/Projects/Katcats.AI",
+    "otherProductFilesOrConfigurationRead": false,
+    "otherProductsChanged": false,
+    "realSecretsReadOrPrinted": false,
+    "realUserDataUsedForTests": false,
+    "packagedInstalledOrPublished": false,
+    "pythonDependencies": "Installed only inside a unique project test venv, without global installation or credential access."
+  },
+  "preview": {
+    "status": "updated-and-verified",
+    "visible": true,
+    "mainBotSelected": true,
+    "mainComposerHint": true,
+    "composerModelAndPermissionControlsAbsent": true,
+    "originalPermissionSelectorInSettings": true,
+    "report": "../../run/tmp/katcats-current-main-home-preview.json"
+  }
+}

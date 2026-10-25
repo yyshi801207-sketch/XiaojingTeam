@@ -1,0 +1,8 @@
+Katcats.AI
+Katcats.AI
+Add an API key to get started
+Configure official DeepSeek models to start using Katcats.AI
+Enter API key [password]
+Save and continue [disabled]
+Set up later
+Back to sign in

@@ -1,0 +1,65 @@
+{
+  "stage": "P2",
+  "status": "passed",
+  "recordedAt": "2026-10-24T08:29:05Z",
+  "acceptance": ["A07"],
+  "checks": [
+    {
+      "command": "isolated Vitest: members.host.spec.ts and tools.host.spec.ts",
+      "result": "51 passed; covers scoped authority, durable roles, pending recovery, invalid input, storage failures, queued cancellation, completion after accepted cancellation and unload"
+    },
+    {
+      "command": "node run/tmp/katcats-p2-loader-check.mjs",
+      "result": "6 passed; real Loader, tool runtime and JSON persistence with an explicit scripted model; two actual tool-log snapshots and request replay checks passed"
+    },
+    {
+      "command": "isolated Client Vitest: model, forms and wiring",
+      "result": "33 passed; includes appearance drafts concurrent with conversational role updates and failed-save retention"
+    },
+    {
+      "command": "focused dependency-policy tests, package typechecks, scoped lint and Client i18n",
+      "result": "58 policy tests passed; related typechecks passed; scoped lint 0 errors and 0 warnings; Client i18n 0 violations"
+    },
+    {
+      "command": "source aliases, package paths, Cordis composition, Client packages and authored Host dependency audit",
+      "result": "passed; authored dependency violations []; two conservative peer-required export classifications added, SAFE classifications unchanged"
+    },
+    {
+      "command": "node run/tooling/build-team-artifacts.mjs, then node run/tooling/check-team-build.mjs",
+      "result": "7 artifact gates and 2 aggregate checks passed; 353 Client artifacts and 10 public values"
+    },
+    {
+      "command": "node run/tmp/katcats-p2-browser.mjs",
+      "result": "fresh explicit Mock profile passed real tool execution, sidebar streaming, main selection, keyboard tool disclosure, role updates, concurrent appearance save, invalid input, cancellation before dispatch and complete cold restart; page errors 0, console errors 0",
+      "evidence": "run/tmp/katcats-p2-web-Lo76Tv/result.json"
+    },
+    {
+      "command": "node run/tooling/check-p2-real-members.mjs",
+      "result": "real separately configured DeepSeek created 写作助手 through the main Bot; quick-created 资料助理 began with an empty role and saved its own lasting role through chat; main selection and saved UI settings verified"
+    },
+    {
+      "command": "node run/tooling/check-docs.mjs",
+      "result": "four bilingual pairs and eight Markdown local-link checks passed"
+    }
+  ],
+  "screenshots": [
+    "output/playwright/p2-real-create-bot.png",
+    "output/playwright/p2-real-writer-settings.png",
+    "output/playwright/p2-real-save-role.png",
+    "output/playwright/p2-browser-cold-restored.png"
+  ],
+  "persistence": {
+    "teamDomainVersion": 1,
+    "formatChanges": "None; creation already stores the role in the existing member record.",
+    "existingMembers": "Existing names, appearances, models and conversations preserved.",
+    "developmentExamples": ["写作助手", "资料助理"]
+  },
+  "limits": [
+    "Scripted browser tests verify execution and UI, not general language understanding. Real DeepSeek checks cover two explicit identity requests.",
+    "Browser cancellation covers preparation before dispatch; Host lifecycle tests cover post-admission completion and uncertain outcomes.",
+    "Creation is not exactly-once. After an uncertain result, inspect the roster before issuing a new creation request.",
+    "Full dependency scans including in-memory generated metadata were stopped for runtime cost; the authored package audit and actual artifact generation passed.",
+    "Group execution and remaining team capabilities have not passed their stages.",
+    "No desktop packaging, installation, release, commit or push performed."
+  ]
+}
