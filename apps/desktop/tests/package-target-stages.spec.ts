@@ -1,4 +1,5 @@
 import { writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterEach, expect, it, vi } from 'vitest'
 import { packageTarget, parseDesktopPackageInvocation } from '../scripts/package-target.ts'
 import { withMacOSNotarizationProxy } from '../scripts/macos-notarization-proxy.ts'
@@ -61,6 +62,8 @@ it('requires one signing preflight before building, then records only the comple
   expect(stages.indexOf('run sign:primary-runtime --dsh')).toBeGreaterThan(stages.indexOf('run prepare:dsh --defer-runtime-smoke'))
   expect(stages.at(-1)).toBe('exec tsx scripts/smoke-packaged-runtime.ts')
   expect(copyWindowsInstallerDelivery).toHaveBeenCalledOnce()
+  expect(vi.mocked(copyWindowsInstallerDelivery).mock.calls[0]?.[0])
+    .toBe(join(desktopTargetBuildPaths('win-x64').artifacts, 'XiaojingAccountingTeam-1.0.2-win-x64.exe'))
   for (const call of run.run.mock.calls) {
     if (call[0].startsWith('run prepare:') || call[0].includes('smoke-packaged-runtime')) {
       expect(call[3].env).not.toHaveProperty('DSH_DESKTOP_WINDOWS_TOKEN_PIN')
@@ -108,6 +111,10 @@ it.each(['--unsigned', '--prepare-only'])('keeps %s hardware-free and creates no
   for (const call of run.run.mock.calls) expect(call[3].env).not.toHaveProperty('DSH_DESKTOP_WINDOWS_TOKEN_PIN')
   expect(writeFileSync).not.toHaveBeenCalled()
   expect(stages.includes('exec tsx scripts/smoke-packaged-runtime.ts --unsigned')).toBe(mode === '--unsigned')
+  if (mode === '--unsigned') {
+    expect(vi.mocked(copyWindowsInstallerDelivery).mock.calls[0]?.[0])
+      .toBe(join(desktopTargetBuildPaths('win-x64').unsignedArtifacts, 'XiaojingAccountingTeam-1.0.2-win-x64-unsigned.exe'))
+  }
 })
 
 it('packs the private team runtime into the desktop closure before resolving package dependencies', async () => {

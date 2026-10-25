@@ -40,7 +40,7 @@
 
 品牌安装界面显示小兢会计团队版和用户指定的双会计机器人插画，在 820×680 白底窗口中以最高 480×400 像素显示。短屏幕会同步缩小窗口和插画，保留标题、安装操作和底部说明。`视觉资产/双会计机器人标签替换.png` 的完整正方形 PNG 原样保存在 `build/installer-robot-source.png`；位图生成器在白底上按原比例居中，不裁切或拉伸人物。`prepare:icons` 一并生成欢迎页、小图、页眉、侧栏、底部品牌位图与原生图标。卸载侧栏使用相同的机器人插画。
 
-用户指定的绿色金尾应用 PNG `视觉资产/应用程序图标.png` 原样保存在 `build/installer-icon-source.png`。`scripts/prepare-windows-icon.ps1` 校验 SHA-256 与 1254×1254 尺寸后，原样复制到桌面 PNG 别名、浏览器标签和下载页图标。`node apps/desktop/scripts/prepare-installer-icon.mjs` 使用现有 electron-builder 图标工具生成多尺寸 `build/installer-runtime-icon.ico` 与 macOS `build/app-icon.icns`。Windows 程序、安装、卸载、内容寻址快捷方式和退出对话框使用该 ICO；打包对话框读取其相同副本 `resources/tray.ico`。原生窗口、任务栏和托盘使用 `assets/windows-icon.png`，Linux 与原生关于对话框使用相同的应用 PNG。这些准备命令不会安装或发布应用。应用直接打开 Team 工作区，由产品插件显示首次使用的 API Key 说明，不提供 DeepSeek 账号登录或原生认证欢迎窗口。
+用户指定的白色应用 PNG `new logo.png` 原样保存在 `build/installer-icon-source.png`，保留透明边缘与金色装饰。`scripts/prepare-windows-icon.ps1` 校验 SHA-256 与 1254×1254 尺寸后，原样复制到桌面 PNG 别名、产品关于页图标、安装页公司图标、浏览器标签和下载页图标。`node apps/desktop/scripts/prepare-installer-icon.mjs` 使用现有 electron-builder 图标工具生成多尺寸 `build/installer-runtime-icon.ico` 与 macOS `build/app-icon.icns`。Windows 程序、安装、卸载、内容寻址快捷方式和退出对话框使用该 ICO；打包对话框读取其相同副本 `resources/tray.ico`。原生窗口、任务栏和托盘使用 `assets/windows-icon.png`，Linux 与原生关于对话框使用相同的应用 PNG。这些准备命令不会安装或发布应用。应用直接打开 Team 工作区，由产品插件显示首次使用的 API Key 说明，不提供 DeepSeek 账号登录或原生认证欢迎窗口。
 
 程序文件安装后，安装器将图标复制到 `resources/katcat-icon-<sha256>.ico`，把现有桌面和开始菜单快捷方式的图标引用更新为这个按内容命名的路径，保留 AppUserModelId，并向 Windows Shell 发送针对快捷方式路径的更新通知。即使应用版本号不变，更换图标也会得到新路径。此步骤也适用于静默升级，不会重建上游快捷方式策略省略的链接。写入失败时提供重试，或返回退出码 `2`，不会按安装成功启动应用。此流程不重启资源管理器，也不删除系统图标缓存。`dist:win` 会生成图标并运行 `verify:installer-shortcuts`；该检查使用隔离的临时快捷方式编译实际更新逻辑，验证图标变更、重复安装、省略桌面链接和图标文件锁定失败。
 

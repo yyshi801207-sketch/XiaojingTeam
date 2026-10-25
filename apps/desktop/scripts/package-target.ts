@@ -28,7 +28,9 @@ import { copyWindowsInstallerDelivery } from './windows-installer-delivery.ts'
 
 const APP_ROOT = resolve(import.meta.dirname, '..')
 const REPOSITORY_ROOT = resolve(APP_ROOT, '..', '..')
-const { appId: PRODUCT_APP_ID, productName: PRODUCT_NAME, productVersion: PRODUCT_VERSION } = (() => {
+const {
+  appId: PRODUCT_APP_ID, productName: PRODUCT_NAME, productVersion: PRODUCT_VERSION, executableName: PRODUCT_EXECUTABLE_NAME,
+} = (() => {
   const productIdentityValue: unknown = JSON.parse(readFileSync(join(APP_ROOT, 'identity.json'), 'utf8'))
   if (typeof productIdentityValue !== 'object' || productIdentityValue === null || Array.isArray(productIdentityValue)) {
     throw new Error('desktop package: identity.json must contain an object')
@@ -37,12 +39,14 @@ const { appId: PRODUCT_APP_ID, productName: PRODUCT_NAME, productVersion: PRODUC
   const appId = PRODUCT_IDENTITY.appId
   const productName = PRODUCT_IDENTITY.productName
   const productVersion = PRODUCT_IDENTITY.productVersion
+  const executableName = PRODUCT_IDENTITY.executableName
   if (typeof appId !== 'string' || appId === ''
     || typeof productName !== 'string' || productName === ''
-    || typeof productVersion !== 'string' || productVersion === '') {
-    throw new Error('desktop package: identity.json must declare appId, productName, and productVersion')
+    || typeof productVersion !== 'string' || productVersion === ''
+    || typeof executableName !== 'string' || executableName === '') {
+    throw new Error('desktop package: identity.json must declare appId, productName, productVersion, and executableName')
   }
-  return { appId, productName, productVersion }
+  return { appId, productName, productVersion, executableName }
 })()
 const WINDOWS_SIGNING_ENV_PREFIX = 'DSH_DESKTOP_WINDOWS_'
 const WINDOWS_SIGNING_ENV_NAMES = [
@@ -549,7 +553,7 @@ export async function packageTarget(
   }
   if (target.platform === 'win32' && !invocation.directory) {
     const version = resolveDesktopBuildVersion(environment, PRODUCT_VERSION)
-    const source = join(artifactsRoot, `deepseek-harness-${version}-win-x64${invocation.unsigned ? '-unsigned' : ''}.exe`)
+    const source = join(artifactsRoot, `${PRODUCT_EXECUTABLE_NAME}-${version}-win-x64${invocation.unsigned ? '-unsigned' : ''}.exe`)
     const delivery = await copyWindowsInstallerDelivery(source,
       join(REPOSITORY_ROOT, 'output', 'releases', 'windows', version), version, createdAt)
     console.log(`小兢会计团队版 installer: ${delivery}`)

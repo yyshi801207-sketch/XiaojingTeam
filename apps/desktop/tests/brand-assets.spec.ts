@@ -10,7 +10,7 @@ const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex')
 
 describe('approved Team application and installation artwork', () => {
   it('retains the supplied PNG bytes across native application aliases', () => {
-    expect(hash(icon)).toBe('2346537b7b2a2b19edb0da53fa7d689b7cd2521470e6fd8dd1cc5d15d895e7bb')
+    expect(hash(icon)).toBe('8100ec52214d60d470370d43b871fcf531939c8a47a1da1294b97a8a2e9ac9d8')
     expect(hash(robots)).toBe('3e836ebf876836ce8174ad4c2c449e07b386945901e2bbd0568ab1c49400a7b5')
     for (const path of ['build/app-icon.png', 'build/installer-company-source.png', 'assets/windows-icon.png',
       'assets/app-icon.png', 'assets/taskbar-icon.png', 'resources/icon.png', 'resources/icon-windows.png', 'resources/icon-macos.png']) {
@@ -18,7 +18,7 @@ describe('approved Team application and installation artwork', () => {
     }
   })
 
-  it('provides transparent green Windows icons at taskbar, shortcut and installer sizes', async () => {
+  it('provides the white Team artwork with transparency at taskbar, shortcut and installer sizes', async () => {
     const entries = unpackIco(readFileSync(new URL('../build/installer-runtime-icon.ico', import.meta.url)))
     expect(entries.map(entry => entry.size)).toEqual([16, 24, 32, 48, 64, 128, 256])
     const samples = []
@@ -26,11 +26,12 @@ describe('approved Team application and installation artwork', () => {
       const { data, info } = await sharp(entry.png).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
       expect(info.width).toBe(entry.size)
       expect(info.height).toBe(entry.size)
-      expect(data[3]).toBe(0)
+      expect(data[3]).toBeLessThanOrEqual(8)
       const at = (Math.floor(entry.size / 2) * entry.size + Math.floor(entry.size / 8)) * 4
       const rgba = [...data.subarray(at, at + 4)]
-      expect(rgba[1]).toBeGreaterThan(140)
-      expect(rgba[0]).toBeLessThan(40)
+      expect(rgba[0]).toBeGreaterThan(230)
+      expect(rgba[1]).toBeGreaterThan(230)
+      expect(rgba[2]).toBeGreaterThan(230)
       expect(rgba[3]).toBeGreaterThan(240)
       samples.push({ size: entry.size, rgba, sha256: hash(entry.png) })
     }

@@ -36,7 +36,7 @@ Run local commands from the repository root after installing locked dependencies
 
 ## Release versions
 
-After a Windows installer passes the packaged runtime checks, the package command copies it to `output/releases/windows/<version>/Katcat.AI-V<version>-Windows-x64-<YYYYMMDD>.exe`. The date is the packaging start date in Asia/Shanghai; another build of the same version on that date replaces that delivery copy. Internal update artifacts retain their existing names.
+After a Windows installer passes the packaged runtime checks, the package command copies it to `output/releases/windows/<version>/小兢会计团队版-V<version>-Windows-x64-<YYYYMMDD>.exe`. The date is the packaging start date in Asia/Shanghai; another build of the same version on that date replaces that delivery copy. Internal update artifacts retain their existing names.
 
 Before each Desktop packaging run, first confirm the complete version string with the current user. Check the selected deployment, dsh base version, retained release records, and published objects, then propose the exact version for approval. Do not start packaging until the user confirms that version; the deployment setting alone does not authorize a version choice.
 
@@ -258,7 +258,7 @@ The Windows installer checks for a running application at startup and after dest
 
 Directory renames, empty-destination removal, and restoration retry Windows errors 5, 32, and 33 up to ten attempts, with 250 ms increasing delays (11.25 seconds of total waiting per operation). Other errors stop immediately. A replacement failure reports the Windows error, affected paths, and restoration outcome in `directory-failure-<timestamp>.log` beside extraction reports. If restoration fails, the installer removes unlocked staging files and preserves the backup. After reporting that failure, exit cleanup does not retry restoration. Keep the backup path named in the report and contact support before reinstalling. Silent installs save the same diagnostic without a dialog.
 
-When extraction fails, the installer writes a report with the 7-Zip result and its complete error output to the updater cache directory as `%LOCALAPPDATA%\<package-derived name>-updater\installer-logs\extract-failure-<timestamp>.log` (currently `@deepseek-aidsh-desktop-updater`) and shows the first error line with a **Copy error details** button; silent installs write only the report. Unsigned Windows builds (`DSH_DESKTOP_UNSIGNED=1`) name their installer `deepseek-harness-<version>-win-x64-unsigned.exe` so they cannot be mistaken for release artifacts.
+When extraction fails, the installer writes a report with the 7-Zip result and its complete error output to the updater cache directory as `%LOCALAPPDATA%\<package-derived name>-updater\installer-logs\extract-failure-<timestamp>.log` (currently `@deepseek-aidsh-desktop-updater`) and shows the first error line with a **Copy error details** button; silent installs write only the report. Unsigned Windows builds (`DSH_DESKTOP_UNSIGNED=1`) name their installer `XiaojingAccountingTeam-<version>-win-x64-unsigned.exe` so they cannot be mistaken for release artifacts.
 
 Windows packaging fixes the 7-Zip filter to `BCJ` for compatibility with the bundled NSIS decoder. This preserves ARM64 binaries carried by dependencies in x64 installers; automatic ARM64 filtering produces entries that this decoder cannot extract.
 

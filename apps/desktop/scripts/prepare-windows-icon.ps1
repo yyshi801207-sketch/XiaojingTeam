@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $desktopRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $sourcePath = Join-Path $desktopRoot 'build/installer-icon-source.png'
 $sourceHash = (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash
-if ($sourceHash -ne '2346537B7B2A2B19EDB0DA53FA7D689B7CD2521470E6FD8DD1CC5D15D895E7BB') {
+if ($sourceHash -ne '8100EC52214D60D470370D43B871FCF531939C8A47A1DA1294B97A8A2E9AC9D8') {
   throw 'The branded icon source changed; review the original artwork before copying Windows icons.'
 }
 Add-Type -AssemblyName System.Drawing
@@ -15,6 +15,8 @@ try {
 } finally { $sourceBitmap.Dispose() }
 foreach ($relativePath in @(
   'build/app-icon.png',
+  'build/installer-company-source.png',
+  '../../packages/client/xiaojing-product/src/client/assets/xiaojing-team-app-icon.png',
   'assets/windows-icon.png',
   'assets/app-icon.png',
   'assets/taskbar-icon.png',

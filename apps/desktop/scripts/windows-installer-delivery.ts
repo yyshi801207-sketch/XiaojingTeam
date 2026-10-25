@@ -1,4 +1,4 @@
-/** Copy completed Windows installers to the dated Katcats delivery directory. */
+/** Copy completed Windows installers to the dated Team delivery directory. */
 import { copyFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 

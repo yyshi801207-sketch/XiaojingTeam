@@ -23,88 +23,88 @@ exports[`approved Team application and installation artwork > keeps both install
   {
     "height": 57,
     "name": "installer-header.bmp",
-    "sha256": "c982c4013a0e8e1655f2d2df8f48b430434eee8eed28c16baef24f8198e3e0ec",
+    "sha256": "d067fe009bd8d11b3cca3725d1299a263870b2d80604f18db4453918db00e627",
     "width": 150,
   },
   {
     "height": 28,
     "name": "installer-company-logo.bmp",
-    "sha256": "6d253895e2bef9a8c6be0c2e868a03fc46d733e56c5a128479e76670e337828a",
+    "sha256": "948061318644041bef15abadb6e2c8488d00c08fcd74f26eed8020dab7bcbba7",
     "width": 110,
   },
 ]
 `;
 
-exports[`approved Team application and installation artwork > provides transparent green Windows icons at taskbar, shortcut and installer sizes 1`] = `
+exports[`approved Team application and installation artwork > provides the white Team artwork with transparency at taskbar, shortcut and installer sizes 1`] = `
 [
   {
     "rgba": [
-      1,
-      157,
-      129,
+      255,
+      255,
+      255,
       251,
     ],
-    "sha256": "e31401696377129b026bf6f3fb18818bf1f8261f7bb5c7b781c7787d5dca6079",
+    "sha256": "fd515e3dba5ace9ba51931bfe1c8f296711af365e5f198124a9d111b8cb73b18",
     "size": 16,
   },
   {
     "rgba": [
-      20,
-      164,
-      138,
-      254,
+      249,
+      249,
+      249,
+      253,
     ],
-    "sha256": "546d5b8e478a9089a6212ecc1d0d365381b338b35a040a1d3f1f88e13f332804",
+    "sha256": "c6ca7b4af10a0917827e654b6596c1c35345ee6c79a62732390d446a86bfaef0",
     "size": 24,
   },
   {
     "rgba": [
-      19,
-      164,
-      137,
-      255,
+      252,
+      252,
+      252,
+      254,
     ],
-    "sha256": "8b4471479b94ad193bc06fb0866e89f6e162aaed151ead46e7eddf2a11b657b3",
+    "sha256": "bba2e53cd5e681155521e05184fd9cbe098ed04ae5b2c1992c1d432b3d777a8e",
     "size": 32,
   },
   {
     "rgba": [
-      18,
-      164,
-      137,
-      255,
+      252,
+      252,
+      252,
+      254,
     ],
-    "sha256": "3cbd4b8818256ce7204496b1500b6ea36ed5a09f52bb230042ffe4ba07a4cbcc",
+    "sha256": "a54eee4f99642eef3313eaec1992e9a17d63e5966899636f76ef4a9db51f922c",
     "size": 48,
   },
   {
     "rgba": [
-      18,
-      164,
-      137,
-      255,
+      252,
+      252,
+      252,
+      254,
     ],
-    "sha256": "db4ee7488d52fce07f1e169d3264e396f804cf5e7bc196b298c15dd42c2f2ab8",
+    "sha256": "adc67e96b1f93e9a60d9da51697bc825162dade0282fac46ea97bce4f15beeb7",
     "size": 64,
   },
   {
     "rgba": [
-      18,
-      164,
-      137,
-      255,
+      252,
+      252,
+      252,
+      254,
     ],
-    "sha256": "735355b2d7ac60f5f5721da320cff1b4f07433759c856493498bdfc6df6b5e7d",
+    "sha256": "e8f3377c768e24acd3494bd66e64a5c2e62e0d8d54189a43dfc3c491f2a878d5",
     "size": 128,
   },
   {
     "rgba": [
-      18,
-      164,
-      137,
-      255,
+      252,
+      252,
+      252,
+      254,
     ],
-    "sha256": "4391207dd9714fc89a2263dcee66999173d6e750f3005342cd0c6f1b226be945",
+    "sha256": "113c61ec8fdc2de8f433999388a863b72c182ad55426b456e37fb4bd12a570bb",
     "size": 256,
   },
 ]
@@ -112,7 +112,7 @@ exports[`approved Team application and installation artwork > provides transpare
 
 exports[`approved Team application and installation artwork > ships a complete macOS icon container 1`] = `
 {
-  "sha256": "30fafb36aa3762884361aa328c6e09675363947d165e2822cc08f52d2ed2eae3",
+  "sha256": "ce96220aade8b10956d5825ffece5fb74678495bc8c05ebe74fce4cdfa74b552",
   "types": [
     "ic04",
     "ic05",

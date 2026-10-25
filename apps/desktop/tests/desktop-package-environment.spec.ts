@@ -185,7 +185,7 @@ describe('Desktop local packaging configuration', () => {
     expect(config.appId).toBe(identity.appId)
     expect(config.productName).toBe('小兢会计团队版')
     expect(config.extraMetadata.version).toBe(identity.productVersion)
-    expect(config.artifactName).toBe('小兢会计团队版-${version}-${os}-${arch}-unsigned.${ext}')
+    expect(config.artifactName).toBe(`${identity.executableName}-\${version}-\${os}-\${arch}-unsigned.\${ext}`)
     expect(readFileSync(config.mac.icon)).toEqual(readFileSync(new URL('../build/app-icon.icns', import.meta.url)))
     expect(config.mac.identity).toBe('-')
     expect(config.mac.notarize).toBe(false)

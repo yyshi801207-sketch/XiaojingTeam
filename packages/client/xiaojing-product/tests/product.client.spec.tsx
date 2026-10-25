@@ -218,7 +218,7 @@ describe('Xiaojing product UI', () => {
   it('retains the supplied Team application icon bytes in About', () => {
     const source = readFileSync('packages/client/xiaojing-product/src/client/assets/xiaojing-team-app-icon.png')
     expect(createHash('sha256').update(source).digest('hex'))
-      .toBe('2346537b7b2a2b19edb0da53fa7d689b7cd2521470e6fd8dd1cc5d15d895e7bb')
+      .toBe('8100ec52214d60d470370d43b871fcf531939c8a47a1da1294b97a8a2e9ac9d8')
     expect({ width: source.readUInt32BE(16), height: source.readUInt32BE(20), colorType: source[25] })
       .toEqual({ width: 1254, height: 1254, colorType: 6 })
   })
