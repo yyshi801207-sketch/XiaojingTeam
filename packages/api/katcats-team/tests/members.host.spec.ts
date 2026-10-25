@@ -10,7 +10,7 @@ describe('Katcats persistent members', () => {
     const first = await harness()
     const before = await first.team.snapshot()
     expect(before.bots).toHaveLength(1)
-    expect(before.bots[0]).toMatchObject({ id: mainBotId, kind: 'main', groupId: null, name: 'Katcats' })
+    expect(before.bots[0]).toMatchObject({ id: mainBotId, kind: 'main', groupId: null, name: '小兢会计' })
     expect(before.groups).toEqual([
       { id: ordinaryGroupId, name: '普通 Bot', kind: 'bots', system: true },
       { id: chatGroupId, name: '群聊', kind: 'chats', system: true },

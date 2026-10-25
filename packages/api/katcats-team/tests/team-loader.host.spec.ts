@@ -67,7 +67,7 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 
-async function loadComposition(root: string, script: ConstructorParameters<typeof MockAdapter>[0] = [], chats = false) {
+async function loadComposition(root: string, script: ConstructorParameters<typeof MockAdapter>[0] = [], chats = false, mainName?: string) {
   const configPath = join(root, 'cordis.yml')
   await writeFile(configPath, JSON.stringify([
     { name: 'cordis:typert' },
@@ -96,7 +96,7 @@ async function loadComposition(root: string, script: ConstructorParameters<typeo
     { name: 'cordis:commands' },
     { name: 'cordis:file-uploads' },
     { name: 'cordis:session-controller', config: { nativeOpen: false } },
-    { name: 'cordis:katcats-team', config: { workspaceRoot: join(root, 'workspaces') } },
+    { name: 'cordis:katcats-team', config: { workspaceRoot: join(root, 'workspaces'), ...(mainName === undefined ? {} : { mainName }) } },
     ...(chats ? [{ name: 'cordis:katcats-chats', config: { workspaceRoot: join(root, 'workspaces'), relayLimit: 8 } }] : []),
   ]))
 
@@ -858,14 +858,14 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
           "content": [
             {
               "type": "text",
-              "text": "{\\"bots\\":[{\\"bot_id\\":\\"main\\",\\"name\\":\\"Katcats\\",\\"role\\":\\"Bot 创建助手：根据用户需求创建和配置 Bot。\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"},\\"is_main\\":true},{\\"bot_id\\":\\"<Ruby>\\",\\"name\\":\\"Ruby\\",\\"role\\":\\"Draft clear articles.\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"},{\\"bot_id\\":\\"<Jade>\\",\\"name\\":\\"Jade\\",\\"role\\":\\"Check source material.\\",\\"avatar\\":{\\"shape\\":\\"round\\",\\"color\\":\\"#22BB66\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"},{\\"bot_id\\":\\"<Azure>\\",\\"name\\":\\"Azure\\",\\"role\\":\\"Review interface designs.\\",\\"avatar\\":{\\"shape\\":\\"point\\",\\"color\\":\\"#2288FF\\"},\\"is_main\\":false,\\"group_id\\":\\"<design-group>\\"},{\\"bot_id\\":\\"<Violet>\\",\\"name\\":\\"Violet\\",\\"role\\":\\"Review accessibility.\\",\\"avatar\\":{\\"shape\\":\\"fluffy\\",\\"color\\":\\"#9955FF\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"}],\\"groups\\":[{\\"group_id\\":\\"bots\\",\\"name\\":\\"未分组\\"},{\\"group_id\\":\\"<design-group>\\",\\"name\\":\\"Design team\\"}]}"
+              "text": "{\\"bots\\":[{\\"bot_id\\":\\"main\\",\\"name\\":\\"小兢会计\\",\\"role\\":\\"Bot 创建助手：根据用户需求创建和配置 Bot。\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"},\\"is_main\\":true},{\\"bot_id\\":\\"<Ruby>\\",\\"name\\":\\"Ruby\\",\\"role\\":\\"Draft clear articles.\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"},{\\"bot_id\\":\\"<Jade>\\",\\"name\\":\\"Jade\\",\\"role\\":\\"Check source material.\\",\\"avatar\\":{\\"shape\\":\\"round\\",\\"color\\":\\"#22BB66\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"},{\\"bot_id\\":\\"<Azure>\\",\\"name\\":\\"Azure\\",\\"role\\":\\"Review interface designs.\\",\\"avatar\\":{\\"shape\\":\\"point\\",\\"color\\":\\"#2288FF\\"},\\"is_main\\":false,\\"group_id\\":\\"<design-group>\\"},{\\"bot_id\\":\\"<Violet>\\",\\"name\\":\\"Violet\\",\\"role\\":\\"Review accessibility.\\",\\"avatar\\":{\\"shape\\":\\"fluffy\\",\\"color\\":\\"#9955FF\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"}],\\"groups\\":[{\\"group_id\\":\\"bots\\",\\"name\\":\\"未分组\\"},{\\"group_id\\":\\"<design-group>\\",\\"name\\":\\"Design team\\"}]}"
             }
           ],
           "meta": {
             "bots": [
               {
                 "bot_id": "main",
-                "name": "Katcats",
+                "name": "小兢会计",
                 "role": "Bot 创建助手：根据用户需求创建和配置 Bot。",
                 "avatar": {
                   "shape": "classic",
@@ -967,14 +967,14 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
           "content": [
             {
               "type": "text",
-              "text": "{\\"bots\\":[{\\"bot_id\\":\\"main\\",\\"name\\":\\"Katcats\\",\\"role\\":\\"Bot 创建助手：根据用户需求创建和配置 Bot。\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"},\\"is_main\\":true},{\\"bot_id\\":\\"<Ruby>\\",\\"name\\":\\"Ruby\\",\\"role\\":\\"Draft clear articles.\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"},{\\"bot_id\\":\\"<Jade>\\",\\"name\\":\\"Jade\\",\\"role\\":\\"Check source material.\\",\\"avatar\\":{\\"shape\\":\\"round\\",\\"color\\":\\"#22BB66\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"},{\\"bot_id\\":\\"<Azure>\\",\\"name\\":\\"Azure\\",\\"role\\":\\"Review interface designs.\\",\\"avatar\\":{\\"shape\\":\\"tilt\\",\\"color\\":\\"#FF9933\\"},\\"is_main\\":false,\\"group_id\\":\\"<design-group>\\"},{\\"bot_id\\":\\"<Violet>\\",\\"name\\":\\"Violet\\",\\"role\\":\\"Review accessibility.\\",\\"avatar\\":{\\"shape\\":\\"fluffy\\",\\"color\\":\\"#9955FF\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"}],\\"groups\\":[{\\"group_id\\":\\"bots\\",\\"name\\":\\"未分组\\"},{\\"group_id\\":\\"<design-group>\\",\\"name\\":\\"Design team\\"}]}"
+              "text": "{\\"bots\\":[{\\"bot_id\\":\\"main\\",\\"name\\":\\"小兢会计\\",\\"role\\":\\"Bot 创建助手：根据用户需求创建和配置 Bot。\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"},\\"is_main\\":true},{\\"bot_id\\":\\"<Ruby>\\",\\"name\\":\\"Ruby\\",\\"role\\":\\"Draft clear articles.\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"},{\\"bot_id\\":\\"<Jade>\\",\\"name\\":\\"Jade\\",\\"role\\":\\"Check source material.\\",\\"avatar\\":{\\"shape\\":\\"round\\",\\"color\\":\\"#22BB66\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"},{\\"bot_id\\":\\"<Azure>\\",\\"name\\":\\"Azure\\",\\"role\\":\\"Review interface designs.\\",\\"avatar\\":{\\"shape\\":\\"tilt\\",\\"color\\":\\"#FF9933\\"},\\"is_main\\":false,\\"group_id\\":\\"<design-group>\\"},{\\"bot_id\\":\\"<Violet>\\",\\"name\\":\\"Violet\\",\\"role\\":\\"Review accessibility.\\",\\"avatar\\":{\\"shape\\":\\"fluffy\\",\\"color\\":\\"#9955FF\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"}],\\"groups\\":[{\\"group_id\\":\\"bots\\",\\"name\\":\\"未分组\\"},{\\"group_id\\":\\"<design-group>\\",\\"name\\":\\"Design team\\"}]}"
             }
           ],
           "meta": {
             "bots": [
               {
                 "bot_id": "main",
-                "name": "Katcats",
+                "name": "小兢会计",
                 "role": "Bot 创建助手：根据用户需求创建和配置 Bot。",
                 "avatar": {
                   "shape": "classic",
@@ -1080,7 +1080,7 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
     expect(await execute(ctx, writer, 'list_bots', {})).toMatchObject({ isError: true,
       error: { info: { code: 'UNKNOWN_TOOL' } } })
     expect(await execute(ctx, main, 'list_bots', {})).toMatchObject({ isError: false,
-      value: { bots: [{ name: 'Katcats' }, { name: 'Writer' }],
+      value: { bots: [{ name: '小兢会计' }, { name: 'Writer' }],
         groups: [{ group_id: ordinaryGroupId, name: '未分组' }] } })
     const empty = await execute(ctx, writer, 'set_own_role', { role: ' ' })
     expect(empty).toMatchObject({ isError: true, error: { info: { code: 'KATCATS_TOOL_INVALID_INPUT' } } })
@@ -1142,6 +1142,61 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
     }
   })
 
+  it('renames the previous default main member and title on cold startup while retaining its conversation and files', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'xiaojing-main-name-upgrade-'))
+    roots.push(root)
+    const first = await loadComposition(root, [textResponse('Earlier conversation.')], false, 'Katcats')
+    const main = (await first.ctx.katcatsTeam.snapshot()).bots[0]!
+    const ordinary = (await first.ctx.katcatsTeam.createBot({ name: 'Katcats' })).bot
+    await send(requireAgent(first.ctx, main), 'Keep this conversation.')
+    const canary = join(main.workDir, 'keep.txt')
+    await writeFile(canary, 'Keep the existing main Bot files.')
+    const before = await first.ctx.katcatsTeam.snapshot()
+    const history = await first.ctx.sessionController.inspect(main.sessionId)
+    const ordinaryHistory = await first.ctx.sessionController.inspect(ordinary.sessionId)
+    await first.ctx.fiber.dispose()
+    contexts.delete(first.ctx)
+
+    const second = await loadComposition(root, [textResponse('New identity.')])
+    const after = await second.invoke('snapshot')
+    expect(after).toEqual({ ...before, revision: before.revision + 2,
+      bots: before.bots.map(bot => bot.id === mainBotId ? { ...bot, name: '小兢会计' } : bot) })
+    const migrated = await second.ctx.sessionController.inspect(main.sessionId)
+    expect(foldSessionTitle(migrated.events)?.title).toBe('小兢会计')
+    expect(migrated.events.slice(0, history.events.length)).toEqual(history.events)
+    expect(migrated.events.slice(history.events.length).map(event => event.type)).toEqual(['session/end-seed', 'session/title'])
+    expect(await readFile(canary, 'utf8')).toBe('Keep the existing main Bot files.')
+    expect((await second.ctx.sessionController.inspect(ordinary.sessionId)).events).toEqual(ordinaryHistory.events)
+    await send(requireAgent(second.ctx, main), 'What is your name now?')
+    const identity = second.adapter.requests[0]!.messages.filter(message => message.role === 'system')
+      .flatMap(message => message.content.filter(part => part.type === 'text').map(part => part.text))
+    expect(identity.at(-1)).toContain('You are 小兢会计, a member of the Katcats.AI team.')
+    const migratedHistory = await second.ctx.sessionController.inspect(main.sessionId)
+    await second.ctx.fiber.dispose()
+    contexts.delete(second.ctx)
+
+    const third = await loadComposition(root)
+    expect(await third.invoke('snapshot')).toEqual(after)
+    expect(third.ctx.agents.list()).toEqual([])
+    expect((await third.ctx.sessionController.inspect(main.sessionId)).events).toEqual(migratedHistory.events)
+  })
+
+  it('retains a custom main name and its unchanged Session when the product default changes', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'xiaojing-custom-main-name-'))
+    roots.push(root)
+    const first = await loadComposition(root, [], false, '我的财务主管')
+    const before = await first.ctx.katcatsTeam.snapshot()
+    const main = before.bots[0]!
+    const history = await first.ctx.sessionController.inspect(main.sessionId)
+    await first.ctx.fiber.dispose()
+    contexts.delete(first.ctx)
+
+    const second = await loadComposition(root)
+    expect(await second.invoke('snapshot')).toEqual(before)
+    expect(second.ctx.agents.list()).toEqual([])
+    expect((await second.ctx.sessionController.inspect(main.sessionId)).events).toEqual(history.events)
+  })
+
   it('creates and edits private members whose directory and Session titles survive a cold reload', async () => {
     const root = await mkdtemp(join(tmpdir(), 'katcats-team-loader-'))
     roots.push(root)
@@ -1153,7 +1208,7 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
       { id: chatGroupId, name: '群聊', kind: 'chats', system: true },
     ])
     expect(baseline.bots).toEqual([expect.objectContaining({
-      id: mainBotId, kind: 'main', name: 'Katcats', groupId: null,
+      id: mainBotId, kind: 'main', name: '小兢会计', groupId: null,
       avatar: { shape: 'classic', color: '#FF2849' }, model: { kind: 'follow-global' },
     })])
     await expectWorkspaceForBot(first.ctx, baseline.bots[0]!)

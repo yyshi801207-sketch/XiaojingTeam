@@ -259,14 +259,14 @@ describe('Katcats Agent-scoped member tools', () => {
               "shape": "classic",
             },
             "bot_id": "main",
-            "name": "Katcats",
+            "name": "小兢会计",
             "role": "Coordinate the team.",
           },
           "result": {
             "card": "generic",
             "content": [
               {
-                "text": "Saved your role for Katcats (main):
+                "text": "Saved your role for 小兢会计 (main):
         Coordinate the team.
         Saved avatar: classic #FF2849.",
                 "type": "text",
@@ -277,7 +277,7 @@ describe('Katcats Agent-scoped member tools', () => {
           "system": [
             "You are an AI agent powered by DeepSeek Harness.
 
-        You are Katcats, a member of the Katcats.AI team.
+        You are 小兢会计, a member of the Katcats.AI team.
         Coordinate the team.
         Your product scope is creating and configuring Bots. You do not automatically join or manage group chats. Do not claim to have created a group or delegated group work. These limits take precedence over a saved role that describes broader coordination.
 

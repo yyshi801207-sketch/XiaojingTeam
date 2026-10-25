@@ -40,7 +40,7 @@ declare module '@deepseek-ai/cordis' {
 export interface Config {
   /** Absolute root containing the team's default Bot working directories. */
   readonly workspaceRoot: string
-  /** Display name assigned to the main Bot when the team is first created. */
+  /** Initial main Bot name; the current product default also replaces the previous default at startup. */
   readonly mainName: string
   /** Initial saved responsibility of the main Bot. */
   readonly mainRole: string
@@ -55,7 +55,7 @@ export class KatcatsTeam extends TypertRemoteService {
   static inject = ['storageDomain', 'sessionController', 'sessionTitle', 'sessionPersistence', 'agents', 'sessions', 'systemPrompt', 'workspaceRegistry', 'tools', 'agentDefaultModel']
   static Config: z<Config> = z.object({
     workspaceRoot: z.string().required(),
-    mainName: z.string().default('Katcats'),
+    mainName: z.string().default('小兢会计'),
     mainRole: z.string().default('Bot 创建助手：根据用户需求创建和配置 Bot。'),
     ordinaryGroupName: z.string().default('普通 Bot'),
     chatGroupName: z.string().default('群聊'),
@@ -113,7 +113,14 @@ export class KatcatsTeam extends TypertRemoteService {
     await this.serialize(async () => {
       await this.finishPending()
       await this.finishPendingRename()
-      if (this.state.bots.some(bot => bot.id === mainBotId)) return
+      const main = this.state.bots.find(bot => bot.id === mainBotId)
+      if (main !== undefined) {
+        if (main.name === 'Katcats' && this.config.mainName === '小兢会计') {
+          await this.commit({ ...this.state, pendingRename: { ...main, name: this.config.mainName } })
+          await this.finishPendingRename()
+        }
+        return
+      }
       const groups: readonly TeamGroup[] = [
         { id: ordinaryGroupId, name: this.config.ordinaryGroupName, kind: 'bots', system: true },
         { id: chatGroupId, name: this.config.chatGroupName, kind: 'chats', system: true },

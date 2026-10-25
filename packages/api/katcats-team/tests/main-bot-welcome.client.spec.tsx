@@ -34,20 +34,20 @@ describe('main Bot welcome', () => {
       paragraphs: container.querySelectorAll('p').length }).toMatchInlineSnapshot(`
         {
           "paragraphs": 0,
-          "tagline": "Katcats，Your personal AI team.",
+          "tagline": "小兢会计，您的AI财务团队",
         }
       `)
     expect(container.querySelector('img, svg, textarea')).toBeNull()
   })
 
-  it('keeps the same tagline in English without the removed paragraphs', () => {
+  it('shows the English finance-team tagline without the removed paragraphs', () => {
     const { props } = setup(main.sessionId, en)
     const { container } = render(<MainBotWelcome {...props} />)
     expect({ tagline: container.querySelector('h2')?.textContent,
       paragraphs: container.querySelectorAll('p').length }).toMatchInlineSnapshot(`
         {
           "paragraphs": 0,
-          "tagline": "Katcats，Your personal AI team.",
+          "tagline": "Xiaojing Accounting, your AI finance team.",
         }
       `)
   })
@@ -64,7 +64,7 @@ describe('main Bot welcome', () => {
     const { container } = render(<MainBotWelcome {...props} />)
     expect(container.textContent).toBe('')
     act(() => { directory.set({ phase: 'ready', snapshot, catalog: null }) })
-    expect(container.querySelector('h2')?.textContent).toBe('Katcats，Your personal AI team.')
+    expect(container.querySelector('h2')?.textContent).toBe('小兢会计，您的AI财务团队')
     act(() => { directory.set({ phase: 'ready', snapshot: { ...snapshot,
       bots: [{ ...main, sessionId: 'replacement-main' as SessionId }, ordinary] }, catalog: null }) })
     expect(container.textContent).toBe('')
