@@ -256,7 +256,7 @@ export function createElectronBuilderConfig(
     win: {
       icon: fileURLToPath(new URL('../build/installer-runtime-icon.ico', import.meta.url)),
       executableName: identity.executableName,
-      legalTrademarks: 'Katcats是瑞华云数豆科技内部使用品牌',
+      legalTrademarks: `${identity.productName}是瑞华云数豆科技内部使用品牌`,
       forceCodeSigning: !unsigned,
       signtoolOptions: {
         sign: windowsSigner,

@@ -14,7 +14,7 @@ The startup uses the supplied 1584×993 website-green PNG without re-encoding. I
 
 Automation tasks are built into the Web application hosted by Desktop. New profiles select the shipped Web bundles without the retired experimental Schedule bundle. The Host's standard profile loader removes that retired declaration during upgrades while retaining other bundle selections, installed dependencies, user metadata, and explicit plugin overrides. Existing tasks remain; a new installation does not create or execute tasks by itself.
 
-The independent 小兢会计团队版 copy uses 小兢会计团队版 for native application menus, About panels, window titles, tray entries, and localized dialogs. Its installation identity and permanent data paths are separate from Katcat.AI. The development process keeps its separate 小兢会计团队版 Dev identity.
+The independent 小兢会计团队版 copy uses 小兢会计团队版 for native application menus, About panels, window titles, tray entries, and localized dialogs. Windows executable and installer descriptions and trademark metadata identify the Team product. Its installation identity and permanent data paths are separate from Katcat.AI. The development process keeps its separate 小兢会计团队版 Dev identity.
 
 <a id="permanent-installer-identity"></a>
 ## Permanent installer identity
