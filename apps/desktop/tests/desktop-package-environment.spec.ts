@@ -7,7 +7,9 @@ import { loadDesktopPackageEnvironment, localMacOSPackageEnvironment, validateDe
 import { resolveWindowsPackageSettings } from '../scripts/windows-package-settings.mjs'
 
 const WINDOWS = { platform: 'win32', arch: 'x64' } as const
-const identity = JSON.parse(readFileSync(new URL('../identity.json', import.meta.url), 'utf8')) as { appId: string; productVersion: string }
+const identity = JSON.parse(readFileSync(new URL('../identity.json', import.meta.url), 'utf8')) as {
+  appId: string; productVersion: string; executableName: string
+}
 const MACOS = { platform: 'darwin', arch: 'arm64' } as const
 const POLICY = { DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN: 'https://policy.example.com',
   DSH_DESKTOP_MANDATORY_UPDATE_CONFIG: JSON.stringify({ allowedAuthOrigins: ['https://login.example.com'] }) }
