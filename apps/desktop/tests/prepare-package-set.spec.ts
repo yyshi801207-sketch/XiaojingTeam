@@ -135,6 +135,20 @@ function tarballFixture(overrides: Record<string, string | null>) {
 }
 
 describe('private Katcats packed module imports', () => {
+  it('validates embedded-image bundles larger than the child-process capture default', () => {
+    const image = `export const image = 'data:image/png;base64,${'A'.repeat(2 * 1024 * 1024)}'\n`
+    const { input, output } = tarballFixture({ 'lib/client.js': image })
+    expect(() => { prepareDesktopPackageSet([input], output) }).not.toThrow()
+    expect(existsSync(join(output, 'desktop-packages.json'))).toBe(true)
+  })
+
+  it('still rejects missing imports after a large embedded image', () => {
+    const image = `export const image = 'data:image/png;base64,${'A'.repeat(2 * 1024 * 1024)}'\n`
+    const { input, output } = tarballFixture({ 'lib/client.js': `${image}import './missing-after-image.js'\n` })
+    expect(() => { prepareDesktopPackageSet([input], output) }).toThrow(/missing-after-image\.js/u)
+    expect(readFileSync(join(output, 'sentinel.txt'), 'utf8')).toBe('existing package set')
+  })
+
   it.each([
     { name: 'entry chunk', files: { 'lib/index.js': "import './memory-deadbeef.js'" } },
     { name: 'transitive re-export', files: { 'lib/index.js': "import './shared-123.js'", 'lib/shared-123.js': "export { value } from './leaf-456.js'" } },

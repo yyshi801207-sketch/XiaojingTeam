@@ -1,6 +1,7 @@
 /** Select and copy the local npm tarball closures that supply Desktop dsh and its private Host. */
 
 import { createHash } from 'node:crypto'
+import { execFileSync } from 'node:child_process'
 import {
   constants,
   copyFileSync,
@@ -152,7 +153,10 @@ function assertKatcatsTeamModuleClosure(packed: PackedDesktopPackage): void {
   for (const file of pending) {
     if (visited.has(file)) continue
     visited.add(file)
-    const source = capture('tar', ['-xOzf', basename(packed.tarball), file], { cwd: dirname(packed.tarball) })
+    // Embedded image data can exceed the default child-process output limit.
+    const source = execFileSync('tar', ['-xOzf', basename(packed.tarball), file], {
+      cwd: dirname(packed.tarball), encoding: 'utf8', maxBuffer: Number.POSITIVE_INFINITY,
+    })
     for (const imported of ts.preProcessFile(source, true, true).importedFiles) {
       if (!imported.fileName.startsWith('.')) continue
       const target = posix.normalize(posix.join(posix.dirname(file), imported.fileName))
