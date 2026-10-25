@@ -499,6 +499,7 @@ export const InputBar = memo(function InputBar({
                 type="button"
                 className={css.primary}
                 aria-label={primaryLabel}
+                data-composer-primary
                 disabled={primaryDisabled}
                 onMouseDown={keepFocus}
                 onClick={onPrimary}

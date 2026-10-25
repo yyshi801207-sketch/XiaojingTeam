@@ -2,9 +2,10 @@
 
 English | [中文](README.zh.md)
 
-This repository is the independent development baseline for 小兢会计团队版. It contains the complete application source, workspace dependencies, desktop runtime preparation, and packaging tools. Team brand graphics are pending; copied artwork does not select another product's data or installation.
+This repository is the independent development baseline for 小兢会计团队版. It contains the complete application source, workspace dependencies, desktop runtime preparation, and packaging tools. Team branding uses the supplied SUDO wordmark, finance robots, and Xiaojing application icon; data and installation remain isolated from other products.
 
 <a id="run"></a>
+
 <a id="run-from-source"></a>
 
 ## Develop locally

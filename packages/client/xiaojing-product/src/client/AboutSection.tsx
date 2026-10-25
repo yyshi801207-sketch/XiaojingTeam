@@ -1,9 +1,10 @@
-/** Katcat product identity and installed application versions. */
+/** Team product identity and installed application versions. */
 
 import type { ReactNode } from 'react'
 import type { InjectFace, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { useApplicationVersion } from './application-info.ts'
 import type { XiaojingProductKey } from './locales.ts'
+import appIcon from './assets/xiaojing-team-app-icon.png'
 import css from './AboutSection.module.css'
 
 /** Product copy injected into the About settings section. */
@@ -25,7 +26,7 @@ export function AboutSection({ t }: AboutSectionProps): ReactNode {
   return (
     <section className={css.root} data-xiaojing-about>
       <header className={css.hero}>
-        <img className={css.appIcon} src="./xiaojing-character-logo.png" alt={t('assistantAlt')} />
+        <img className={css.appIcon} src={appIcon} alt={t('assistantAlt')} />
         <h2>{t('aboutTitle')}</h2>
         <span className={css.version}>{t('version')} {t('versionPrefix')}{version}</span>
         {kernelVersion !== undefined && <span className={css.version}>{t('kernelVersion')} {kernelVersion}</span>}

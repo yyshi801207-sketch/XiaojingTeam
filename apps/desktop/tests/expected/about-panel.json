@@ -2,7 +2,7 @@
   "darwin:en-US": {
     "menu": [
       {
-        "label": "About 小兢会计团队版",
+        "label": "About Xiaojing Accounting Team",
         "role": "about"
       },
       {
@@ -10,7 +10,7 @@
       }
     ],
     "options": {
-      "applicationName": "小兢会计团队版",
+      "applicationName": "Xiaojing Accounting Team",
       "applicationVersion": "1.0.0",
       "version": "",
       "copyright": "",
@@ -55,14 +55,14 @@
   "win32:en-US": {
     "menu": [
       {
-        "label": "About 小兢会计团队版"
+        "label": "About Xiaojing Accounting Team"
       },
       {
         "type": "separator"
       }
     ],
     "options": {
-      "applicationName": "小兢会计团队版",
+      "applicationName": "Xiaojing Accounting Team",
       "applicationVersion": "1.0.0",
       "version": "",
       "copyright": "",

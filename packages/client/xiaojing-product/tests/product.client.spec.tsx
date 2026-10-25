@@ -215,17 +215,35 @@ describe('Xiaojing product UI', () => {
       .toEqual({ width: 1254, height: 1254, colorType: 6 })
   })
 
-  it.each([['zh', zh], ['en', en]] as const)('shows only product and base versions in About (%s)', (_language, dictionary) => {
+  it('retains the supplied Team application icon bytes in About', () => {
+    const source = readFileSync('packages/client/xiaojing-product/src/client/assets/xiaojing-team-app-icon.png')
+    expect(createHash('sha256').update(source).digest('hex'))
+      .toBe('2346537b7b2a2b19edb0da53fa7d689b7cd2521470e6fd8dd1cc5d15d895e7bb')
+    expect({ width: source.readUInt32BE(16), height: source.readUInt32BE(20), colorType: source[25] })
+      .toEqual({ width: 1254, height: 1254, colorType: 6 })
+  })
+
+  it.each([
+    ['zh', zh, '小兢会计团队版'],
+    ['en', en, 'Xiaojing Accounting Team'],
+  ] as const)('shows the Team app icon, localized name and installed versions in About (%s)', (_language, dictionary, name) => {
     vi.stubEnv('DSH_CLIENT_VERSION', '0.2.1-rc.2')
     const view = render(<AboutSection {...kit} close={vi.fn()} t={key => dictionary[key]} />)
-    expect(screen.getByRole('heading', { name: 'Katcats.AI' })).toBeTruthy()
-    expect(screen.getByRole('img', { name: 'Katcats.AI' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name })).toBeTruthy()
+    const icon = screen.getByRole<HTMLImageElement>('img', { name })
+    expect(icon.getAttribute('src')).toContain('xiaojing-team-app-icon.png')
+    expect(screen.queryByText('Katcats.AI')).toBeNull()
     expect(screen.getByText(dictionary.version + ' v' + XIAOJING_PRODUCT_VERSION)).toBeTruthy()
     expect(screen.getByText(dictionary.kernelVersion + ' 0.2.1-rc.2')).toBeTruthy()
     expect(screen.queryByText(dictionary.aboutDescription)).toBeNull()
     expect(screen.queryByText(dictionary.historyTitle)).toBeNull()
     expect(screen.queryAllByRole('button')).toHaveLength(0)
     expect(view.container.querySelectorAll('header > *')).toHaveLength(4)
+    expect({
+      name: screen.getByRole('heading').textContent,
+      iconLabel: icon.alt,
+      versions: Array.from(view.container.querySelectorAll('span'), span => span.textContent),
+    }).toMatchSnapshot()
   })
 
   it('does not invent a DSH version when build metadata is absent', () => {
@@ -264,6 +282,11 @@ describe('Xiaojing product UI', () => {
   })
 
   it('activates every product occupant and theme only for the Xiaojing build profile', async () => {
+    const theme = readFileSync('packages/client/xiaojing-product/src/client/theme.module.css', 'utf8')
+    expect(theme).toContain(`body[data-xiaojing-product] [data-composer-primary] {
+  --dsw-alias-button-info-fill: #12a489;
+  --dsw-alias-button-info-hover: #0f8b75;
+}`)
     expect(inject).toEqual(['slots', 'locale'])
     vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'official')
     const official = await bench()
@@ -284,9 +307,9 @@ describe('Xiaojing product UI', () => {
     await fiber.await()
     for (const hole of HOLES) expect(product.slots.entries(hole)).toHaveLength(1)
     product.ctx.locale.setLocale('zh')
-    expect(resolveSlotLabel(product.slots.entriesOfSlot('settings.section')[0]?.options.label)).toBe('关于 Katcats.AI')
+    expect(resolveSlotLabel(product.slots.entriesOfSlot('settings.section')[0]?.options.label)).toBe('关于 小兢会计团队版')
     product.ctx.locale.setLocale('en')
-    expect(resolveSlotLabel(product.slots.entriesOfSlot('settings.section')[0]?.options.label)).toBe('About Katcats.AI')
+    expect(resolveSlotLabel(product.slots.entriesOfSlot('settings.section')[0]?.options.label)).toBe('About Xiaojing Accounting Team')
     expect(document.body.dataset.xiaojingProduct).toBe('')
     expect(document.documentElement.dataset.dshClientBuildProfile).toBe('xiaojing')
     expect(themeColor.content).toBe('rgb(251, 253, 253)')

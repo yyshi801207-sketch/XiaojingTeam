@@ -70,6 +70,12 @@ export function prepareRun(root) {
   for (const name of ['npm', 'pnpm-store', 'corepack', 'electron', 'electron-builder', 'playwright', 'puppeteer', 'uv']) {
     paths[name] = directory(root, join(paths.cache, name))
   }
+  // Downloaded builder tools are CommonJS .js files beneath this ESM repository.
+  const builderManifest = localPath(root, join(paths['electron-builder'], 'package.json'))
+  if (existsSync(builderManifest) && lstatSync(builderManifest).isSymbolicLink()) {
+    throw new Error(`Tool cache package metadata must not be a link: ${builderManifest}`)
+  }
+  writeFileSync(builderManifest, '{"private":true,"type":"commonjs"}\n')
   for (const name of ['config', 'data', 'state', 'runtime']) paths[`xdg-${name}`] = directory(root, join(paths.user, name))
   paths.appData = directory(root, join(paths.user, 'AppData', 'Roaming'))
   paths.localAppData = directory(root, join(paths.user, 'AppData', 'Local'))

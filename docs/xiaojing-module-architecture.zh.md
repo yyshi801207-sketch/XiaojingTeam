@@ -13,7 +13,7 @@
 | 运行时装配 | Cordis profile、bundle 和配置行 | [`packages/boot/app-boot/src/profile.ts`](../packages/boot/app-boot/src/profile.ts)、[`packages/bundle/web-app/cordis.patch.yml`](../packages/bundle/web-app/cordis.patch.yml) |
 | Xiaojing Client 选择器 | `DSH_CLIENT_BUILD_PROFILE=xiaojing` | [`scripts/client-build-environment.ts`](../scripts/client-build-environment.ts) |
 
-当前架构的主体是可扩展的：品牌、计费、微信、Edge、Windows 操控、桌面小兢和 Visualize 都有独立包，没有把业务实现写入 `agent-loop`。仍有三处需要明确看作集成层，而不是纯单行插件：产品配置行目前位于共享 `web-app` bundle、文件上传依赖外部包及 pnpm patch、桌面小兢的原生窗口和托盘必须由 Electron 外壳承载。
+当前架构的主体是可扩展的：品牌、计费、微信、Edge、Windows 操控和 Visualize 都有独立包，没有把业务实现写入 `agent-loop`。仍有两处需要明确看作集成层，而不是纯单行插件：产品配置行目前位于共享 `web-app` bundle、文件上传依赖外部包及 pnpm patch。
 
 ## 运行时模块架构
 
@@ -23,11 +23,11 @@
 
 | 层级 | 负责内容 | 不应负责内容 |
 |---|---|---|
-| Harness 原生核心 | Agent、Agent Loop、Session Log、工具执行、LLM、设置、凭据、附件和 API 网关 | 小兢品牌文案、数豆主题、微信协议或桌面宠物 |
+| Harness 原生核心 | Agent、Agent Loop、Session Log、工具执行、LLM、设置、凭据、附件和 API 网关 | 小兢品牌文案、数豆主题、微信协议 |
 | 中性扩展点 | UI slot 声明、工具注册、事件、Remote/RPC、fallback UI | 某个产品的具体行为和资源 |
-| 小兢 Host 插件 | 计费、微信、浏览器、Windows、桌面状态和可视化工具 | 直接操作 React 页面或 Electron BrowserWindow |
+| 小兢 Host 插件 | 计费、微信、浏览器、Windows 和可视化工具 | 直接操作 React 页面或 Electron BrowserWindow |
 | 小兢 Client 插件 | 品牌、设置栏目、侧边栏摘要、卡片和 Host 状态投影 | API Key、微信 Token、文件系统或任意 Node 能力 |
-| Electron 外壳 | 主窗口、托盘、桌面小兢窗口、受限 preload、随包运行时和安装器 | Agent 业务逻辑、计费结算和网页自动化规则 |
+| Electron 外壳 | 主窗口、托盘、受限 preload、随包运行时和安装器 | Agent 业务逻辑、计费结算和网页自动化规则 |
 | Profile / Bundle | 决定加载哪些插件及加载顺序 | 在装配文件内实现业务算法 |
 
 ## 功能插入关系
@@ -41,7 +41,6 @@
 | 微信频道 | [`packages/xiaojing/xiaojing-weixin-channel/`](../packages/xiaojing/xiaojing-weixin-channel/) | [`packages/client/ui-weixin-channel/`](../packages/client/ui-weixin-channel/) | `sessions.prompt()`、Agent/Session/Approval 事件、loopback RPC | 凭据服务、`$DSH_HOME/weixin-channel`、共享附件目录 | 同时移除 Host 与 Client 配置行 |
 | Edge 浏览器控制 | [`packages/xiaojing/xiaojing-browser-control/`](../packages/xiaojing/xiaojing-browser-control/) | [`packages/client/ui-xiaojing-browser-control/`](../packages/client/ui-xiaojing-browser-control/) | `ctx.tools`、Session 事件、loopback RPC、Playwright/扩展桥 | `$DSH_HOME/browser-control/profile`、桥接凭据 | 移除 Host 与 Client 配置行；随包扩展资源随后可删除 |
 | Windows 电脑控制 | [`packages/xiaojing/xiaojing-computer-control/`](../packages/xiaojing/xiaojing-computer-control/) | 无独立设置页 | `ctx.tools`、审批服务、受控 PowerShell helper | 无业务账本 | 移除 Host 配置行 |
-| 桌面小兢 | [`packages/xiaojing/xiaojing-desktop-companion/`](../packages/xiaojing/xiaojing-desktop-companion/) | [`packages/client/ui-desktop-companion/`](../packages/client/ui-desktop-companion/) | Session/微信状态事件、loopback SSE、受限 preload | `desktop-companion/preferences-v1.json` | 移除 Host/Client 行只会移除状态和设置；完整移除还需删除 Electron 窗口、托盘菜单和素材接线 |
 | Visualize | [`packages/xiaojing/xiaojing-visualize/`](../packages/xiaojing/xiaojing-visualize/) | 同一包的 `src/client/` | `ctx.tools`、skill provider、工具结果 renderer | Session 工具结果和工作区副本 | 移除唯一 `xiaojing-visualize` 配置行及包依赖 |
 
 ## 源码结构与插拔点
@@ -59,14 +58,12 @@ E:/Projects/sudo agent/
 │  │  ├─ ui-usage-accounting/
 │  │  ├─ ui-weixin-channel/
 │  │  ├─ ui-xiaojing-browser-control/
-│  │  ├─ ui-xiaojing-finance-clients/
-│  │  └─ ui-desktop-companion/
+│  │  └─ ui-xiaojing-finance-clients/
 │  ├─ xiaojing/
 │  │  ├─ xiaojing-finance-*/
 │  │  ├─ xiaojing-browser-control/
 │  │  ├─ xiaojing-computer-control/
 │  │  ├─ xiaojing-weixin-channel/
-│  │  ├─ xiaojing-desktop-companion/
 │  │  └─ xiaojing-visualize/
 │  ├─ bundle/web-app/presets/*.patch.yml
 │  └─ boot/app-boot/
@@ -106,7 +103,7 @@ Finance 的移除范围比整个产品 UI 更窄，但比删除单个预设文�
 
 ### 原生桌面功能
 
-桌面小兢的状态聚合和设置页是 Cordis 插件，透明窗口、托盘和动画属于 Electron。完整移除必须通过一个受控变更同时删除三处接线，不能只删 UI 组件后留下后台窗口生命周期。
+Electron 负责主窗口和系统托盘。托盘可打开应用，或通过 Host 任务检查流程退出应用。
 
 ### 第三方集成补丁
 

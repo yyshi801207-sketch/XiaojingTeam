@@ -15,8 +15,8 @@
   en: 87fb45aa768f07f3
   zh: a12419a80d7696c9
 /xiaojing-accounting-product-development-baseline-0-3-2/source-ownership:
-  en: 350771a0c0e88915
-  zh: eecec4d2e660921b
+  en: 47785bee0a5994c8
+  zh: 7844fba16311fcf7
 /xiaojing-accounting-product-development-baseline-0-3-2/ui-and-product-isolation:
   en: c6411f3a8249dab8
   zh: a96b1938d8ac6378
@@ -59,9 +59,9 @@
 /xiaojing-accounting-product-development-baseline-0-3-2/functional-plugin-isolation/weixin-channel:
   en: cb873f02c1e2a4d9
   zh: aa927ff25338033c
-/xiaojing-accounting-product-development-baseline-0-3-2/functional-plugin-isolation/desktop-companion-and-tray:
-  en: 76241510584579bd
-  zh: b1d600e9cc32af8b
+/xiaojing-accounting-product-development-baseline-0-3-2/functional-plugin-isolation/system-tray:
+  en: 7e40c34fae6105f8
+  zh: 05f15d8fb2666bca
 /xiaojing-accounting-product-development-baseline-0-3-2/functional-plugin-isolation/isolated-visualization-plugin:
   en: 695a89f4863c5a68
   zh: 4ef7143cec490d67
@@ -75,14 +75,14 @@
   en: c88cba36c3611126
   zh: b9ff163372dc2313
 /xiaojing-accounting-product-development-baseline-0-3-2/runtime-composition:
-  en: 5ad250b9fd5c04dd
-  zh: c8a0ad2a07112972
+  en: 04d88bb3354e6357
+  zh: 6c369927f4708b9b
 /xiaojing-accounting-product-development-baseline-0-3-2/data-and-in-place-upgrades:
   en: 5f82ab8ec1d8fa39
   zh: b167d8384a269a09
 /xiaojing-accounting-product-development-baseline-0-3-2/data-and-in-place-upgrades/permanent-paths:
-  en: 281f81cd5bd92ae9
-  zh: 7aede310270add19
+  en: 1ce84b96f94bdff2
+  zh: 24b6e1992b7931e0
 /xiaojing-accounting-product-development-baseline-0-3-2/data-and-in-place-upgrades/immutable-installer-identity:
   en: 6b3602496da09ff1
   zh: ccec61636077f617
@@ -105,8 +105,8 @@
   en: b638bd63adee596c
   zh: 11fe5911e2730e88
 /xiaojing-accounting-product-development-baseline-0-3-2/release-blocking-checks:
-  en: ea284c6c25146937
-  zh: 926832e0e949e66a
+  en: ce52abdc8ee28733
+  zh: fd307d24cfd26797
 /xiaojing-accounting-product-development-baseline-0-3-2/known-limits:
   en: 3af17020af0471f6
   zh: 3e1200a399489302

@@ -12,7 +12,7 @@ const webManifest = JSON.parse(await readFile(join(appRoot, '..', 'web', 'public
 if (webManifest.name !== '小兢会计团队版' || webManifest.short_name !== '小兢会计团队版') {
   throw new Error('installed browser application metadata must use 小兢会计团队版')
 }
-for (const path of ['build/internal-use-notice.txt', 'src/locale.ts', 'companion.html', 'companion.js']) {
+for (const path of ['build/internal-use-notice.txt', 'src/locale.ts']) {
   if (/Katcats?\.AI|小兢会计(?!团队版)|小兢办公/u.test(await readFile(join(appRoot, path), 'utf8'))) {
     throw new Error(`old product display text remains in ${path}`)
   }
@@ -26,7 +26,6 @@ const installerCancelHelper = await readFile(join(appRoot, 'build', 'installer-c
 const installerShutdownHelper = await readFile(join(appRoot, 'build', 'installer-shutdown-helper.ps1'), 'utf8')
 const main = await readFile(join(appRoot, 'src', 'main.ts'), 'utf8')
 const product = await readFile(join(appRoot, 'src', 'xiaojing-product.ts'), 'utf8')
-const companion = await readFile(join(appRoot, 'src', 'xiaojing-companion.ts'), 'utf8')
 const buildResourceNames = await readdir(join(appRoot, 'build'))
 const builder = createElectronBuilderConfig({
   DSH_DESKTOP_AUTO_UPDATE_ENV: 'test',
@@ -109,6 +108,8 @@ const checks = [
   ['app id', builder.appId, identity.appId],
   ['NSIS GUID', builder.nsis?.guid, identity.nsisGuid],
   ['installer icon', builder.nsis?.installerIcon, join(appRoot, 'build', 'installer-runtime-icon.ico')],
+  ['uninstaller icon', builder.nsis?.uninstallerIcon, join(appRoot, 'build', 'installer-runtime-icon.ico')],
+  ['application executable icon', builder.win?.icon, join(appRoot, 'build', 'installer-runtime-icon.ico')],
   ['product name', builder.productName, identity.productName],
   ['executable name', builder.win?.executableName, identity.executableName],
   ['shortcut name', builder.nsis?.shortcutName, identity.shortcutName],
@@ -127,8 +128,8 @@ if (JSON.stringify(builder.protocols) !== JSON.stringify([{ name: identity.produ
 }
 
 const packagedFiles = new Set(builder.files?.filter(value => typeof value === 'string') ?? [])
-for (const file of ['lib/main.js', 'lib/preload-app.cjs', 'lib/preload-xiaojing-companion.cjs',
-  'companion.html', 'companion.css', 'companion.js', 'identity.json', 'integration-patches.json',
+for (const file of ['lib/main.js', 'lib/preload-app.cjs',
+  'identity.json', 'integration-patches.json',
   'user-data-contract.json', 'assets/**/*', 'package.json']) {
   if (!packagedFiles.has(file)) throw new Error(`RC1 desktop package must include ${file}`)
 }
@@ -160,8 +161,12 @@ if (!installer.includes('!include "${BUILD_RESOURCES_DIR}\\installer-shortcuts.n
   || !shortcutInstaller.includes('SHChangeNotify(i 0x2000, i 0x1005')) {
   throw new Error('installer must refresh both shortcut icons and notify Windows before reporting success')
 }
-if (!(await readFile(join(appRoot, 'build', 'app-icon.png'))).equals(await readFile(join(appRoot, 'assets', 'windows-icon.png')))) {
-  throw new Error('Windows executable and window icons differ; run prepare:icons')
+const approvedIcon = await readFile(join(appRoot, 'build', 'installer-icon-source.png'))
+for (const path of ['build/app-icon.png', 'assets/windows-icon.png', 'assets/app-icon.png', 'assets/taskbar-icon.png',
+  'resources/icon.png', 'resources/icon-windows.png', 'resources/icon-macos.png']) {
+  if (!(await readFile(join(appRoot, path))).equals(approvedIcon)) {
+    throw new Error(`application icon alias ${path} differs from the approved source; run prepare:icons`)
+  }
 }
 if (!installer.includes('!macro customWelcomePage')
   || !installer.includes('StrCpy $isForceCurrentInstall "1"')
@@ -260,8 +265,9 @@ if (!product.includes("DSH_CLIENT_BUILD_PROFILE: 'xiaojing'")) {
 if (!product.includes('application.setAppUserModelId(XIAOJING_IDENTITY.appId)')) {
   throw new Error('Electron AppUserModelId must come from identity.json')
 }
-if (!main.includes('new XiaojingDesktopCompanion(') || !companion.includes("new URL('/xiaojing-desktop-companion/events', hostUrl)")) {
-  throw new Error('RC1 desktop startup must retain the Xiaojing tray and authenticated companion state stream')
+if (!main.includes('new DesktopTray(') || /XiaojingDesktopCompanion|companion\./u.test(main)
+  || builder.files.some(file => typeof file === 'string' && /companion/iu.test(file))) {
+  throw new Error('Team desktop must retain the application tray without the removed desktop pet')
 }
 
 console.log(`desktop identity verified for ${manifest.name} ${manifest.version}`)

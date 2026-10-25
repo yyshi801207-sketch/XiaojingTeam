@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.1-rc.2/team-desktop-pet-removal/guide.md
+/:
+  en: 3475800a3e08c05e
+  zh: 660e668ae9c50eb1
+/xiaojing-accounting-team-removes-the-desktop-pet:
+  en: 4229cc8f7c718dbb
+  zh: 1f59029fa56b299b
+/xiaojing-accounting-team-removes-the-desktop-pet/change:
+  en: 893bd3eaed8db995
+  zh: 57bcc11e70e31872
+/xiaojing-accounting-team-removes-the-desktop-pet/migration:
+  en: 9af7eb7cbad66dbd
+  zh: 06b37b08052cac5c

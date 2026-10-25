@@ -95,6 +95,11 @@ body[data-xiaojing-product] {
   background: var(--dsw-alias-bg-base);
 }
 
+body[data-xiaojing-product] [data-composer-primary] {
+  --dsw-alias-button-info-fill: #12a489;
+  --dsw-alias-button-info-hover: #0f8b75;
+}
+
 body[data-xiaojing-product][data-ds-dark-theme] {
   --dsw-specific-usage-accent: #fff;
   --dsw-alias-bg-base: #171719;

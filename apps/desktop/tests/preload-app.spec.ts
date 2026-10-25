@@ -14,7 +14,6 @@ vi.mock('electron', () => electron)
 vi.mock('../src/preload-platform.ts', () => ({ markDocumentPlatform: vi.fn(), syncWindowFullscreen: vi.fn() }))
 vi.mock('../src/preload-theme.ts', () => ({ syncNativeTheme: vi.fn() }))
 vi.mock('../src/preload-windows.ts', () => ({ syncWindowsAppearance: vi.fn() }))
-vi.mock('../src/xiaojing-companion-layout.ts', () => ({ installXiaojingCompanionLayout: vi.fn(() => vi.fn()) }))
 
 beforeEach(() => { vi.stubGlobal('process', { ...process, isMainFrame: true }) })
 afterEach(() => { document.body.replaceChildren(); vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.clearAllMocks(); vi.resetModules() })
@@ -94,6 +93,17 @@ it('exposes asynchronous boot only to the local application document', async () 
   vi.stubGlobal('location', new URL('https://other.example/'))
   await import('../src/preload-app.ts')
   expect(electron.contextBridge.exposeInMainWorld.mock.calls.some(([name]) => name === 'dshDesktopBoot')).toBe(false)
+})
+
+it('exposes only application metadata in the Xiaojing bridge and never forwards pet layout', async () => {
+  vi.stubGlobal('location', new URL('dsh-app://app/'))
+  await import('../src/preload-app.ts')
+  const api = electron.contextBridge.exposeInMainWorld.mock.calls.find(([name]) => name === 'xiaojingDesktop')?.[1] as { getApplicationInfo(): Promise<{ version: string }> }
+  expect(Object.keys(api)).toEqual(['getApplicationInfo'])
+  await api.getApplicationInfo()
+  expect(electron.ipcRenderer.invoke).toHaveBeenCalledWith(XIAOJING_DESKTOP_IPC.applicationInfo)
+  expect(electron.ipcRenderer.send).not.toHaveBeenCalled()
+  expect(Object.keys(XIAOJING_DESKTOP_IPC)).toEqual(['applicationInfo', 'openPath'])
 })
 
 it('exposes a directory picker only to the local application document', async () => {

@@ -33,22 +33,9 @@ export const DESKTOP_IPC = {
   windowsMenu: 'dsh-desktop:windows-menu',
 } as const
 
-/** Xiaojing-only IPC channels used by the local application and companion windows. */
+/** Xiaojing-only IPC channels used by the local application window. */
 export const XIAOJING_DESKTOP_IPC = {
   applicationInfo: 'xiaojing-desktop:application-info',
-  companionState: 'xiaojing-desktop:companion-state',
-  companionWake: 'xiaojing-desktop:wake-companion',
-  companionTuck: 'xiaojing-desktop:tuck-companion',
-  companionReset: 'xiaojing-desktop:reset-companion-position',
-  companionLayout: 'xiaojing-desktop:companion-layout',
-  companionScale: 'xiaojing-desktop:set-companion-scale',
-  showMain: 'xiaojing-desktop:show-main-window',
-  companionChanged: 'xiaojing-desktop:companion-state-changed',
-  companionPointer: 'xiaojing-desktop:companion-pointer',
-  companionDragStart: 'xiaojing-desktop:companion-drag-start',
-  companionDragMove: 'xiaojing-desktop:companion-drag-move',
-  companionDragEnd: 'xiaojing-desktop:companion-drag-end',
-  companionContextMenu: 'xiaojing-desktop:companion-context-menu',
   openPath: 'dsh-desktop:open-path',
 } as const
 

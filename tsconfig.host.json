@@ -418,7 +418,6 @@
     { "path": "./packages/client/xiaojing-product/tsconfig.host.json" },
     { "path": "./packages/xiaojing/xiaojing-browser-control" },
     { "path": "./packages/xiaojing/xiaojing-computer-control" },
-    { "path": "./packages/xiaojing/xiaojing-desktop-companion" },
     { "path": "./packages/xiaojing/xiaojing-finance-domain" },
     { "path": "./packages/xiaojing/xiaojing-finance-calculations" },
     { "path": "./packages/xiaojing/xiaojing-finance-documents" },

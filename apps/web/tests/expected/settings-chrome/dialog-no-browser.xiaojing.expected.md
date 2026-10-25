@@ -9,7 +9,6 @@
     - button "Channels"
     - button "Attachment storage"
     - button "Browser Control"
-    - button "Desktop Xiaojing"
     - button "About Xiaojing"
   - button "Open configuration file"
   - button "Close"

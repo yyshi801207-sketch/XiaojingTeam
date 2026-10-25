@@ -2422,7 +2422,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'katcats.settings.permission\', () => ctx.slots.register(\n      { name: \'katcats.settings.permission\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/api/katcats-team/src/client/PermissionSettings.tsx:34',
+    source: 'packages/api/katcats-team/src/client/PermissionSettings.tsx:35',
   },
   {
     key: 'main',
@@ -3576,7 +3576,6 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     declaredBy: 'an entry in \'sidebar.settings\' (client-ui-settings-general), so it exists while that entry is mounted',
     occupants: [
       'client-ui-agent-preset AgentPresetSection id \'agent-presets\'',
-      'client-ui-desktop-companion DesktopCompanionSection id \'desktop-companion\'',
       'client-ui-settings-account AccountSection id \'account\'',
       'client-ui-settings-general GeneralSection id \'general\'',
       'client-ui-settings-models ModelsSection id \'models\'',
@@ -4797,7 +4796,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'The settings seat at the sidebar foot. Declared by this package\'s\n\'sidebar\' entry; ui-settings registers its trigger row + modal panel.\nThe sidebar passes only its column state — it holds no settings state.',
     registerOptions: [],
     ownerProps: [
-      '/**\r\n * Owner share of the sidebar settings seat: the column display state the\r\n * occupant\'s trigger row must render against (wide row vs rail icon).\r\n */\r\nexport interface SidebarSettingsOwnerProps {\r\n  /** Whether the sidebar renders wide content (false = 56px rail). */\r\n  wide: boolean\r\n}',
+      '/**\r\n * Owner share of the sidebar settings seat: the column display state the\r\n * occupant\'s trigger row must render against (wide row vs rail icon).\r\n */\r\nexport interface SidebarSettingsOwnerProps {\r\n  /** Whether the sidebar renders wide content (false = 56px rail). */\r\n  wide: boolean\r\n  /** Hides only the sidebar trigger; the settings owner keeps its modal, drafts and shortcuts mounted. */\r\n  hiddenAction?: boolean\r\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [

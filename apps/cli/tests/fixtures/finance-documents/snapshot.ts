@@ -52,7 +52,6 @@ const overrides: PatchOptions[] = [
   { id: 'ui-deliverables', disabled: true },
   { id: 'xiaojing-weixin-channel', disabled: true },
   { id: 'xiaojing-browser-control', disabled: true },
-  { id: 'xiaojing-desktop-companion', disabled: true },
   { id: 'xiaojing-finance-domain', disabled: false, config: { dshHome, workspaceRoot } },
   { id: 'xiaojing-finance-calculations', disabled: false },
   { id: 'xiaojing-finance-evidence', disabled: false, config: { dshHome } },

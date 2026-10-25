@@ -45,6 +45,12 @@ function resolved(id: string, env: Record<string, string | undefined> = {}, prof
 }
 
 describe('Team product composition', () => {
+  it('omits the removed desktop pet host and settings plugins from the assembled application', () => {
+    expect(rows.filter(row => /desktop-companion/u.test(row.id))).toEqual([])
+    const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { dependencies: Record<string, string> }
+    expect(Object.keys(manifest.dependencies).filter(name => name.includes('desktop-companion'))).toEqual([])
+  })
+
   it('folds the complete footer only in the Team product presentation', () => {
     expect(resolved('ui-sidebar').config).toEqual({})
     expect(resolved('ui-sidebar', { KATCATS_PRODUCT_MODE: '1' }).config).toMatchObject({

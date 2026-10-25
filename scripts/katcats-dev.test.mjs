@@ -93,6 +93,29 @@ test('prepareRun refuses an escaping nested cache junction', t => {
   assert.throws(() => prepareRun(root), /links outside/)
 })
 
+test('downloaded builder tools execute as CommonJS inside the ESM project cache', t => {
+  const root = fixture(t)
+  writeFileSync(join(root, 'package.json'), '{"type":"module"}')
+  const paths = prepareRun(root)
+  const entry = join(paths['electron-builder'], 'icon-tool-fixture.js')
+  writeFileSync(entry, "process.stdout.write(require('node:path').basename(__filename))")
+  assert.equal(execFileSync(process.execPath, [entry], { encoding: 'utf8' }), 'icon-tool-fixture.js')
+  assert.deepEqual(JSON.parse(readFileSync(join(paths['electron-builder'], 'package.json'), 'utf8')),
+    { private: true, type: 'commonjs' })
+})
+
+test('builder cache metadata refuses links before changing their target', t => {
+  const root = fixture(t)
+  const paths = prepareRun(root)
+  const outside = join(fixture(t), 'package.json')
+  writeFileSync(outside, '{"type":"module"}')
+  const manifest = join(paths['electron-builder'], 'package.json')
+  rmSync(manifest)
+  symlinkSync(outside, manifest, 'file')
+  assert.throws(() => prepareRun(root), /leaves the|must not be a link/)
+  assert.equal(readFileSync(outside, 'utf8'), '{"type":"module"}')
+})
+
 test('tool configurations stay empty and an unexpected existing configuration fails', t => {
   const root = fixture(t)
   const paths = prepareRun(root)

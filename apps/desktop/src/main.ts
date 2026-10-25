@@ -29,7 +29,7 @@ import { DesktopPlatformView, PLATFORM_IPC, platformBounds } from './platform-vi
 import { installDesktopDirectoryPicker } from './directory-picker.ts'
 import { installMicrophonePermissions } from './microphone-permissions.ts'
 import { DesktopBackendController } from './backend-controller.ts'
-import { DESKTOP_IPC, SCHEME, assertDesktopSender, type DesktopUpdateState } from './ipc.ts'
+import { DESKTOP_IPC, XIAOJING_DESKTOP_IPC, SCHEME, assertDesktopSender, type DesktopUpdateState } from './ipc.ts'
 import { readDeviceInfo } from './device-info.ts'
 import { desktopUpdateReadyConfirmation, formatDesktopMessage, resolveDesktopLocale, resolveDesktopStartupLocale } from './locale.ts'
 import { claimDesktopSingleInstance } from './single-instance.ts'
@@ -55,7 +55,7 @@ import { DesktopUpdateDialog, type UpdateDialogOptions } from './update-dialog.t
 import { readDesktopRuntime } from './runtime-tree.ts'
 import { DesktopBrowserGuests } from './browser-guests.ts'
 import { installXiaojingOpenPath } from './xiaojing-open-path.ts'
-import { XiaojingDesktopCompanion } from './xiaojing-companion.ts'
+import { DesktopTray } from './desktop-tray.ts'
 import {
   XIAOJING_IDENTITY,
   assertXiaojingDesktopClientBuild,
@@ -368,8 +368,8 @@ async function main(): Promise<void> {
   let sessionEnding = false
   const isQuitting = (): boolean => quitting
   const currentMainWindow = (): BrowserWindow | undefined => mainWindow
-  const companion = new XiaojingDesktopCompanion({
-    getMainWindow: currentMainWindow,
+  const tray = new DesktopTray({
+    messages: () => currentDesktopLocale().messages,
     showMainWindow: () => { focusPrimaryWindow() },
     quitApplication: () => { app.quit() },
   })
@@ -428,6 +428,10 @@ async function main(): Promise<void> {
       throw new Error('dsh desktop: rejected IPC from an unowned renderer')
     }
   }
+  ipcMain.handle(XIAOJING_DESKTOP_IPC.applicationInfo, (event) => {
+    assertProductSender(event)
+    return { version: app.isPackaged ? app.getVersion() : XIAOJING_IDENTITY.productVersion }
+  })
   let navigation: { window: BrowserWindow; url: string; promise: Promise<void> } | undefined
   let startupWindow: BrowserWindow | undefined
   const navigateMain = (url: string): Promise<void> => {
@@ -459,7 +463,6 @@ async function main(): Promise<void> {
         const ready = await host.start()
         hostCookie = await authenticateWebHost(ready.url)
         hostUrl = ready.url
-        companion.connect(ready.url, hostCookie)
         welcomeBackend = await connectDesktopWelcome(ready.url, (input, init) => net.fetch(input, init), async () => (await session.defaultSession.cookies.get({ url: ready.url })).map(cookie => `${cookie.name}=${cookie.value}`).join('; '))
         if (!katcatsDevelopment) {
           analyticsEnabled = await welcomeBackend.analyticsEnabled().catch(() => false)
@@ -470,7 +473,6 @@ async function main(): Promise<void> {
         }
       },
       stop: async () => {
-        companion.disconnect()
         analyticsEnabled = false
         stopAccount?.()
         try { await host.stop(requireCleanStop) }
@@ -545,9 +547,7 @@ async function main(): Promise<void> {
     startup ??= (async () => {
       await navigateMain(applicationUrl)
       if (isQuitting() || recovery.active) return
-      await companion.install()
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Recovery can begin while the companion loads.
-      if (isQuitting() || recovery.active) return
+      tray.install()
       startupWindow = currentMainWindow()
       startupWindow?.show()
       await backend.start(async () => {
@@ -962,7 +962,7 @@ async function main(): Promise<void> {
     { type: 'separator' },
     ...hideCommands,
     process.platform === 'win32'
-      ? { label: currentDesktopLocale().messages.quitApplication, click: () => { void companion.requestQuit() } }
+      ? { label: currentDesktopLocale().messages.quitApplication, click: () => { app.quit() } }
       : { role: 'quit', ...(darwin ? { label: currentDesktopLocale().messages.quitApplication } : {}) },
   ]
   const devToolsItems: MenuItemConstructorOptions[] = [
@@ -985,9 +985,7 @@ async function main(): Promise<void> {
     : undefined
   const quitConfirmation = new DesktopQuitConfirmation({
     locale: () => locale,
-    inspect: () => backend.host?.inspectQuit().then(inspection => ({
-      ...inspection, activeTasks: inspection.activeTasks || companion.hasActiveConnection(),
-    })),
+    inspect: () => backend.host?.inspectQuit(),
     // No owner window: a hidden window stays hidden and the native box is its own top-level window.
     show: options => dialog.showMessageBox(options),
     // macOS raises the open alert with the application; Electron exposes no handle to the Windows task
@@ -1118,7 +1116,6 @@ async function main(): Promise<void> {
       else window.showInactive()
     }
     enteredWorkspace = true
-    companion.ready()
     if (raiseAfterUpdate) {
       raiseAfterUpdate = false
       window.moveTop()
@@ -1166,7 +1163,7 @@ async function main(): Promise<void> {
     if (!hasVisibleWindows) focusPrimaryWindow()
   })
   app.on('window-all-closed', () => {
-    // Xiaojing's tray owns the application after its main and companion windows are hidden.
+    // The system tray keeps the application available while its main window is hidden.
   })
   if (process.platform !== 'win32') powerMonitor.on('shutdown', () => { sessionEnding = true })
   const finishQuit = (): void => {
@@ -1180,7 +1177,8 @@ async function main(): Promise<void> {
     updateSchedule.dispose()
     updateDialog.dispose()
     mandatoryUI?.dispose()
-    void Promise.all([Promise.resolve(mandatoryPolicy?.dispose()).then(() => policyAuth?.dispose()), backend.close(), companion.dispose(),
+    tray.dispose()
+    void Promise.all([Promise.resolve(mandatoryPolicy?.dispose()).then(() => policyAuth?.dispose()), backend.close(),
       // A Platform cleanup failure is logged without cutting the remaining Host shutdown short.
       platformView.dispose().catch((error: unknown) => { console.error(error) })])
       .catch((error: unknown) => { console.error(error) }).finally(() => { app.quit() })
@@ -1191,7 +1189,7 @@ async function main(): Promise<void> {
       quitConfirmation.dispose()
       backgroundNotice?.dispose()
       updateJournal?.action('quit-requested')
-      void companion.dispose().catch((error: unknown) => { console.error(error) })
+      tray.dispose()
       updateDialog.dispose()
       mandatoryUI?.dispose()
       // Installation preparation already awaited Platform storage cleanup.

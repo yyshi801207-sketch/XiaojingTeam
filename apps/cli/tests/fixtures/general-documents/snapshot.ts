@@ -36,7 +36,6 @@ const overrides: PatchOptions[] = [
   { id: 'ui-deliverables', disabled: true },
   { id: 'xiaojing-weixin-channel', disabled: true },
   { id: 'xiaojing-browser-control', disabled: true },
-  { id: 'xiaojing-desktop-companion', disabled: true },
   { id: 'xiaojing-finance-domain', disabled: false, config: { dshHome, workspaceRoot: join(dshHome, 'finance-workspaces') } },
   { id: 'xiaojing-finance-documents', disabled: false, config: { dshHome } },
   { id: 'client-hmr', disabled: true },

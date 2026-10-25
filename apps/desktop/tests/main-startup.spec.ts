@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import type { MenuItemConstructorOptions, MessageBoxOptions } from 'electron'
-import { DESKTOP_IPC, type DesktopUpdateState } from '../src/ipc.ts'
+import { DESKTOP_IPC, XIAOJING_DESKTOP_IPC, type DesktopUpdateState } from '../src/ipc.ts'
 import { MANDATORY_IPC } from '../src/mandatory-update-ipc.ts'
 import { PLATFORM_IPC } from '../src/platform-view.ts'
 import { DesktopHostFatalError, DesktopHostUncleanExitError } from '../src/host-process.ts'
@@ -46,23 +46,6 @@ vi.mock('../src/xiaojing-product.ts', () => ({
     DSH_HOME: 'desktop-test-home',
   }),
 }))
-const companionStartup = vi.hoisted(() => ({ ready: vi.fn() }))
-vi.mock('../src/xiaojing-companion.ts', () => ({ XiaojingDesktopCompanion: class {
-  private tray: InstanceType<typeof harness.FakeTray> | undefined
-  constructor(private readonly options: { showMainWindow: () => void; quitApplication: () => void }) {}
-  install = vi.fn(async () => {
-    if (process.platform !== 'win32') return
-    this.tray = new harness.FakeTray({ path: join(harness.app.getAppPath(), 'assets', 'windows-icon.png') })
-    this.tray.on('double-click', this.options.showMainWindow)
-  })
-  ready = companionStartup.ready
-  connect = vi.fn()
-  disconnect = vi.fn()
-  hideMainWindow = vi.fn()
-  requestQuit = vi.fn(async () => { this.options.quitApplication() })
-  dispose = vi.fn(async () => { this.tray?.destroy() })
-  hasActiveConnection = vi.fn(() => false)
-} }))
 vi.mock('../src/xiaojing-open-path.ts', () => ({ installXiaojingOpenPath: vi.fn() }))
 
 const harness = await vi.hoisted(async () => {
@@ -180,7 +163,10 @@ const harness = await vi.hoisted(async () => {
     readonly ready = deferred()
     readonly exited = deferred()
     readonly stopping = deferred()
-    readonly start = vi.fn(() => { hostStarted.resolve(); return this.ready.promise.then(() => ({ url: this.url, injections: this.injections })) })
+    readonly start = vi.fn(() => {
+      hostStarted.resolve()
+      return this.ready.promise.then(() => ({ url: this.url, injections: this.injections }))
+    })
     readonly stop = vi.fn(() => {
       this.stopping.resolve()
       this.ready.reject(new Error('child stopped'))
@@ -753,7 +739,8 @@ describe('desktop main startup', () => {
     await vi.advanceTimersByTimeAsync(0)
     const zh = locale === 'zh-CN'
     expect(harness.dialog.showMessageBox).toHaveBeenLastCalledWith(expect.objectContaining({
-      type: 'info', title: zh ? '关于 小兢会计团队版' : 'About 小兢会计团队版', message: '小兢会计团队版',
+      type: 'info', title: zh ? '关于 小兢会计团队版' : 'About Xiaojing Accounting Team',
+      message: zh ? '小兢会计团队版' : 'Xiaojing Accounting Team',
       detail: `${zh ? '版本' : 'Version'} V1.0.0`, buttons: [zh ? '确定' : 'OK'], cancelId: 0,
     }))
     // A dialog that cannot open is logged, not surfaced as an unhandled rejection.
@@ -1444,6 +1431,14 @@ describe('desktop main startup', () => {
     await Promise.resolve(invoke(DESKTOP_IPC.boot))
     return host
   }
+
+  it('serves application metadata without registering pet operations or creating another window', async () => {
+    await readyWorkspace()
+    expect(invoke(XIAOJING_DESKTOP_IPC.applicationInfo, 'app')).toEqual({ version: '1.0.0' })
+    expect(() => invoke(XIAOJING_DESKTOP_IPC.applicationInfo, 'shell')).toThrow('unowned renderer')
+    expect([...harness.handlers.keys()].filter(channel => /companion/u.test(channel))).toEqual([])
+    expect(harness.windows).toHaveLength(1)
+  })
 
   it('closes the workspace transport before intentional Host shutdown', async () => {
     const host = await readyWorkspace()
@@ -2402,7 +2397,7 @@ describe('desktop main startup', () => {
     expect(signal?.aborted).toBe(true)
   })
 
-  it('shows the local startup page with the companion before preparing one Host and enters the same document once ready', async () => {
+  it('shows the local startup page with the system tray before preparing one Host and enters the same document once ready', async () => {
     await import('../src/main.ts')
     await harness.preparing.promise
     expect(harness.windows).toHaveLength(1)
@@ -2410,7 +2405,6 @@ describe('desktop main startup', () => {
     expect(window.options.show).toBe(false)
     expect(window.show).toHaveBeenCalledOnce()
     expect(harness.trays).toHaveLength(1)
-    expect(companionStartup.ready).not.toHaveBeenCalled()
     expect(window.urls).toEqual(['dsh-app://app/'])
     expect(harness.hosts).toHaveLength(0)
     const retry = invoke(DESKTOP_IPC.boot)
@@ -2434,7 +2428,6 @@ describe('desktop main startup', () => {
     expect(console.warn).toHaveBeenCalledWith('desktop login shell: /account/shell failed (timeout)')
     expect(harness.analytics).toHaveBeenCalledExactlyOnceWith({ eventName: 'desktop_app_launch', timestamp: Date.now(), attributes: {} })
     expect(harness.hosts[0]!.start).toHaveBeenCalledTimes(1)
-    expect(companionStartup.ready).toHaveBeenCalledOnce()
     expect(window.show).toHaveBeenCalledOnce()
     expect(harness.windows).toHaveLength(1)
     expect(window.urls).toEqual(['dsh-app://app/'])

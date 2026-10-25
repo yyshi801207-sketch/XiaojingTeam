@@ -1460,7 +1460,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: '@Remote async sendMessage(request: SessionPromptRequest, signal: AbortSignal): Promise<SessionPromptValue>',
-        description: 'Admit the original composer\'s message into a pure group transcript and schedule actual members. Identical request retries reuse the durable input; a changed retry is rejected before resolving uploads. Steering atomically replaces the run before cancelling and draining its owned work; explicit queue requests retain normal queuing.',
+        description: 'Admit the original composer\'s message into a pure group transcript and schedule actual members. Identical request retries reuse the durable input; a changed retry is rejected before resolving uploads. Queue requests preserve active work and pauses; stopped groups start a new run. Steering replaces the run and drains its old work.',
         parameters: [{ name: 'request', description: 'owner message targeting the group\'s exact transcript Session.' }, { name: 'signal', description: 'cancellation before durable input acceptance.' }],
         returns: 'confirmation after the owner message is flushed and any interrupted work settles; member replies arrive separately.',
       },
@@ -4284,19 +4284,6 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
-    key: 'xiaojingDesktopCompanion',
-    summary: 'Aggregate task lifecycle events and expose a loopback-only snapshot stream.',
-    description: 'Aggregate task lifecycle events and expose a loopback-only snapshot stream.',
-    methods: [
-      {
-        signature: 'snapshot(): CompanionSnapshot',
-        description: 'Return the current content-free aggregate state.',
-        parameters: [],
-        returns: 'The current redacted snapshot.',
-      },
-    ],
-  },
-  {
     key: 'xiaojingFinanceCalculations',
     summary: 'Host service consumed only by the Finance preset\'s calculation tool.',
     description: 'Host service consumed only by the Finance preset\'s calculation tool.',
@@ -6122,14 +6109,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CompactionTrigger',
     declaration: 'export type CompactionTrigger = \'pressure\' | \'context-overflow\';',
-  },
-  {
-    name: 'CompanionSnapshot',
-    declaration: 'export interface CompanionSnapshot {\n    state: CompanionState;\n    activeTaskCount: number;\n    approvalCount: number;\n    weixinOnline: boolean;\n    revision: number;\n}',
-  },
-  {
-    name: 'CompanionState',
-    declaration: 'export type CompanionState = \'idle\' | \'thinking\' | \'executing\' | \'approval\' | \'success\' | \'failure\';',
   },
   {
     name: 'CompositionRowEnablement',

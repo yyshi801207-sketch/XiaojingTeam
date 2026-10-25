@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write README.md
 /xiaojing-accounting-team:
-  en: 40a5aa9c88cb4392
-  zh: 67ec30735dd994c9
+  en: a701021d471e4496
+  zh: 0c6e4730425508b0
 /xiaojing-accounting-team/develop-locally:
   en: 338bb18149c3ec8f
   zh: c253fe74ea2c0744

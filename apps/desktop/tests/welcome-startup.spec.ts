@@ -100,13 +100,9 @@ vi.mock('electron', () => ({
   nativeImage: { createFromPath: (path: string) => ({ path }) },
 }))
 // The Windows tray relabels through Menu as well; keep the menu call counts below platform-neutral.
-vi.mock('../src/xiaojing-companion.ts', () => ({ XiaojingDesktopCompanion: class {
-  install = vi.fn(async () => {})
-  dispose = vi.fn(async () => {})
-  ready() {}
-  connect() {}
-  disconnect() {}
-  hasActiveConnection() { return false }
+vi.mock('../src/desktop-tray.ts', () => ({ DesktopTray: class {
+  install() {}
+  dispose() {}
 } }))
 vi.mock('../src/xiaojing-product.ts', async importOriginal => ({
   ...await importOriginal<typeof import('../src/xiaojing-product.ts')>(),
@@ -129,6 +125,7 @@ vi.mock('../src/project-manager.ts', () => ({ DesktopProjectManager: class {
 vi.mock('../src/host-process.ts', () => ({
   DesktopHostProcess: class {
     start = state.startHost
+    bootInjections = async () => []
     stop = state.stopHost
     fetch() {
       return Promise.resolve(Response.json({

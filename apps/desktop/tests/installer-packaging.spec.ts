@@ -13,6 +13,20 @@ vi.mock('node:child_process', async (importOriginal) => {
 })
 
 describe('installer preparation preserves application dependencies', () => {
+  it('uses the approved native icon for executable, shortcuts, installer, uninstaller and platform packages', async () => {
+    const { createElectronBuilderConfig } = await import('../scripts/electron-builder-config.mjs')
+    const config = createElectronBuilderConfig({ DSH_DESKTOP_UNSIGNED: '1' }, 'win32', 'x64')
+    const ico = new URL('../build/installer-runtime-icon.ico', import.meta.url)
+    expect(readFileSync(config.win.icon)).toEqual(readFileSync(ico))
+    expect(config.nsis.installerIcon).toBe(config.win.icon)
+    expect(config.nsis.uninstallerIcon).toBe(config.win.icon)
+    expect(config.nsis.uninstallerSidebar).toBe(config.nsis.installerSidebar)
+    expect(readFileSync(config.mac.icon).subarray(0, 4).toString()).toBe('icns')
+    expect(readFileSync(config.linux.icon)).toEqual(readFileSync(new URL('../build/installer-icon-source.png', import.meta.url)))
+    expect(readFileSync(config.extraResources.find(resource => resource.to === 'tray.ico')!.from)).toEqual(readFileSync(ico))
+    expect(readFileSync(new URL('../build/installer-shortcuts.nsh', import.meta.url), 'utf8')).toContain('installer-runtime-icon.ico')
+  })
+
   it.each([false, true])('keeps packaged source identity explicit for copy baseline=%s', async (copy) => {
     buildCommit.mockReturnValue({ commit: 'a'.repeat(40), dirty: copy, ...(copy ? { source: 'copy-baseline' } : {}) })
     try {

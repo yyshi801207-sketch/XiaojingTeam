@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { packIco, TRAY_ICON_PATHS, TRAY_ICON_SIZES, unpackIco, type IcoEntry } from '../scripts/render-tray-icon.ts'
+import { packIco, renderTrayIconEntries, TRAY_ICON_PATHS, TRAY_ICON_SIZES, unpackIco, type IcoEntry } from '../scripts/render-tray-icon.ts'
 
 /** Smallest valid-looking PNG stream: signature plus an IHDR chunk declaring the given edge. */
 function pngStub(width: number, height = width): Buffer {
@@ -39,5 +39,11 @@ describe('tray icon packaging', () => {
     const entries = unpackIco(readFileSync(TRAY_ICON_PATHS.output))
     expect(entries.map(entry => entry.size)).toEqual([...TRAY_ICON_SIZES])
     for (const entry of entries) expect(entry.png.length).toBeGreaterThan(100)
+  })
+
+  it('regenerates the tray from the approved application artwork without a separate glyph', async () => {
+    const source = readFileSync(new URL('../build/installer-icon-source.png', import.meta.url))
+    expect(readFileSync(TRAY_ICON_PATHS.source)).toEqual(source)
+    expect(await renderTrayIconEntries(source)).toEqual(unpackIco(readFileSync(TRAY_ICON_PATHS.output)))
   })
 })

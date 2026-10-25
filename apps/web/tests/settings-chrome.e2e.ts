@@ -1096,7 +1096,7 @@ describe('web e2e: settings modal and General preferences', () => {
       'plugins.expected.md',
       'dialog.xiaojing.expected.md', 'dialog-en.xiaojing.expected.md',
       'dialog-no-browser.xiaojing.expected.md',
-      'desktop-companion.xiaojing.expected.md', 'about-xiaojing.expected.md',
+      'about-xiaojing.expected.md',
       'about-release-0.3.3.expected.md', 'about-release-0.3.2.expected.md', 'about-release-0.3.1.expected.md',
       'schedule-default.xiaojing.expected.md',
     ])

@@ -14,6 +14,22 @@ describe('desktop locale dictionaries', () => {
       .toBe('plugin@1.2.3 {missing}')
   })
 
+  it('names the native About menu and dialog in the selected product language', () => {
+    expect({ en: { menu: en.aboutMenu, product: en.aboutProduct }, zh: { menu: zh.aboutMenu, product: zh.aboutProduct } })
+      .toMatchInlineSnapshot(`
+        {
+          "en": {
+            "menu": "About Xiaojing Accounting Team",
+            "product": "Xiaojing Accounting Team",
+          },
+          "zh": {
+            "menu": "关于 小兢会计团队版",
+            "product": "小兢会计团队版",
+          },
+        }
+      `)
+  })
+
   it('prefers an explicit supported choice, then the first supported system language', () => {
     expect(resolveDesktopStartupLocale('zh', ['en-US']).id).toBe('zh-CN')
     expect(resolveDesktopStartupLocale('EN', ['zh-CN']).id).toBe('en')

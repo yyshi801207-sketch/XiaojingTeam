@@ -23,7 +23,6 @@ The [product service reference](../../docs/subsystems/xiaojing.md) documents thi
 | [`xiaojing-finance-evidence/`](xiaojing-finance-evidence/README.md) | Date-aware official finance-tax evidence retrieval | `ctx.xiaojingFinanceEvidence` |
 | [`xiaojing-browser-control/`](xiaojing-browser-control/README.md) | Microsoft Edge semantic browser automation | `ctx.xiaojingBrowserControl` |
 | [`xiaojing-computer-control/`](xiaojing-computer-control/README.md) | Semantic Windows UI Automation control | `ctx.xiaojingComputerControl` |
-| [`xiaojing-desktop-companion/`](xiaojing-desktop-companion/README.md) | Sanitized desktop-companion task state and loopback SSE | `ctx.xiaojingDesktopCompanion` |
 | [`xiaojing-weixin-channel/`](xiaojing-weixin-channel/README.md) | Tencent iLink pairing, text task delivery, and durable Weixin Agent session | none |
 | [`xiaojing-visualize/`](xiaojing-visualize/README.md) | Removable visualization tool, skill, and sandboxed card | none |
 

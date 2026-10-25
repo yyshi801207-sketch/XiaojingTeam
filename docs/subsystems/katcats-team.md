@@ -46,7 +46,7 @@ binding(sessionId: SessionId): { chatId: ChatId; botId: BotId | 'root' } | undef
 /**
  * Admit the original composer's message into a pure group transcript and schedule actual members.
  * Identical request retries reuse the durable input; a changed retry is rejected before resolving uploads.
- * Steering atomically replaces the run before cancelling and draining its owned work; explicit queue requests retain normal queuing.
+ * Queue requests preserve active work and pauses; stopped groups start a new run. Steering replaces the run and drains its old work.
  * @param request - owner message targeting the group's exact transcript Session.
  * @param signal - cancellation before durable input acceptance.
  * @returns confirmation after the owner message is flushed and any interrupted work settles; member replies arrive separately.

@@ -6,17 +6,17 @@
   en: bea2a892d78c5911
   zh: 59fa61935da0a668
 /xiaojing-accounting-0-3-1-module-and-source-architecture/baseline-and-conclusion:
-  en: daa388ba3a848112
-  zh: 63baad3ce2cf889c
+  en: c466320d71e3637f
+  zh: e852e98d7fef8d9c
 /xiaojing-accounting-0-3-1-module-and-source-architecture/runtime-module-architecture:
   en: 2a42d071570da7c8
   zh: b728ff2baf2d6c75
 /xiaojing-accounting-0-3-1-module-and-source-architecture/layer-ownership:
-  en: 185f0c90f5c8a3b1
-  zh: a902a1b628e0b18c
+  en: c8bd86205f851dc4
+  zh: 903243e0299ea8f9
 /xiaojing-accounting-0-3-1-module-and-source-architecture/feature-insertion-map:
-  en: 8094609df38a28b9
-  zh: 15a63c2c9b07156a
+  en: 53ea3192c9dc7532
+  zh: 2e35d91335fb70ea
 /xiaojing-accounting-0-3-1-module-and-source-architecture/source-structure-and-plug-points:
   en: 61d2feac5a46ddd9
   zh: 8f1be0b65741a3cd
@@ -33,8 +33,8 @@
   en: 329500d2924adb24
   zh: 56c979a74cda6800
 /xiaojing-accounting-0-3-1-module-and-source-architecture/removal-levels/native-desktop-behavior:
-  en: 15d5c2d43aa39a5e
-  zh: ca7c053047e02093
+  en: 1d77357910fa06a5
+  zh: 1339452c99dce565
 /xiaojing-accounting-0-3-1-module-and-source-architecture/removal-levels/third-party-integration-patches:
   en: c58bb6a11e34f6ed
   zh: 7deb5c4bf5c8fcca

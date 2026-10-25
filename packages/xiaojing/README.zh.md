@@ -23,7 +23,6 @@ kind: "package-group"
 | [`xiaojing-finance-evidence/`](xiaojing-finance-evidence/README.zh.md) | 按日期检索官方财税依据 | `ctx.xiaojingFinanceEvidence` |
 | [`xiaojing-browser-control/`](xiaojing-browser-control/README.zh.md) | Microsoft Edge 语义浏览器自动化 | `ctx.xiaojingBrowserControl` |
 | [`xiaojing-computer-control/`](xiaojing-computer-control/README.zh.md) | 基于 Windows UI Automation 的语义电脑操控 | `ctx.xiaojingComputerControl` |
-| [`xiaojing-desktop-companion/`](xiaojing-desktop-companion/README.zh.md) | 桌面小兢的脱敏任务状态聚合与 loopback SSE | `ctx.xiaojingDesktopCompanion` |
 | [`xiaojing-weixin-channel/`](xiaojing-weixin-channel/README.zh.md) | 腾讯 iLink 绑定、文字任务回传和持久化微信 Agent 会话 | 无 |
 | [`xiaojing-visualize/`](xiaojing-visualize/README.zh.md) | 可移除的可视化工具、skill 和沙箱卡片 | 无 |
 

@@ -153,7 +153,6 @@
   "build": {
     "command": "node scripts/katcats-dev.mjs build",
     "log": "run/tmp/team-final-build.log",
-    "sourceCommit": "d03b4157653f863daec52527f26c4f5d919e93c4",
     "passed": 9,
     "failed": 0,
     "skipped": 0,
@@ -195,7 +194,8 @@
         "duration": "88.18s"
       }
     ],
-    "elapsedSeconds": 91.7
+    "elapsedSeconds": 91.7,
+    "sourceRevisionEvidence": "run/tmp/team-baseline-before-visual-update.json"
   },
   "desktopAcceptance": {
     "report": "run/tmp/team-final-desktop-smoke.json",
@@ -327,11 +327,10 @@
   },
   "developmentGit": {
     "independentRepository": true,
-    "initialCommit": "a893c679",
-    "sourceCommitBuilt": "d03b4157653f863daec52527f26c4f5d919e93c4",
     "remotes": [],
     "sourceHistoryCopied": false,
-    "checkedAtUtc": "2026-10-25T10:02:18.338Z"
+    "checkedAtUtc": "2026-10-25T10:02:18.338Z",
+    "revisionEvidence": "run/tmp/team-baseline-before-visual-update.json"
   },
   "visuals": {
     "newBrandImagesApplied": false,

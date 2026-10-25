@@ -669,6 +669,13 @@ export interface Config {
     /** Initial expansion state before the user toggles the panel group. */
     defaultExpanded?: boolean
   }
+  /** Adds an expandable group around all footer navigation, actions and the settings trigger. */
+  footerNavigation?: {
+    /** Localized heading for the complete footer group. */
+    label: SidebarLabel
+    /** Initial expansion state before the user toggles the footer group. */
+    defaultExpanded?: boolean
+  }
   /** Placement of existing footer actions relative to global panel rows. */
   footerActionsPlacement?: 'before-panels' | 'after-panels'
 }
@@ -5062,7 +5069,6 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-client-ui-cordis` | — | [`packages/extensions/ui-cordis/src/index.ts`](../packages/extensions/ui-cordis/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-deepseek-model-label-1017` | — | [`packages/client/ui-deepseek-model-label-1017/src/index.ts`](../packages/client/ui-deepseek-model-label-1017/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-deliverables` | `systemPrompt` · `connection` · `sessionQuery` · `sessionController` · `workspaceFiles` · `fs` · `sandboxPolicy` · `workspaceChanges` | [`packages/client/ui-deliverables/src/index.ts`](../packages/client/ui-deliverables/src/index.ts) |
-| `@deepseek-ai/dsh-client-ui-desktop-companion` | — | [`packages/client/ui-desktop-companion/src/index.ts`](../packages/client/ui-desktop-companion/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-directory-picker-browse` | — | [`packages/client/ui-directory-picker-browse/src/index.ts`](../packages/client/ui-directory-picker-browse/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-directory-picker-native` | — | [`packages/client/ui-directory-picker-native/src/index.ts`](../packages/client/ui-directory-picker-native/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-goal` | — | [`packages/client/ui-goal/src/index.ts`](../packages/client/ui-goal/src/index.ts) |
@@ -5153,7 +5159,6 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-user-questions` | — | [`packages/interaction/user-questions/src/index.ts`](../packages/interaction/user-questions/src/index.ts) |
 | `@deepseek-ai/dsh-webhook` | `agents` · `agentDefaultModel` · `agentPresets` · `permissionPresets` · `sessionTitle` · `workspaceRegistry` | [`packages/experimental/webhook/src/index.ts`](../packages/experimental/webhook/src/index.ts) |
 | `@deepseek-ai/dsh-workspace` | `storageDomain` · `sessionPersistence` | [`packages/workspace/workspace/src/index.ts`](../packages/workspace/workspace/src/index.ts) |
-| `@deepseek-ai/dsh-xiaojing-desktop-companion` | `webServer` | [`packages/xiaojing/xiaojing-desktop-companion/src/index.ts`](../packages/xiaojing/xiaojing-desktop-companion/src/index.ts) |
 | `@deepseek-ai/dsh-xiaojing-finance-calculations` | `xiaojingFinanceDomain` | [`packages/xiaojing/xiaojing-finance-calculations/src/index.ts`](../packages/xiaojing/xiaojing-finance-calculations/src/index.ts) |
 <!-- END GENERATED config-catalog:no-config -->
 

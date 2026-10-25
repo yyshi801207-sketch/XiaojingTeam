@@ -164,14 +164,6 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Owns UI Automation requests and delegates native helper execution to subprocess services.',
   },
   {
-    key: 'xiaojingDesktopCompanion',
-    pkg: 'xiaojing-desktop-companion',
-    title: 'Desktop companion state',
-    mode: 'core',
-    consumers: ['xiaojing-weixin-channel'],
-    note: 'Tracks product window and channel state without owning Electron tray objects.',
-  },
-  {
     key: 'xiaojingFinanceCalculations',
     pkg: 'xiaojing-finance-calculations',
     title: 'Exact Finance calculations',
@@ -208,7 +200,7 @@ const SERVICE_ROLES: ServiceRole[] = [
     pkg: 'xiaojing-weixin-channel',
     title: 'Weixin channel lifecycle',
     mode: 'core',
-    consumers: ['xiaojing-desktop-companion', 'client-ui-weixin-channel'],
+    consumers: ['client-ui-weixin-channel'],
     note: 'Owns channel connection, session routing, and redacted status for product consumers.',
   },
   {

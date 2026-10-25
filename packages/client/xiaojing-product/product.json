@@ -93,8 +93,7 @@
     "apps/web/public/xiaojing-office-robot-logo.png",
     "apps/web/public/xiaojing-finance-robot-logo.png",
     "apps/web/public/sudo-logo-gray.png",
-    "apps/web/public/youcheng-finance-logo.png",
-    "apps/web/public/desktop-companion/idle.png"
+    "apps/web/public/youcheng-finance-logo.png"
   ],
   "desktopManifests": [
     "apps/desktop/identity.json",
@@ -104,11 +103,9 @@
   "featurePackages": [
     "@deepseek-ai/dsh-xiaojing-browser-control",
     "@deepseek-ai/dsh-xiaojing-computer-control",
-    "@deepseek-ai/dsh-xiaojing-desktop-companion",
     "@deepseek-ai/dsh-xiaojing-weixin-channel",
     "@deepseek-ai/dsh-xiaojing-visualize",
     "@deepseek-ai/dsh-client-ui-weixin-channel",
-    "@deepseek-ai/dsh-client-ui-desktop-companion",
     "@deepseek-ai/dsh-client-ui-xiaojing-browser-control"
   ]
 }

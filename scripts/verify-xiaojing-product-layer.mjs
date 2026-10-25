@@ -390,7 +390,7 @@ if (!productClient.includes("process.env.DSH_CLIENT_BUILD_PROFILE !== 'xiaojing'
   errors.push('xiaojing product client is not gated by the xiaojing build profile')
 }
 if (!productClient.includes("id: 'about-xiaojing'") || !productClient.includes('order: 1010')) {
-  errors.push('Xiaojing About settings are missing or no longer follow desktop-companion settings')
+  errors.push('Xiaojing About settings are missing or outside their expected settings position')
 }
 const productRelease = await readFile(join(
   root, 'packages', 'client', 'xiaojing-product', 'src', 'client', 'application-info.ts',
@@ -404,13 +404,9 @@ if (!weixinClient.includes("process.env.DSH_CLIENT_BUILD_PROFILE !== 'xiaojing'"
   || !weixinClient.includes('connection.isLoopback')) {
   errors.push('Weixin channel client is not gated by the xiaojing build profile and loopback origin')
 }
-const companionClient = await readFile(join(
-  root, 'packages', 'client', 'ui-desktop-companion', 'src', 'client', 'index.ts',
-), 'utf8')
-if (!companionClient.includes("process.env.DSH_CLIENT_BUILD_PROFILE !== 'xiaojing'")
-  || !companionClient.includes("id: 'desktop-companion'")
-  || !companionClient.includes('order: 1000')) {
-  errors.push('desktop-companion settings are not isolated to the Xiaojing profile and expected settings position')
+if (manifest.featurePackages.some(name => name.includes('desktop-companion'))
+  || composition.includes('desktop-companion')) {
+  errors.push('Team product still contains a removed desktop-pet package')
 }
 const browserControlClient = await readFile(join(
   root, 'packages', 'client', 'ui-xiaojing-browser-control', 'src', 'client', 'index.ts',
@@ -437,14 +433,14 @@ if (!userDataContract.protectedPaths.includes(financeExtension?.durableRoot)) {
   errors.push('Finance durable state is missing from the desktop user-data contract')
 }
 const desktopMain = await readFile(join(root, 'apps', 'desktop', 'src', 'main.ts'), 'utf8')
-const desktopCompanion = await readFile(join(root, 'apps', 'desktop', 'src', 'xiaojing-companion.ts'), 'utf8')
+const desktopTray = await readFile(join(root, 'apps', 'desktop', 'src', 'desktop-tray.ts'), 'utf8')
 if (!desktopMain.includes("window.on('close'")
   || !desktopMain.includes('backgroundNotice.close(hide)')
   || !desktopMain.includes('quitConfirmation.confirm()')
   || !desktopMain.includes('quitApplication: () => { app.quit() }')
-  || !desktopCompanion.includes('label: zh.quitApplication, click: () => { void this.requestQuit() }')
+  || !desktopTray.includes('label: messages.quitApplication, click: this.options.quitApplication')
   || !desktopMain.includes("app.on('window-all-closed'")
-  || !desktopCompanion.includes("new URL('/xiaojing-desktop-companion/events', hostUrl)")) {
+  || !desktopMain.includes('new DesktopTray(')) {
   errors.push('desktop tray lifecycle no longer keeps close, tray exit, and window-all-closed behavior explicit')
 }
 const buildEnvironment = await readFile(join(root, 'scripts', 'client-build-environment.ts'), 'utf8')

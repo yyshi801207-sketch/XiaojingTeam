@@ -1,0 +1,23 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Xiaojing product UI > shows the Team app icon, localized name and installed versions in About (en) 1`] = `
+{
+  "iconLabel": "Xiaojing Accounting Team",
+  "name": "Xiaojing Accounting Team",
+  "versions": [
+    "Current version v1.0.2",
+    "DSH version 0.2.1-rc.2",
+  ],
+}
+`;
+
+exports[`Xiaojing product UI > shows the Team app icon, localized name and installed versions in About (zh) 1`] = `
+{
+  "iconLabel": "小兢会计团队版",
+  "name": "小兢会计团队版",
+  "versions": [
+    "当前版本 v1.0.2",
+    "DSH 底座版本 0.2.1-rc.2",
+  ],
+}
+`;

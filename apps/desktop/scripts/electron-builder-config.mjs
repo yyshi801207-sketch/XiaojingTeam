@@ -150,16 +150,11 @@ export function createElectronBuilderConfig(
       'lib/preload-platform-account.cjs',
       'lib/preload-update-dialog.cjs',
       'lib/preload-welcome.cjs',
-      'lib/preload-xiaojing-companion.cjs',
       'renderer/**/*',
-      'companion.html',
-      'companion.css',
-      'companion.js',
       'identity.json',
       'integration-patches.json',
       'user-data-contract.json',
       'assets/**/*',
-      '!assets/desktop-companion/masters/**/*',
       'package.json',
       '!node_modules/**/*.{js,cjs,mjs,ts,cts,mts,css}.map',
       '!node_modules/**/*.tsbuildinfo',
@@ -178,7 +173,7 @@ export function createElectronBuilderConfig(
       { from: fileURLToPath(new URL('../build/internal-use-notice.txt', import.meta.url)), to: 'legal/XiaojingAccountingTeam-Internal-Use-Notice.txt' },
     ],
     mac: {
-      icon: fileURLToPath(new URL('../build/app-icon.png', import.meta.url)),
+      icon: fileURLToPath(new URL('../build/app-icon.icns', import.meta.url)),
       category: 'public.app-category.developer-tools',
       // macOS matches the application locale against this bundle, not Electron Framework resources.
       extendInfo: {
@@ -259,7 +254,7 @@ export function createElectronBuilderConfig(
       )
     },
     win: {
-      icon: fileURLToPath(new URL('../build/app-icon.png', import.meta.url)),
+      icon: fileURLToPath(new URL('../build/installer-runtime-icon.ico', import.meta.url)),
       executableName: identity.executableName,
       legalTrademarks: 'Katcats是瑞华云数豆科技内部使用品牌',
       forceCodeSigning: !unsigned,
@@ -271,6 +266,7 @@ export function createElectronBuilderConfig(
       target: ['nsis'],
     },
     linux: {
+      icon: fileURLToPath(new URL('../build/app-icon.png', import.meta.url)),
       category: 'Development',
       target: ['AppImage'],
     },
@@ -289,8 +285,10 @@ export function createElectronBuilderConfig(
       installerLanguages: ['zh_CN'],
       language: '2052',
       installerIcon: fileURLToPath(new URL('../build/installer-runtime-icon.ico', import.meta.url)),
+      uninstallerIcon: fileURLToPath(new URL('../build/installer-runtime-icon.ico', import.meta.url)),
       installerHeader: fileURLToPath(new URL('../build/installer-header.bmp', import.meta.url)),
       installerSidebar: fileURLToPath(new URL('../build/installer-sidebar.bmp', import.meta.url)),
+      uninstallerSidebar: fileURLToPath(new URL('../build/installer-sidebar.bmp', import.meta.url)),
       differentialPackage: true,
     },
     detectUpdateChannel: false,

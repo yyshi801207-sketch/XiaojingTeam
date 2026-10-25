@@ -53,7 +53,7 @@ The launcher passes a new environment containing selected operating-system tool 
 
 The first desktop launch also prepares Node, Python, and supporting dependencies under this checkout's `apps/desktop/.desktop-build`. These development resources are prepared locally; old application state, temporary verification files, caches, and installers are not copied into the baseline.
 
-The launcher rejects paths escaping its checkout and links escaping the owned `run` tree; desktop initialization also rejects links in its fixed data directories. `run/` is ignored by Git. Keep its credentials, session data, and authenticated browser storage private.
+The launcher rejects paths escaping its checkout and links escaping the owned `run` tree; desktop initialization also rejects links in its fixed data directories. The private electron-builder cache declares CommonJS so downloaded `.js` tools do not inherit the checkout's ESM setting. `run/` is ignored by Git. Keep its credentials, session data, and authenticated browser storage private.
 
 ## Verify changes
 

@@ -21,9 +21,6 @@ flowchart LR
   svc_xiaojingNativeBrowserSettings["ctx.xiaojingNativeBrowserSettings<br/>Existing browser permission and connection state"]
   pkg_xiaojing_computer_control["xiaojing-computer-control"]
   svc_xiaojingComputerControl["ctx.xiaojingComputerControl<br/>Windows desktop automation"]
-  pkg_xiaojing_desktop_companion["xiaojing-desktop-companion"]
-  svc_xiaojingDesktopCompanion["ctx.xiaojingDesktopCompanion<br/>Desktop companion state"]
-  pkg_xiaojing_weixin_channel["xiaojing-weixin-channel"]
   pkg_xiaojing_finance_calculations["xiaojing-finance-calculations"]
   svc_xiaojingFinanceCalculations["ctx.xiaojingFinanceCalculations<br/>Exact Finance calculations"]
   pkg_xiaojing_finance_documents["xiaojing-finance-documents"]
@@ -33,6 +30,7 @@ flowchart LR
   pkg_client_ui_xiaojing_finance_clients["client-ui-xiaojing-finance-clients"]
   pkg_xiaojing_finance_evidence["xiaojing-finance-evidence"]
   svc_xiaojingFinanceEvidence["ctx.xiaojingFinanceEvidence<br/>Finance evidence research"]
+  pkg_xiaojing_weixin_channel["xiaojing-weixin-channel"]
   svc_xiaojingWeixinChannel["ctx.xiaojingWeixinChannel<br/>Weixin channel lifecycle"]
   pkg_client_ui_weixin_channel["client-ui-weixin-channel"]
   pkg_experimental_client_ui_cot_translation["experimental-client-ui-cot-translation"]
@@ -486,7 +484,6 @@ flowchart LR
   pkg_xiaojing_browser_control --> svc_xiaojingBrowserControl
   pkg_xiaojing_browser_control --> svc_xiaojingNativeBrowserSettings
   pkg_xiaojing_computer_control --> svc_xiaojingComputerControl
-  pkg_xiaojing_desktop_companion --> svc_xiaojingDesktopCompanion
   pkg_xiaojing_finance_calculations --> svc_xiaojingFinanceCalculations
   pkg_xiaojing_finance_documents --> svc_xiaojingFinanceDocuments
   pkg_xiaojing_finance_domain --> svc_xiaojingFinanceDomain
@@ -653,7 +650,6 @@ flowchart LR
   svc_worktrees --> pkg_experimental_tool_worktree
   svc_xiaojingBrowserControl --> pkg_xiaojing_browser_control
   svc_xiaojingComputerControl --> pkg_xiaojing_computer_control
-  svc_xiaojingDesktopCompanion --> pkg_xiaojing_weixin_channel
   svc_xiaojingFinanceCalculations --> pkg_xiaojing_finance_calculations
   svc_xiaojingFinanceDocuments --> pkg_xiaojing_finance_documents
   svc_xiaojingFinanceDomain --> pkg_client_ui_xiaojing_finance_clients
@@ -662,7 +658,6 @@ flowchart LR
   svc_xiaojingFinanceEvidence --> pkg_xiaojing_finance_evidence
   svc_xiaojingNativeBrowserSettings --> pkg_xiaojing_browser_control
   svc_xiaojingWeixinChannel --> pkg_client_ui_weixin_channel
-  svc_xiaojingWeixinChannel --> pkg_xiaojing_desktop_companion
   svc_fs -. event gate .-> pkg_fs_observation_policy
 ```
 
@@ -675,12 +670,11 @@ flowchart LR
 | `ctx.xiaojingBrowserControl` | `core` | [`xiaojing-browser-control`](../packages/xiaojing/xiaojing-browser-control) | - | [`xiaojing-browser-control`](../packages/xiaojing/xiaojing-browser-control) | - | 负责已配置产品浏览器的操作及其审批策略。 |
 | `ctx.xiaojingNativeBrowserSettings` | `core` | [`xiaojing-browser-control`](../packages/xiaojing/xiaojing-browser-control) | - | [`xiaojing-browser-control`](../packages/xiaojing/xiaojing-browser-control) | - | 负责各浏览器的权限、已观察连接状态及经验证的设置页导航。 |
 | `ctx.xiaojingComputerControl` | `core` | [`xiaojing-computer-control`](../packages/xiaojing/xiaojing-computer-control) | - | [`xiaojing-computer-control`](../packages/xiaojing/xiaojing-computer-control) | - | 负责 UI Automation 请求，并将原生辅助程序执行委托给子进程服务。 |
-| `ctx.xiaojingDesktopCompanion` | `core` | [`xiaojing-desktop-companion`](../packages/xiaojing/xiaojing-desktop-companion) | - | [`xiaojing-weixin-channel`](../packages/xiaojing/xiaojing-weixin-channel) | - | 跟踪产品窗口和频道状态，不持有 Electron 托盘对象。 |
 | `ctx.xiaojingFinanceCalculations` | `core` | [`xiaojing-finance-calculations`](../packages/xiaojing/xiaojing-finance-calculations) | - | [`xiaojing-finance-calculations`](../packages/xiaojing/xiaojing-finance-calculations) | - | 通过产品工具消费方返回确定性的 Finance 计算结果。 |
 | `ctx.xiaojingFinanceDocuments` | `core` | [`xiaojing-finance-documents`](../packages/xiaojing/xiaojing-finance-documents) | - | [`xiaojing-finance-documents`](../packages/xiaojing/xiaojing-finance-documents) | - | 通过文档工具读取导入的 Finance 文档及保留的图像。 |
 | `ctx.xiaojingFinanceDomain` | `core` | [`xiaojing-finance-domain`](../packages/xiaojing/xiaojing-finance-domain) | - | [`client-ui-xiaojing-finance-clients`](../packages/client/ui-xiaojing-finance-clients), [`xiaojing-finance-documents`](../packages/xiaojing/xiaojing-finance-documents), [`xiaojing-finance-evidence`](../packages/xiaojing/xiaojing-finance-evidence) | - | 负责本地 Finance 记录、专用工作区、会话绑定及已确认的外部操作。 |
 | `ctx.xiaojingFinanceEvidence` | `core` | [`xiaojing-finance-evidence`](../packages/xiaojing/xiaojing-finance-evidence) | - | [`xiaojing-finance-evidence`](../packages/xiaojing/xiaojing-finance-evidence) | - | 通过已配置来源提供方及其工具消费方协调 Finance 研究。 |
-| `ctx.xiaojingWeixinChannel` | `core` | [`xiaojing-weixin-channel`](../packages/xiaojing/xiaojing-weixin-channel) | - | [`xiaojing-desktop-companion`](../packages/xiaojing/xiaojing-desktop-companion), [`client-ui-weixin-channel`](../packages/client/ui-weixin-channel) | - | 为产品消费方提供频道连接、会话路由及脱敏状态。 |
+| `ctx.xiaojingWeixinChannel` | `core` | [`xiaojing-weixin-channel`](../packages/xiaojing/xiaojing-weixin-channel) | - | [`client-ui-weixin-channel`](../packages/client/ui-weixin-channel) | - | 为产品消费方提供频道连接、会话路由及脱敏状态。 |
 | `ctx.cotTranslation` | `service` | [`experimental-client-ui-cot-translation`](../packages/experimental/client-ui-cot-translation) | - | - | - | 提供思考翻译，复用已保存结果，并在未缓存的非活动 Session 上参与普通 Session 激活。 |
 | `ctx.translator` | `service` | [`experimental-translator`](../packages/experimental/translator) | - | [`experimental-client-ui-cot-translation`](../packages/experimental/client-ui-cot-translation) | - | 解析 Google 或 Bing 请求，并通过活动 Session 写入器保留共享实验记录。 |
 | `ctx.hmr` | `core` | [`hmr`](../packages/boot/hmr) | - | [`app-boot`](../packages/boot/app-boot) | - | 负责模块和精确配置监听；应用修改共用其队列，自动重载等待应用文件锁。 |

@@ -3,20 +3,20 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop/README.md
 /windows-desktop:
-  en: 2637b47cd3aae82f
-  zh: e3d266a786f70c5a
+  en: d355b4d0b22094ae
+  zh: b0db97f626823edb
 /windows-desktop/permanent-installer-identity:
-  en: 7303c7f9698a1d53
-  zh: 79e42dfa4a1e2dd1
+  en: a63f6044025037e0
+  zh: 045280005b660d03
 /windows-desktop/permanent-user-data-paths:
-  en: 7a9beeb268a492c7
-  zh: 404cf389d44b2f99
+  en: cb7b2e5e907f8307
+  zh: 1faac1113896ce0a
 /windows-desktop/development-preview-isolation:
   en: 6935c204831d9332
   zh: 5e02efeb8cc05182
-/windows-desktop/desktop-companion-and-tray-lifecycle:
-  en: d9449b0a1b5a9ecc
-  zh: 0056e6543634b4c7
+/windows-desktop/system-tray-lifecycle:
+  en: 8a445f2f11abc045
+  zh: 4ada05ff2ae24808
 /windows-desktop/built-in-automation-runtimes:
   en: 2885e30bfccb918a
   zh: bd0484e70979d715
@@ -24,8 +24,8 @@
   en: f2a0c5dee966bd55
   zh: 48c3d8bd6fba7a15
 /windows-desktop/release-checks:
-  en: a5c09cf1797cbbcb
-  zh: d596b423a66ee0c3
+  en: c1b4b8bddbec1cda
+  zh: 37eb5a345a93ef90
 /windows-desktop/shell-settings-and-packaging:
   en: e47d0ea80409c99f
   zh: 490122572d9c1d15

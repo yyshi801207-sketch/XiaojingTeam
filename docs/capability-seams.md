@@ -19,9 +19,6 @@ flowchart LR
   svc_xiaojingNativeBrowserSettings["ctx.xiaojingNativeBrowserSettings<br/>Existing browser permission and connection state"]
   pkg_xiaojing_computer_control["xiaojing-computer-control"]
   svc_xiaojingComputerControl["ctx.xiaojingComputerControl<br/>Windows desktop automation"]
-  pkg_xiaojing_desktop_companion["xiaojing-desktop-companion"]
-  svc_xiaojingDesktopCompanion["ctx.xiaojingDesktopCompanion<br/>Desktop companion state"]
-  pkg_xiaojing_weixin_channel["xiaojing-weixin-channel"]
   pkg_xiaojing_finance_calculations["xiaojing-finance-calculations"]
   svc_xiaojingFinanceCalculations["ctx.xiaojingFinanceCalculations<br/>Exact Finance calculations"]
   pkg_xiaojing_finance_documents["xiaojing-finance-documents"]
@@ -31,6 +28,7 @@ flowchart LR
   pkg_client_ui_xiaojing_finance_clients["client-ui-xiaojing-finance-clients"]
   pkg_xiaojing_finance_evidence["xiaojing-finance-evidence"]
   svc_xiaojingFinanceEvidence["ctx.xiaojingFinanceEvidence<br/>Finance evidence research"]
+  pkg_xiaojing_weixin_channel["xiaojing-weixin-channel"]
   svc_xiaojingWeixinChannel["ctx.xiaojingWeixinChannel<br/>Weixin channel lifecycle"]
   pkg_client_ui_weixin_channel["client-ui-weixin-channel"]
   pkg_experimental_client_ui_cot_translation["experimental-client-ui-cot-translation"]
@@ -484,7 +482,6 @@ flowchart LR
   pkg_xiaojing_browser_control --> svc_xiaojingBrowserControl
   pkg_xiaojing_browser_control --> svc_xiaojingNativeBrowserSettings
   pkg_xiaojing_computer_control --> svc_xiaojingComputerControl
-  pkg_xiaojing_desktop_companion --> svc_xiaojingDesktopCompanion
   pkg_xiaojing_finance_calculations --> svc_xiaojingFinanceCalculations
   pkg_xiaojing_finance_documents --> svc_xiaojingFinanceDocuments
   pkg_xiaojing_finance_domain --> svc_xiaojingFinanceDomain
@@ -651,7 +648,6 @@ flowchart LR
   svc_worktrees --> pkg_experimental_tool_worktree
   svc_xiaojingBrowserControl --> pkg_xiaojing_browser_control
   svc_xiaojingComputerControl --> pkg_xiaojing_computer_control
-  svc_xiaojingDesktopCompanion --> pkg_xiaojing_weixin_channel
   svc_xiaojingFinanceCalculations --> pkg_xiaojing_finance_calculations
   svc_xiaojingFinanceDocuments --> pkg_xiaojing_finance_documents
   svc_xiaojingFinanceDomain --> pkg_client_ui_xiaojing_finance_clients
@@ -660,7 +656,6 @@ flowchart LR
   svc_xiaojingFinanceEvidence --> pkg_xiaojing_finance_evidence
   svc_xiaojingNativeBrowserSettings --> pkg_xiaojing_browser_control
   svc_xiaojingWeixinChannel --> pkg_client_ui_weixin_channel
-  svc_xiaojingWeixinChannel --> pkg_xiaojing_desktop_companion
   svc_fs -. event gate .-> pkg_fs_observation_policy
 ```
 
@@ -673,12 +668,11 @@ flowchart LR
 | `ctx.xiaojingBrowserControl` | `core` | [`xiaojing-browser-control`](../packages/xiaojing/xiaojing-browser-control) | - | [`xiaojing-browser-control`](../packages/xiaojing/xiaojing-browser-control) | - | Owns browser actions and their approval policy over the configured product browser. |
 | `ctx.xiaojingNativeBrowserSettings` | `core` | [`xiaojing-browser-control`](../packages/xiaojing/xiaojing-browser-control) | - | [`xiaojing-browser-control`](../packages/xiaojing/xiaojing-browser-control) | - | Owns per-browser permission, observed connection state, and verified settings-page navigation. |
 | `ctx.xiaojingComputerControl` | `core` | [`xiaojing-computer-control`](../packages/xiaojing/xiaojing-computer-control) | - | [`xiaojing-computer-control`](../packages/xiaojing/xiaojing-computer-control) | - | Owns UI Automation requests and delegates native helper execution to subprocess services. |
-| `ctx.xiaojingDesktopCompanion` | `core` | [`xiaojing-desktop-companion`](../packages/xiaojing/xiaojing-desktop-companion) | - | [`xiaojing-weixin-channel`](../packages/xiaojing/xiaojing-weixin-channel) | - | Tracks product window and channel state without owning Electron tray objects. |
 | `ctx.xiaojingFinanceCalculations` | `core` | [`xiaojing-finance-calculations`](../packages/xiaojing/xiaojing-finance-calculations) | - | [`xiaojing-finance-calculations`](../packages/xiaojing/xiaojing-finance-calculations) | - | Returns deterministic Finance calculations through the product tool consumer. |
 | `ctx.xiaojingFinanceDocuments` | `core` | [`xiaojing-finance-documents`](../packages/xiaojing/xiaojing-finance-documents) | - | [`xiaojing-finance-documents`](../packages/xiaojing/xiaojing-finance-documents) | - | Reads imported Finance documents and retained visuals through document tools. |
 | `ctx.xiaojingFinanceDomain` | `core` | [`xiaojing-finance-domain`](../packages/xiaojing/xiaojing-finance-domain) | - | [`client-ui-xiaojing-finance-clients`](../packages/client/ui-xiaojing-finance-clients), [`xiaojing-finance-documents`](../packages/xiaojing/xiaojing-finance-documents), [`xiaojing-finance-evidence`](../packages/xiaojing/xiaojing-finance-evidence) | - | Owns local Finance records, dedicated workspaces, session bindings, and confirmed external operations. |
 | `ctx.xiaojingFinanceEvidence` | `core` | [`xiaojing-finance-evidence`](../packages/xiaojing/xiaojing-finance-evidence) | - | [`xiaojing-finance-evidence`](../packages/xiaojing/xiaojing-finance-evidence) | - | Coordinates Finance research through configured source providers and its tool consumer. |
-| `ctx.xiaojingWeixinChannel` | `core` | [`xiaojing-weixin-channel`](../packages/xiaojing/xiaojing-weixin-channel) | - | [`xiaojing-desktop-companion`](../packages/xiaojing/xiaojing-desktop-companion), [`client-ui-weixin-channel`](../packages/client/ui-weixin-channel) | - | Owns channel connection, session routing, and redacted status for product consumers. |
+| `ctx.xiaojingWeixinChannel` | `core` | [`xiaojing-weixin-channel`](../packages/xiaojing/xiaojing-weixin-channel) | - | [`client-ui-weixin-channel`](../packages/client/ui-weixin-channel) | - | Owns channel connection, session routing, and redacted status for product consumers. |
 | `ctx.cotTranslation` | `service` | [`experimental-client-ui-cot-translation`](../packages/experimental/client-ui-cot-translation) | - | - | - | Serves reasoning translations, reuses saved results, and joins ordinary Session activation for uncached inactive Sessions. |
 | `ctx.translator` | `service` | [`experimental-translator`](../packages/experimental/translator) | - | [`experimental-client-ui-cot-translation`](../packages/experimental/client-ui-cot-translation) | - | Resolves Google or Bing requests and retains shared experimental records through the active Session writer. |
 | `ctx.hmr` | `core` | [`hmr`](../packages/boot/hmr) | - | [`app-boot`](../packages/boot/app-boot) | - | Owns module and exact configuration watchers; application mutations share its queue and automatic reloads await the application file lock. |

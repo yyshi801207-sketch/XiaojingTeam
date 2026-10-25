@@ -13,7 +13,7 @@ This page maps Xiaojing Accounting 0.3.1 across the repository. It identifies wh
 | Runtime composition | Cordis profiles, bundles, and configuration rows | [`packages/boot/app-boot/src/profile.ts`](../packages/boot/app-boot/src/profile.ts), [`packages/bundle/web-app/cordis.patch.yml`](../packages/bundle/web-app/cordis.patch.yml) |
 | Xiaojing Client selector | `DSH_CLIENT_BUILD_PROFILE=xiaojing` | [`scripts/client-build-environment.ts`](../scripts/client-build-environment.ts) |
 
-The main architecture is extensible: brand, accounting, Weixin, Edge, Windows control, the desktop companion, and Visualize use separate packages, and none embeds its implementation in `agent-loop`. Three areas remain integration layers rather than single-row plugins: product rows currently live in the shared `web-app` bundle, file upload depends on an external package plus a pnpm patch, and the desktop companion's native window and tray must be implemented by Electron.
+The main architecture is extensible: brand, accounting, Weixin, Edge, Windows control, and Visualize use separate packages, and none embeds its implementation in `agent-loop`. Two areas remain integration layers rather than single-row plugins: product rows currently live in the shared `web-app` bundle, and file upload depends on an external package plus a pnpm patch.
 
 ## Runtime module architecture
 
@@ -23,11 +23,11 @@ A desktop request normally flows from Electron into the assembled Web Client. Cl
 
 | Layer | Owns | Must not own |
 |---|---|---|
-| Original Harness core | Agent, Agent Loop, Session Log, tool execution, LLM, settings, credentials, attachments, and API gateway | Xiaojing copy, Sudotech theme, Weixin protocol, or the desktop companion |
+| Original Harness core | Agent, Agent Loop, Session Log, tool execution, LLM, settings, credentials, attachments, and API gateway | Xiaojing copy, Sudotech theme, Weixin protocol |
 | Neutral extension points | UI slot declarations, tool registration, events, Remote/RPC, and fallback UI | Product-specific behavior or assets |
-| Xiaojing Host plugins | Accounting, Weixin, browser, Windows, companion state, and visualization tools | React rendering or Electron BrowserWindows |
+| Xiaojing Host plugins | Accounting, Weixin, browser, Windows, and visualization tools | React rendering or Electron BrowserWindows |
 | Xiaojing Client plugins | Brand, settings sections, sidebar summaries, cards, and Host projections | API keys, Weixin tokens, filesystem access, or arbitrary Node access |
-| Electron shell | Main window, tray, companion window, restricted preload, bundled runtime, and installer | Agent behavior, accounting rules, or Web automation policy |
+| Electron shell | Main window, tray, restricted preload, bundled runtime, and installer | Agent behavior, accounting rules, or Web automation policy |
 | Profile and bundle | Which plugins load and in what order | Business algorithms inside assembly files |
 
 ## Feature insertion map
@@ -41,7 +41,6 @@ A desktop request normally flows from Electron into the assembled Web Client. Cl
 | Weixin channel | [`packages/xiaojing/xiaojing-weixin-channel/`](../packages/xiaojing/xiaojing-weixin-channel/) | [`packages/client/ui-weixin-channel/`](../packages/client/ui-weixin-channel/) | `sessions.prompt()`, Agent/Session/Approval events, and loopback RPC | Credential service, `$DSH_HOME/weixin-channel`, shared attachment roots | Remove both Host and Client rows |
 | Edge browser control | [`packages/xiaojing/xiaojing-browser-control/`](../packages/xiaojing/xiaojing-browser-control/) | [`packages/client/ui-xiaojing-browser-control/`](../packages/client/ui-xiaojing-browser-control/) | `ctx.tools`, Session events, loopback RPC, Playwright and extension bridge | `$DSH_HOME/browser-control/profile` and bridge credentials | Remove both Host and Client rows; the bundled extension resource can then be deleted |
 | Windows computer control | [`packages/xiaojing/xiaojing-computer-control/`](../packages/xiaojing/xiaojing-computer-control/) | No separate settings page | `ctx.tools`, approval service, and controlled PowerShell helper | No business ledger | Remove the Host row |
-| Desktop companion | [`packages/xiaojing/xiaojing-desktop-companion/`](../packages/xiaojing/xiaojing-desktop-companion/) | [`packages/client/ui-desktop-companion/`](../packages/client/ui-desktop-companion/) | Session and Weixin events, loopback SSE, and restricted preload | `desktop-companion/preferences-v1.json` | Removing Host and Client rows removes state and settings only; complete removal also deletes Electron window, tray, and asset wiring |
 | Visualize | [`packages/xiaojing/xiaojing-visualize/`](../packages/xiaojing/xiaojing-visualize/) | The same package's `src/client/` | `ctx.tools`, skill provider, and tool-result renderer | Session tool results and workspace copies | Remove the single `xiaojing-visualize` row and its package dependency |
 
 ## Source structure and plug points
@@ -59,14 +58,12 @@ E:/Projects/sudo agent/
 │  │  ├─ ui-usage-accounting/
 │  │  ├─ ui-weixin-channel/
 │  │  ├─ ui-xiaojing-browser-control/
-│  │  ├─ ui-xiaojing-finance-clients/
-│  │  └─ ui-desktop-companion/
+│  │  └─ ui-xiaojing-finance-clients/
 │  ├─ xiaojing/
 │  │  ├─ xiaojing-finance-*/
 │  │  ├─ xiaojing-browser-control/
 │  │  ├─ xiaojing-computer-control/
 │  │  ├─ xiaojing-weixin-channel/
-│  │  ├─ xiaojing-desktop-companion/
 │  │  └─ xiaojing-visualize/
 │  ├─ bundle/web-app/presets/*.patch.yml
 │  └─ boot/app-boot/
@@ -106,7 +103,7 @@ Finance removal is narrower than removing the whole product UI but wider than de
 
 ### Native desktop behavior
 
-The companion's state aggregation and settings are Cordis plugins, while its transparent window, tray, and animation belong to Electron. Complete removal is one controlled change across all three integration points; deleting only the UI component would leave native lifecycle code behind.
+Electron owns the main window and the system tray. The tray opens the application or exits through the Host task-inspection flow.
 
 ### Third-party integration patches
 

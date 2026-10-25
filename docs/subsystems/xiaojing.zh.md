@@ -12,7 +12,6 @@
 |---|---|
 | [xiaojing-browser-control](../../packages/xiaojing/xiaojing-browser-control/README.zh.md) | `BrowserActionRequest`, `BrowserActionResult`, `BrowserControlStatus` |
 | [xiaojing-computer-control](../../packages/xiaojing/xiaojing-computer-control/README.zh.md) | `ComputerActionRequest`, `ComputerActionResult` |
-| [xiaojing-desktop-companion](../../packages/xiaojing/xiaojing-desktop-companion/README.zh.md) | `CompanionSnapshot` |
 | [xiaojing-finance-calculations](../../packages/xiaojing/xiaojing-finance-calculations/README.zh.md) | `FinanceCalculationRequest`, `FinanceCalculationResult` |
 | [xiaojing-finance-documents](../../packages/xiaojing/xiaojing-finance-documents/README.zh.md) | `FinanceDocumentListItem`, `FinanceDocumentReadResult`, `FinanceDocumentVisualReadResult`, `FinanceManagedFileId`, `XiaojingDocumentId`, `XiaojingDocumentListItem`, `XiaojingDocumentReadResult`, `XiaojingDocumentVisualReadResult` |
 | [xiaojing-finance-domain](../../packages/xiaojing/xiaojing-finance-domain/README.zh.md) | `AddFinanceConsultationWorkspaceRequest`, `ArchiveFinanceClientRequest`, `ArchiveFinanceFileRequest`, `AttachmentStorageTestResult`, `AttachmentStorageView`, `BalanceAnalysisQuery`, `BalanceAnalysisResult`, `BalanceQuery`, `BalanceResult`, `CreateFinanceClientRequest`, `FinanceAttachmentUpload`, `FinanceClientBinding`, `FinanceClientId`, `FinanceClientListView`, `FinanceClientMutationResult`, `FinanceClientReadView`, `FinanceClientWorkspace`, `FinanceClientWorkspaceEntry`, `FinanceConnectionStatus`, `FinanceGeneralWorkspaceEntry`, `FinanceImportedFile`, `FinanceManagedFile`, `FinanceSessionContextView`, `FinanceWorkspaceEntry`, `FinanceWorkspaceListView`, `FinanceYouchengAccountsResult`, `ImportFinanceUploadRequest`, `JournalAnalysisQuery`, `JournalAnalysisResult`, `JournalQuery`, `JournalResult`, `ListFinanceYouchengAccountsRequest`, `OpenItemAccountReferences`, `OpenItemAnalysisQuery`, `OpenItemAnalysisResult`, `OpenItemQuery`, `OpenItemResult`, `PublishFinanceFileRequest`, `ReferenceQuery`, `ReferenceResult`, `ReimbursementConnectionView`, `RemoveFinanceWorkspaceRequest`, `RenameFinanceWorkspaceRequest`, `RestoreFinanceClientWorkspaceRequest`, `SaveAttachmentStorageRequest`, `SaveReimbursementConnectionRequest`, `StageFinanceClientRequest`, `UpdateFinanceClientRequest`, `VoucherDetail`, `VoucherPage`, `VoucherQuery` |
@@ -96,22 +95,6 @@ async close(): Promise<void>
 Types: [SessionId](core.zh.md)
 
 Source: [`packages/xiaojing/xiaojing-computer-control/src/index.ts`](../../packages/xiaojing/xiaojing-computer-control/src/index.ts)
-
-<a id="ctxxiaojingdesktopcompanion--xiaojingdesktopcompanion"></a>
-
-### `ctx.xiaojingDesktopCompanion` — `XiaojingDesktopCompanion`
-
-Aggregate task lifecycle events and expose a loopback-only snapshot stream.
-
-```ts cordis-catalog
-/**
- * Return the current content-free aggregate state.
- * @returns The current redacted snapshot.
- */
-snapshot(): CompanionSnapshot
-```
-
-Source: [`packages/xiaojing/xiaojing-desktop-companion/src/index.ts`](../../packages/xiaojing/xiaojing-desktop-companion/src/index.ts)
 
 <a id="ctxxiaojingfinancecalculations--xiaojingfinancecalculations"></a>
 
