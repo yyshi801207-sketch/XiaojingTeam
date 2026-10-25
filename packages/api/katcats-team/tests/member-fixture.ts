@@ -160,7 +160,7 @@ export async function harness(providedRoot?: string): Promise<MemberFixture> {
     create, resolveAgent, rename, selectModel, inspect,
   } as never)
   const teamFiber = ctx.plugin(KatcatsTeam, {
-    workspaceRoot: join(root, 'workspaces'), mainRole: '团队主管',
+    workspaceRoot: join(root, 'workspaces'), mainName: '小兢会计', mainRole: '团队主管',
     ordinaryGroupName: '普通 Bot', chatGroupName: '群聊',
   })
   await teamFiber
