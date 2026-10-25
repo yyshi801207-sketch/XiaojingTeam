@@ -45,12 +45,16 @@ export interface DesktopElectronBuilderConfig {
     readonly writeUpdateInfo: boolean
   }
   readonly win: {
+    readonly icon: string
     readonly forceCodeSigning: boolean
     readonly signtoolOptions: {
       readonly publisherName: string | undefined
       readonly sign: ((configuration: { path: string, hash: string, isNest: boolean }) => Promise<void>) | undefined
       readonly signingHashAlgorithms: readonly string[]
     }
+  }
+  readonly linux: {
+    readonly icon: string
   }
   readonly nsis: {
     readonly guid: string
@@ -60,6 +64,10 @@ export interface DesktopElectronBuilderConfig {
     readonly allowElevation: false
     readonly allowToChangeInstallationDirectory: false
     readonly installerLanguages: readonly ['en_US', 'zh_CN']
+    readonly installerIcon: string
+    readonly uninstallerIcon: string
+    readonly installerSidebar: string
+    readonly uninstallerSidebar: string
   }
   readonly beforeBuild: () => Promise<boolean>
   readonly beforePack: (context: BeforePackContext) => Promise<void>

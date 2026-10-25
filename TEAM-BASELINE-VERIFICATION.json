@@ -131,7 +131,7 @@
     "legacyAutoUpdatesDisabled": true,
     "oldPublishTargetsDisabled": true,
     "gitRemoteConfigured": false,
-    "brandVisualsChanged": false
+    "brandVisualsChanged": true
   },
   "originalSourceAudit": {
     "sourceRoot": "E:/Projects/Katcats.AI",
@@ -333,8 +333,21 @@
     "revisionEvidence": "run/tmp/team-baseline-before-visual-update.json"
   },
   "visuals": {
-    "newBrandImagesApplied": false,
-    "status": "Existing baseline imagery and default main Bot name retained while the user reviews three new visual proposals."
+    "newBrandImagesApplied": true,
+    "status": "Supplied Xiaojing Team branding implemented; desktop pet removed. Runtime acceptance is recorded separately.",
+    "mainBotAvatar": "User-supplied portrait with transparent background",
+    "ordinaryBotAvatars": "Seven rounded solid robot silhouettes",
+    "sidebarLogo": "SUDO 数豆",
+    "chatHero": "Supplied finance robot pair",
+    "heroCopy": "小兢会计，您的AI财务团队",
+    "startup": "Supplied green artwork and white loading indicator",
+    "onboarding": "White content panel without background art or top logo",
+    "appAndInstallerIcon": "Supplied 兢 application icon",
+    "installerArt": "Supplied finance robot pair",
+    "aboutName": "小兢会计团队版",
+    "sendButtonColor": "#12A489",
+    "desktopPetFeatureRemoved": true,
+    "sidebarFooterCollapsible": true
   },
   "filesystem": {
     "report": "run/tmp/team-final-filesystem-audit.json",
@@ -360,5 +373,7 @@
       "bytes": 204289
     }
   },
-  "completedAtUtc": "2026-10-25T10:02:48.575Z"
+  "completedAtUtc": "2026-10-25T10:02:48.575Z",
+  "currentUiVerification": "run/tmp/team-current-ui-update-verification.json",
+  "updatedAtUtc": "2026-10-25T12:04:21.116Z"
 }
