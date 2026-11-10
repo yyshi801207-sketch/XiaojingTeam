@@ -36,6 +36,21 @@ describe('Katcats persistent members', () => {
     expect(h.create).toHaveBeenLastCalledWith({ sessionId: created.bot.sessionId, workspaceId: workspace?.id })
   })
 
+  it('places new Bots before older members, retains explicit groups, and preserves the order after reopening', async () => {
+    const first = await harness()
+    const group = (await first.team.createGroup({ name: 'Editorial' })).group
+    const older = (await first.team.createBot({ name: 'Older' })).bot
+    const grouped = (await first.team.createBot({ name: 'Grouped', groupId: group.id })).bot
+    const created = await first.team.createBot({ name: 'Newest' })
+    expect(created.bot.groupId).toBe(ordinaryGroupId)
+    expect(created.snapshot.bots.map(bot => bot.id)).toEqual([mainBotId, created.bot.id, grouped.id, older.id])
+    expect(created.snapshot.bots.filter(bot => bot.groupId === ordinaryGroupId).map(bot => bot.id)).toEqual([created.bot.id, older.id])
+    expect(created.snapshot.bots.find(bot => bot.id === grouped.id)).toEqual(grouped)
+    await first.close()
+    const reopened = await harness(first.root)
+    expect(await reopened.team.snapshot()).toEqual(created.snapshot)
+  })
+
   it('logs member role changes in normal private requests without changing another member', async () => {
     const h = await harness()
     const writer = (await h.team.createBot({ name: 'Writer' })).bot
@@ -46,8 +61,9 @@ describe('Katcats persistent members', () => {
       [
         "You are an AI agent powered by DeepSeek Harness.
 
-      You are Writer, a member of the Katcats.AI team.
+      You are Writer, a member of 瑞华云财务共享团队.
       You are a general assistant. Work with the user to establish your role.
+      When introducing yourself, use the exact team name 瑞华云财务共享团队, even if earlier conversation mentions an old product name.
 
       Use set_own_role only when the user explicitly asks to establish or change your ongoing identity or responsibilities. Do not change your saved role for a temporary task. Claim a role was saved only after the tool succeeds.",
       ]
@@ -55,10 +71,12 @@ describe('Katcats persistent members', () => {
     await h.team.updateBot({ id: writer.id, role: 'Write technical articles. Preserve literal {{variables}}.' })
     await send(writerAgent, 'second')
     const request = h.adapter.requests.at(-1)!
-    expect(systemText(request).at(-1)).toContain('You are Writer, a member of the Katcats.AI team.\nWrite technical articles. Preserve literal {{variables}}.')
+    expect(systemText(request).at(-1)).toContain('You are Writer, a member of 瑞华云财务共享团队.\nWrite technical articles. Preserve literal {{variables}}.')
+    expect(systemText(request).join('\n')).toContain('use the exact team name 瑞华云财务共享团队')
+    expect(systemText(request).join('\n')).not.toContain('瑞华云财务共享团队团队')
     expect(systemText(request).join('\n')).not.toContain('Katcat.AI, the personal assistant')
     await send(h.ctx.agents.get(coder.sessionId)!, 'third')
-    expect(systemText(h.adapter.requests.at(-1)!).at(-1)).toContain('You are Coder, a member of the Katcats.AI team.\nYou are a general assistant. Work with the user to establish your role.')
+    expect(systemText(h.adapter.requests.at(-1)!).at(-1)).toContain('You are Coder, a member of 瑞华云财务共享团队.\nYou are a general assistant. Work with the user to establish your role.')
     expect(systemText(h.adapter.requests.at(-1)!).join('\n')).not.toContain('Write technical articles')
   })
 
@@ -68,7 +86,7 @@ describe('Katcats persistent members', () => {
     try {
       await send(handle.agent, 'ordinary conversation')
       expect(systemText(h.adapter.requests.at(-1)!).join('\n')).toContain('Katcat.AI, the personal assistant')
-      expect(systemText(h.adapter.requests.at(-1)!).join('\n')).not.toContain('Katcats.AI team')
+      expect(systemText(h.adapter.requests.at(-1)!).join('\n')).not.toContain('瑞华云财务共享团队')
     } finally {
       await handle.dispose()
     }
@@ -100,7 +118,7 @@ describe('Katcats persistent members', () => {
     expect(h.ctx.sessionProjections.stateOf(agent.session, 'title')).toBe('Editor')
     expect(teamStateSchema.parse(h.ctx.storageDomain.get('katcats_team')!.global.get()).pendingRename).toBeNull()
     await send(agent, 'after rename')
-    expect(systemText(h.adapter.requests.at(-1)!).at(-1)).toContain('You are Editor, a member of the Katcats.AI team.')
+    expect(systemText(h.adapter.requests.at(-1)!).at(-1)).toContain('You are Editor, a member of 瑞华云财务共享团队.')
   })
 
   it('retains a recoverable rename intent when updating the private title fails', async () => {
@@ -407,8 +425,9 @@ describe('Katcats persistent members', () => {
           "system": [
             "You are an AI agent powered by DeepSeek Harness.
 
-        You are Writer, a member of the Katcats.AI team.
+        You are Writer, a member of 瑞华云财务共享团队.
         You are a general assistant. Work with the user to establish your role.
+        When introducing yourself, use the exact team name 瑞华云财务共享团队, even if earlier conversation mentions an old product name.
 
         Use set_own_role only when the user explicitly asks to establish or change your ongoing identity or responsibilities. Do not change your saved role for a temporary task. Claim a role was saved only after the tool succeeds.",
           ],

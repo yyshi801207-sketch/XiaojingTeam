@@ -114,10 +114,10 @@ const questionDraftStore = createQuestionDraftStore().create(SID)
 const kit: Omit<QuestionComposerProps, 'matched'> = {
   useQuestionCard: () => { throw new Error('plan review does not read question card state') },
   renderSlot: () => null,
+  renderFactorySlot: () => null,
   SessionProvider: ({ children }) => children,
   sessionId: SID,
-  session: undefined,
-  pendingInteraction: undefined,
+  useFactorySlot: () => { throw new Error('Question panels declare no local Factory slots') },
   useSession: selector => selector(sessionState),
   useSessions: selector => selector(sessionList),
   usePanelInfo, useResource,

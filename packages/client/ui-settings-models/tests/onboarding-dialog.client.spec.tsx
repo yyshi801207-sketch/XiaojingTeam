@@ -136,7 +136,12 @@ function harness(options: {
     },
   }
   // The page plugin's context, scripted down to the namespaces it reaches.
-  const ctx = { remote: { ...face, session: { initializeDefaultModel: async () => ({ ok: true, value: undefined }) } } } as never
+  const ctx = { remote: { ...face, session: {
+    initializeDefaultModel: async () => ({ ok: true, value: undefined }),
+    modelCatalog: async () => remoteOk({
+      default: { provider: 'deepseek-official', model: 'deepseek-chat' }, routableProviders: [], groups: [], failures: [],
+    }),
+  } } } as never
   const operations = createModelsOperations(ctx)
   const controller = new ModelsSettingsStore(ctx, settingsSchema, new SettingsDescribeMirror(ctx))
   const openSection = vi.fn()

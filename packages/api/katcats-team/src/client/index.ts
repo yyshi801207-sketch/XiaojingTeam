@@ -18,10 +18,11 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {} from '@deepseek-ai/dsh-client-shortcuts/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceCategoryState } from '@deepseek-ai/dsh-client-ui-workspace/client'
-import type { BotId, CreateBotRequest, GroupId, TeamFrame, UpdateBotRequest } from '../types.ts'
-import type { ChatId, ChatFrame } from '../chats-types.ts'
+import type { BotId, CreateBotRequest, GroupId, TeamBot, TeamFrame, UpdateBotRequest } from '../types.ts'
+import type { ChatId, ChatFrame, TeamChat } from '../chats-types.ts'
 import type { MemoryFrame } from '../memory-types.ts'
 import { remoteErrorOf, type RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import { TeamClientModel, TeamRequestSupersededError, type TeamRemote } from './model.ts'
@@ -32,6 +33,13 @@ import { TeamOverlays, type TeamOverlaysInjected } from './Overlays.tsx'
 import { BotSettings, type BotSettingsInjected } from './BotSettings.tsx'
 import { BotModelControl, type BotModelControlInjected, type BotSettingsRequest } from './BotModelControl.tsx'
 import { BotHeaderAction } from './BotHeaderAction.tsx'
+import { GroupRoomAction, type GroupRoomInjected } from './GroupRoom.tsx'
+import { roomEn, roomZh } from './room-locales.ts'
+import { observeRoomActivity } from './room-activity.ts'
+import { Headquarters, type HeadquartersInjected } from './Headquarters.tsx'
+import { createHeadquartersState } from './headquarters-state.ts'
+import type { SessionEventWindow } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SessionSeq } from '@deepseek-ai/dsh-session/types'
 import { BotFolderInfo } from './BotFolderInfo.tsx'
 import { MainBotWelcome } from './MainBotWelcome.tsx'
 import { SettingsPermissionPicker, type PermissionSessionRetainer } from './PermissionSettings.tsx'
@@ -41,7 +49,8 @@ import { ChatSettings, type ChatSettingsInjected } from './ChatForms.tsx'
 import { ChatControls, type ChatControlsInjected } from './ChatControls.tsx'
 import { ChatOverlay, type ChatOverlayInjected } from './ChatOverlay.tsx'
 import { chatRelayDefinition } from './chat-relay.ts'
-import { ChatRelayMessage } from './ChatRelayMessage.tsx'
+import { ChatRelayMessage, type ChatRelayActionsInjected } from './ChatRelayMessage.tsx'
+import type { GroupIdentityInjected } from './group-manager.ts'
 import { GroupDeliveredCards, GroupDeliveredFiles, type GroupDeliveredFilesInjected } from './GroupDeliveredFiles.tsx'
 import { retainGroupFiles } from './group-delivered-files.ts'
 import { chatTaskLifecycleDefinition } from './chat-task-lifecycle.ts'
@@ -49,6 +58,8 @@ import { GroupTaskLifecycle } from './GroupTaskLifecycle.tsx'
 import { TASKS_NS, taskZh, taskEn } from './task-locales.ts'
 import { ChatApprovals, type ChatApprovalsInjected } from './ChatApprovals.tsx'
 import { readApprovalOperation } from './chat-approvals.ts'
+import { ChatQuestions, GroupQuestionPanel, type ChatQuestionsInjected } from './ChatQuestions.tsx'
+import { createGroupQuestions, groupQuestionAvailable, retainGroupQuestion } from './chat-questions.ts'
 import { installGroupTransports } from './group-transports.ts'
 import { createGroupMessageFeedback } from './group-message-feedback.ts'
 import { GroupMessageActions, GroupMessageFeedback, type GroupMessageActionsInjected } from './GroupMessageActions.tsx'
@@ -89,6 +100,7 @@ const UI_INJECT = [
   'slots', 'locale', 'remote.katcatsTeam', 'remote.katcatsChats', 'remote.katcatsMemory', 'remote.session', 'uiWorkspace', 'uiConversation',
   'workspaceCategories', 'sidebarRight', 'sidebarRightTabs', 'sessions', 'workspaces', 'conversation', 'shortcuts', 'uiSession',
   'remote.schedule', 'remote.commands', 'remoteAccess', 'inputTriggers', 'composerPresentation', 'connection',
+  'modelDirectories',
 ]
 
 /**
@@ -107,6 +119,7 @@ function mountUI(ctx: Context): void {
     return () => { document.body.removeAttribute('data-katcats-user-bubbles') }
   }, 'katcats-team: user message palette')
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'katcats-team: dictionaries')
+  ctx.effect(() => ctx.locale.register('katcats.room', { zh: roomZh, en: roomEn }), 'katcats-team: room dictionaries')
   const t = ctx.locale.bind(NS)
   const remote = ctx.remote as ClientRemote & {
     readonly katcatsTeam: TeamRemote
@@ -142,6 +155,8 @@ function mountUI(ctx: Context): void {
   const ui = createTeamUi()
   const sidebarView = createSidebarViewStore()
   const sidebarOverflow = createSidebarOverflow()
+  const sidebarReveal = createSnapshotStore<{ sessionId: SessionId; groupId: GroupId; sequence: number } | null>(null)
+  let revealSequence = 0
   ctx.effect(() => () => { sidebarOverflow.dispose() }, 'katcats-team: sidebar overflow')
   const sidebarSessionStatus = createSidebarSessionStatus(ctx.uiSession.sessionStatus)
   ctx.effect(() => () => { sidebarSessionStatus.dispose() }, 'katcats-team: sidebar interactions')
@@ -179,6 +194,7 @@ function mountUI(ctx: Context): void {
   let initialTeamReceived = false
   let initialChatsReceived = false
   let navigation = 0
+  let stopWaitingForSession: (() => void) | undefined
   const previousCategory = ctx.workspaceCategories.store.getSnapshot().activeCategoryId
   const categorySource = createSnapshotStore<WorkspaceCategoryState>({
     label: t('team.label'), workspaceIds: [], newSessionDisabledWorkspaceIds: [],
@@ -258,37 +274,79 @@ function mountUI(ctx: Context): void {
     }
     openSettings()
   }
-  const openConversation = (sessionId: SessionId, fromStartup = false): void => {
+  const openConversation = (sessionId: SessionId, fromStartup = false, revealGroup?: GroupId, waitForSession = false): void => {
     if (disposed) return
+    stopWaitingForSession?.()
+    stopWaitingForSession = undefined
+    if (revealGroup === undefined && sidebarReveal.getSnapshot() !== null) sidebarReveal.set(null)
     firstSnapshot = false
     const request = ++navigation
     settingsRequest.set(null)
     const selected = selectedSession()
-    const failed = (): void => { if (!disposed && request === navigation) ui.notify('team.openFailed', false) }
+    let completed = false
+    let stopWait: (() => void) | undefined
+    const clearWait = (): void => {
+      stopWait?.()
+      if (stopWaitingForSession === clearWait) stopWaitingForSession = undefined
+    }
+    const failed = (): void => {
+      clearWait()
+      if (!completed && !disposed && request === navigation) ui.notify('team.openFailed', false)
+    }
     const complete = (): void => {
-      if (disposed || request !== navigation || selectedSession() !== selected) return
-      if (!ctx.sessions.list.getSnapshot().ids.includes(sessionId)) { failed(); return }
+      if (completed || disposed || request !== navigation || selectedSession() !== selected) return
+      if (!ctx.sessions.list.getSnapshot().ids.includes(sessionId)) {
+        if (!waitForSession) failed()
+        return
+      }
+      clearWait()
       try {
         ctx.workspaceCategories.setActiveCategory(CATEGORY)
         ctx.uiWorkspace.openSession(sessionId)
+        if (revealGroup !== undefined) sidebarReveal.set({ sessionId, groupId: revealGroup, sequence: ++revealSequence })
       } catch (_error) {
         if (fromStartup && request === navigation) firstSnapshot = true
         failed()
         return
       }
+      completed = true
       settingsRequest.set({ sessionId, sequence: request, intent: fromStartup ? 'collapse' : 'reveal' })
-      void loadCatalog()
+      void ctx.modelDirectories.loadCatalog().catch(() => { /* The shared catalog retains its last usable choices. */ })
     }
     if (ctx.sessions.list.getSnapshot().ids.includes(sessionId)) complete()
-    else void ctx.sessions.refresh().then(complete, failed)
+    else {
+      if (waitForSession) {
+        stopWait = ctx.sessions.list.subscribe(complete)
+        stopWaitingForSession = clearWait
+      }
+      void ctx.sessions.refresh().then(complete, failed)
+    }
   }
   const openBot = (id: BotId): void => {
     const bot = model.state.getSnapshot().snapshot?.bots.find(candidate => candidate.id === id)
     if (bot !== undefined) openConversation(bot.sessionId)
   }
+  const notifyCopy = (success: boolean): void => {
+    if (!disposed) ui.notify(success ? 'copy.copied' : 'copy.failed', success)
+  }
+  const copyText = async (text: string): Promise<void> => {
+    if (disposed) return
+    try { await navigator.clipboard.writeText(text) }
+    catch (_error) {
+      notifyCopy(false)
+      return
+    }
+    notifyCopy(true)
+  }
   const openChat = (id: ChatId): void => {
     const chat = chats.state.getSnapshot().snapshot?.chats.find(candidate => candidate.id === id)
     if (chat !== undefined) openConversation(chat.rootSessionId)
+  }
+  const openCreatedBot = (bot: TeamBot): void => {
+    openConversation(bot.sessionId, false, bot.groupId ?? undefined, true)
+  }
+  const openCreatedChat = (chat: TeamChat): void => {
+    openConversation(chat.rootSessionId, false, chat.groupId, true)
   }
   const requestCreate = (groupId?: GroupId): void => {
     const snapshot = model.state.getSnapshot().snapshot
@@ -296,10 +354,13 @@ function mountUI(ctx: Context): void {
     const target = groupId ?? snapshot.groups.find(group => group.system && group.kind === 'bots')?.id
     ui.createBot(target)
   }
-  const loadCatalog = async (): Promise<void> => {
-    const result = await ctx.remote.session.modelCatalog()
-    if (result.ok && !disposed) model.setCatalog(result.value)
-  }
+  ctx.effect(() => {
+    const synchronize = (): void => { model.setCatalog(ctx.modelDirectories.catalogState.getSnapshot().value) }
+    const stop = ctx.modelDirectories.catalogState.subscribe(synchronize)
+    synchronize()
+    void ctx.modelDirectories.loadCatalog().catch(() => { /* The shared catalog retains its last usable choices. */ })
+    return stop
+  }, 'katcats-team: shared model choices')
   const save = async (request: UpdateBotRequest): Promise<void> => {
     try {
       await model.updateBot(request)
@@ -435,7 +496,7 @@ function mountUI(ctx: Context): void {
       return {
         hooks: { directory: model.state, chats: chats.state, connection: connection.state, permissionBatch: batch.state },
         activatePermissionBatch: batch.activate, applyPermissionBatch: batch.apply, cancelPermissionBatch: batch.cancel,
-        openMemory, openSchedules, retainPermissionSession,
+        openMemory, openSchedules, retainPermissionSession, copyText,
         save: async (request) => {
           try { await chats.update(request); if (!disposed) ui.notify('chat.saved', true) }
           catch (error) {
@@ -468,7 +529,7 @@ function mountUI(ctx: Context): void {
   ctx.slots.inject('sidebar.workspaces', () => ctx.slots.register({
     name: 'sidebar.workspaces', priority: -100, locale: NS, store: sidebarView,
     inject: (): TeamSidebarInjected => ({
-      hooks: { directory: model.state, chats: chats.state, sidebarOverflow: sidebarOverflow.source,
+      hooks: { directory: model.state, chats: chats.state, sidebarOverflow: sidebarOverflow.source, sidebarReveal,
         workspaces: ctx.workspaces.list, sidebarSessionStatus: sidebarSessionStatus.source },
       entityActions: {
         pin: async (entity, pinned) => {
@@ -488,6 +549,7 @@ function mountUI(ctx: Context): void {
       },
       observeScrollList: sidebarOverflow.attach,
       scrollDown: sidebarOverflow.scrollDown,
+      openHeadquarters: () => { headquarters.open() },
       commands: {
         openBot,
         openChat,
@@ -512,7 +574,7 @@ function mountUI(ctx: Context): void {
           if (disposed) return
           ui.closeDialog()
           ui.notify('team.created', true, bot.name)
-          openBot(bot.id)
+          openCreatedBot(bot)
         } catch (error) { if (!disposed) ui.notify(error instanceof TeamRequestSupersededError ? 'team.outcomeUnknown' : 'team.createFailed', false) }
       },
       createGroup: async (name) => {
@@ -583,7 +645,7 @@ function mountUI(ctx: Context): void {
           if (disposed) return
           ui.closeDialog()
           ui.notify('team.created', true, chat.name)
-          openChat(chat.id)
+          openCreatedChat(chat)
         } catch (error) { if (!disposed) ui.notify(error instanceof TeamRequestSupersededError ? 'team.outcomeUnknown' : 'team.createFailed', false) }
       },
     }),
@@ -597,9 +659,67 @@ function mountUI(ctx: Context): void {
         : readApprovalOperation(ctx.sessions, ctx.uiConversation, pending.sessionId, pending.callId, signal),
     }),
   }, ChatApprovals))
+  const groupQuestions = createGroupQuestions(ctx.uiSession.sessionStatus, chats.state, connection.state, (pending) => {
+    if (pending.callId !== undefined) ctx.get('userQuestionPanels')?.reveal(pending.sessionId, pending.callId)
+  })
+  ctx.effect(() => groupQuestions.dispose, 'katcats-team: original group questions')
+
+  const roomActivityLifetime = new AbortController()
+  ctx.effect(() => () => { roomActivityLifetime.abort() }, 'katcats-team: room execution subscriptions')
+  const watchRoomActivity: GroupRoomInjected['watchRoomActivity'] = (chatId, signal) => observeRoomActivity({
+    sessions: ctx.sessions, chats: chats.state, connection,
+  }, chatId, AbortSignal.any([signal, roomActivityLifetime.signal]))
+  const headquarters = createHeadquartersState(watchRoomActivity)
+  ctx.effect(() => headquarters.dispose, 'katcats-team: headquarters selection subscriptions')
+  ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay', id: 'katcats-team.headquarters', locale: 'katcats.room',
+    inject: (): HeadquartersInjected => ({
+      hooks: { headquarters: headquarters.source, directory: model.state, chats: chats.state,
+        connection: connection.state, statuses: ctx.uiSession.sessionStatus },
+      close: headquarters.close, select: headquarters.select, copyText,
+      openChat: id => { headquarters.close(); openChat(id) },
+      openBot: id => { headquarters.close(); openBot(id) },
+    }),
+  }, Headquarters))
+  const emptyRoomEvents = createSnapshotStore<SessionEventWindow>({ entries: [], hasMore: false,
+    revision: 0, change: { kind: 'replace', entries: [] } })
+  ctx.slots.inject('conversation.session.header.actions', () => ctx.slots.register({
+    name: 'conversation.session.header.actions', id: 'katcats-team.dispatch-room', order: -90, locale: 'katcats.room',
+    inject: (sessionId: SessionId): GroupRoomInjected => {
+      const binding = ctx.sessions.binding(sessionId)
+      return {
+        hooks: { chats: chats.state, directory: model.state, roomEvents: binding?.eventSource ?? emptyRoomEvents,
+          roomConnection: connection.state, roomStatuses: ctx.uiSession.sessionStatus, groupQuestions: groupQuestions.source },
+        watchRoomActivity, copyText,
+        loadRoomHistory: async () => {
+          if (binding === undefined || disposed || ctx.sessions.binding(sessionId) !== binding
+            || connection.state.getSnapshot() !== 'connected') throw new Error('Group history unavailable')
+          await binding.session.loadThrough(0 as SessionSeq)
+        },
+      }
+    },
+  }, GroupRoomAction))
+  ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
+    name: 'conversation.input.dock', id: 'katcats-team.worker-questions', order: -190, locale: NS,
+    children: { 'katcats.group.question-panel': { kind: 'single', scope: 'session' } },
+    inject: (): ChatQuestionsInjected => ({
+      hooks: { directory: model.state, chats: chats.state, groupQuestions: groupQuestions.source,
+        questionConnection: connection.state, questionGeneration: connection.generation },
+      retainQuestion: (target, signal) => retainGroupQuestion({ sessions: ctx.sessions, chats: chats.state,
+        directory: model.state, questions: groupQuestions.source, connection }, target, signal),
+      revealQuestion: target => !disposed && connection.state.getSnapshot() === 'connected'
+        && groupQuestionAvailable(target, chats.state.getSnapshot(), model.state.getSnapshot())
+        && groupQuestions.source.getSnapshot().some(item => item.pending === target.pending)
+        && target.pending.callId !== undefined
+        && (ctx.get('userQuestionPanels')?.reveal(target.pending.sessionId, target.pending.callId) ?? false),
+    }),
+  }, ChatQuestions))
+  ctx.slots.inject('katcats.group.question-panel', () => ctx.slots.register({
+    name: 'katcats.group.question-panel', locale: NS,
+  }, GroupQuestionPanel))
   ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
     name: 'conversation.input.dock', id: 'katcats-team.chat-controls', order: -100, locale: NS,
-    inject: (): ChatControlsInjected => ({ hooks: { directory: model.state, chats: chats.state }, control: async (action, request) => {
+    inject: (): ChatControlsInjected => ({ hooks: { directory: model.state, chats: chats.state, groupQuestions: groupQuestions.source }, control: async (action, request) => {
       try { await chats.control(action, request) }
       catch (error) { if (!disposed) ui.notify(error instanceof TeamRequestSupersededError ? 'team.outcomeUnknown' : 'chat.controlFailed', false); throw error }
     } }),
@@ -633,7 +753,19 @@ function mountUI(ctx: Context): void {
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
     name: 'conversation.chat.node', key: 'katcats-relay', locale: NS,
     children: { 'katcats.group.delivered-files': { kind: 'single', scope: 'session' } },
-    inject: () => ({ hooks: { groupDirectory: chats.state } }),
+    inject: (): ChatRelayActionsInjected & GroupIdentityInjected => ({
+      hooks: { groupDirectory: chats.state },
+      copyRelayText: (text) => { void copyText(text) },
+      openRelayMember: (id) => {
+        if (disposed) return
+        const directory = model.state.getSnapshot()
+        if (directory.phase !== 'ready' || !directory.snapshot?.bots.some(bot => bot.id === id)) {
+          ui.notify('team.openFailed', false)
+          return
+        }
+        openBot(id)
+      },
+    }),
   }, ChatRelayMessage))
   ctx.slots.inject('katcats.group.delivered-files', () => ctx.slots.register({
     name: 'katcats.group.delivered-files', locale: NS,
@@ -697,7 +829,12 @@ function mountUI(ctx: Context): void {
         model.replace(frame.value)
         initialSelection()
       },
-      update: (frame) => { model.replace(frame.value) },
+      update: (frame) => {
+        const known = new Set(model.state.getSnapshot().snapshot?.bots.map(bot => bot.id) ?? [])
+        model.replace(frame.value)
+        const created = frame.value.bots.filter(bot => bot.kind === 'ordinary' && !known.has(bot.id))
+        if (created.length > 0) openCreatedBot(created[0]!)
+      },
       failed: () => { model.failed() },
     })
   }
@@ -709,7 +846,12 @@ function mountUI(ctx: Context): void {
     return new RemoteSnapshotStream<Extract<ChatFrame, { type: 'snapshot' }>, Exclude<ChatFrame, { type: 'snapshot' }>>(stream, {
       name: 'Katcats group directory', isSnapshot: (frame): frame is Extract<ChatFrame, { type: 'snapshot' }> => frame.type === 'snapshot',
       replace: (frame) => { initialChatsReceived = true; chats.replace(frame.value); initialSelection() },
-      update: (frame) => { chats.replace(frame.value) }, failed: () => { chats.failed() },
+      update: (frame) => {
+        const known = new Set(chats.state.getSnapshot().snapshot?.chats.map(chat => chat.id) ?? [])
+        chats.replace(frame.value)
+        const created = frame.value.chats.filter(chat => !known.has(chat.id))
+        if (created.length > 0) openCreatedChat(created[0]!)
+      }, failed: () => { chats.failed() },
     })
   }
   let control = createControl()
@@ -725,23 +867,27 @@ function mountUI(ctx: Context): void {
     chatControl = createChatControl()
     control.start()
     chatControl.start()
-    void loadCatalog()
+    ctx.modelDirectories.refreshCatalog()
   }
   ctx.on('connection/reset', () => {
     navigation++
+    stopWaitingForSession?.()
+    stopWaitingForSession = undefined
     initialCatalogRequested = false
     initialTeamReceived = false
     initialChatsReceived = false
     settingsRequest.set(null)
     model.resetGeneration()
     chats.resetGeneration()
-    void loadCatalog()
+    control.restart()
+    chatControl.restart()
   })
   control.start()
   chatControl.start()
-  void loadCatalog()
   ctx.effect(() => async () => {
     disposed = true
+    stopWaitingForSession?.()
+    stopWaitingForSession = undefined
     settingsRequest.set(null)
     model.dispose()
     chats.dispose()

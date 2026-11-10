@@ -1,0 +1,8 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`member execution panel > pauses scroll following while the reader scrolls up and resumes explicitly 1`] = `
+[
+  "请求工具 · web_search",
+  "核验员",
+]
+`;

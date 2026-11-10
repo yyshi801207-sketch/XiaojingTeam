@@ -2,6 +2,7 @@
 /** Section, setup-card, and hand-written editor behavior over a scripted wire face. */
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { ReactNode } from 'react'
 import Schema from '@deepseek-ai/schemastery'
 import { Context } from '@deepseek-ai/cordis'
 import { bindSnapshotSelector, RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
@@ -244,7 +245,12 @@ function ctxWith(face: object): PageContext {
   const existing = contexts.get(face)
   if (existing !== undefined) return existing
   const ctx = Object.assign(new Context(), { remote: { ...face,
-    session: { initializeDefaultModel: async () => ({ ok: true, value: undefined }) },
+    session: {
+      initializeDefaultModel: async () => ({ ok: true, value: undefined }),
+      modelCatalog: async () => remoteOk({
+        default: { provider: 'deepseek-official', model: 'deepseek-chat' }, routableProviders: [], groups: [], failures: [],
+      }),
+    },
   } })
   contexts.set(face, ctx)
   return ctx
@@ -295,7 +301,7 @@ type RenderSlotCall = [name: string, owner: Record<string, unknown>, opts?: { en
 
 /** Child-slot dispatch stub: records every seat occurrence, renders nothing. */
 function stubRenderSlot() {
-  return vi.fn((..._call: RenderSlotCall) => null)
+  return vi.fn((..._call: RenderSlotCall): ReactNode => null)
 }
 
 /** The provider-card seat dispatches a stub recorded, as (route id, configured, keyConfigured, entryKey). */
@@ -312,13 +318,12 @@ function cardSeatCalls(
     ])
 }
 
-async function mountFace(scripted: ReturnType<typeof scriptedFace>) {
+async function mountFace(scripted: ReturnType<typeof scriptedFace>, renderSlot = stubRenderSlot()) {
   const { face, update, mutate, set, unset } = scripted
   const ctx = ctxWith(face)
   const mirror = new SettingsDescribeMirror(ctx)
   const controller = new ModelsSettingsStore(ctx, settingsSchema, mirror)
   await controller.load()
-  const renderSlot = stubRenderSlot()
   const injected: ModelsSectionProps = {
     controller,
     useSnapshot: bindSnapshotSelector(controller.store),
@@ -396,7 +401,7 @@ describe('ModelsSection', () => {
         t={t}
         renderSlot={() => null}
       />)
-      expect(screen.getByRole('heading', { name: en.title })).toBeTruthy()
+      expect(screen.getByRole('heading', { name: en.primaryTitle })).toBeTruthy()
       expect(screen.queryByLabelText(en.keyInput)).toBeNull()
       expect(screen.queryByRole('button', { name: en.add })).toBeNull()
     } finally {
@@ -443,7 +448,7 @@ describe('ModelsSection', () => {
       expect(load).toHaveBeenCalledOnce()
       expect(controller.store.getSnapshot()).toMatchObject({ status: 'loading' })
       expect(controller.store.getSnapshot().namespaces.get('llm-deepseek')?.revision).toBe(0)
-      expect(screen.getByRole('heading', { name: en.title })).toBeTruthy()
+      expect(screen.getByRole('heading', { name: en.primaryTitle })).toBeTruthy()
       expect(screen.queryByLabelText(en.keyInput)).toBeNull()
     } finally {
       await act(async () => { read.resolve(remoteOk({})); await load.mock.results[0]?.value })
@@ -2422,4 +2427,123 @@ it('renders the localized account row as signed in without an edit action', asyn
   const item = screen.getByText(en.deepSeekAccount).closest('li')!
   expect(within(item).getByText(en.accountSignedIn)).toBeTruthy()
   expect(within(item).queryByText(en.edit)).toBeNull()
+})
+
+describe('subscription and legacy provider identities', () => {
+  async function mountAccounts(codexConfigured: boolean, accountConfigured: boolean) {
+    const renderSlot = stubRenderSlot()
+    renderSlot.mockImplementation(name => name === 'settings.models.account-editor'
+      ? <section data-testid="account-editor">Account connection editor</section> : null)
+    const b = await mountFace(scriptedFace(), renderSlot)
+    const legacyProfile = { apiKeyEnv: 'EXISTING_CODEX_REFERENCE', baseURL: 'https://existing.example/v1' }
+    const profiles = { ...codexConfigured ? { 'openai-codex': legacyProfile } : {},
+      ...accountConfigured ? { chatgpt: { models: [{ id: 'verified-fixture' }] } } : {} }
+    const original = b.controller.store.getSnapshot().namespaces.get('llm-pi-ai')!
+    const namespace: SettingsNamespaceView = { ...original, value: { providers: profiles }, user: { providers: profiles } }
+    const codex: ProviderRow = {
+      entry: { provider: 'openai-codex', displayName: 'openai-codex', settingsNs: 'llm-pi-ai',
+        settingsPath: ['providers', 'openai-codex'], active: true, nativeAuth: { env: [], oauth: true } },
+      configured: codexConfigured, removable: codexConfigured, apiKeyEnv: undefined, credential: undefined,
+    }
+    const account: ProviderRow = { ...codex, configured: accountConfigured, removable: accountConfigured,
+      entry: { ...codex.entry, provider: 'chatgpt', displayName: 'ChatGPT', settingsPath: ['providers', 'chatgpt'] } }
+    act(() => { b.controller.store.update((state) => {
+      state.rows = [codex, account]
+      state.namespaces = new Map([['llm-pi-ai', namespace]])
+    }) })
+    return { ...b, namespace, legacyProfile }
+  }
+
+  it('offers explicitly named subscription setup from the legacy route without changing its configuration', async () => {
+    const b = await mountAccounts(true, false)
+    expect(screen.queryByTestId('account-editor')).toBeNull()
+    expect(screen.getByText(en.codexLegacyTag)).toBeTruthy()
+    expect(screen.getByText(en.codexLegacyHint)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: en.chatGptConfigureSubscription }))
+    expect(screen.getAllByTestId('account-editor')).toHaveLength(1)
+    expect(screen.queryByLabelText(en.keyInput)).toBeNull()
+    expect(screen.queryByRole('button', { name: en.apply })).toBeNull()
+    expect(b.renderSlot.mock.calls.filter(([name]) => name === 'settings.models.account-editor')).toHaveLength(1)
+    expect(b.set).not.toHaveBeenCalled()
+    expect(b.mutate).not.toHaveBeenCalled()
+    const accountCall = b.renderSlot.mock.calls.find(([name]) => name === 'settings.models.account-editor')!
+    const onClose = accountCall[1]['onClose']
+    const isCloseAction = (value: unknown): value is () => void => typeof value === 'function'
+    if (!isCloseAction(onClose)) throw new Error('Account editor has no close action')
+    act(() => { onClose() })
+    expect(screen.queryByTestId('account-editor')).toBeNull()
+  })
+
+  it('keeps the subscription and legacy cards distinct without hiding either saved provider identity', async () => {
+    const b = await mountAccounts(true, true)
+    expect(screen.getAllByText('openai-codex')).toHaveLength(1)
+    expect(screen.getByText(en.chatGptTitle)).toBeTruthy()
+    expect(screen.getByText(en.codexLegacyTag)).toBeTruthy()
+    const subscription = screen.getByText(en.chatGptTitle).closest('li')!
+    fireEvent.click(within(subscription).getByRole('button', { name: /^Edit /u }))
+    expect(screen.getAllByTestId('account-editor')).toHaveLength(1)
+    const snapshot = b.controller.store.getSnapshot()
+    expect(snapshot.rows.map(row => ({ provider: row.entry.provider, path: row.entry.settingsPath }))).toEqual([
+      { provider: 'openai-codex', path: ['providers', 'openai-codex'] },
+      { provider: 'chatgpt', path: ['providers', 'chatgpt'] },
+    ])
+    expect(snapshot.namespaces.get('llm-pi-ai')?.value).toEqual({ providers: {
+      'openai-codex': b.legacyProfile, chatgpt: { models: [{ id: 'verified-fixture' }] },
+    } })
+    expect(b.mutate).not.toHaveBeenCalled()
+    expect(b.set).not.toHaveBeenCalled()
+  })
+
+  it('uses the same account editor from Add provider without offering a second ChatGPT entry', async () => {
+    const b = await mountAccounts(false, false)
+    fireEvent.click(screen.getByRole('button', { name: en.add }))
+    const provider = screen.getByLabelText<HTMLSelectElement>(en.provider)
+    expect([...provider.options].map(option => option.value)).toEqual(['openai-codex'])
+    expect(provider.options[0]?.textContent).toBe(en.chatGptTitle)
+    expect(screen.getAllByTestId('account-editor')).toHaveLength(1)
+    expect(screen.queryByLabelText(en.keyInput)).toBeNull()
+    expect(b.mutate).not.toHaveBeenCalled()
+  })
+
+  it('separates the primary route from candidates and reflects the confirmed subscription connection', async () => {
+    const b = await mountAccounts(true, true)
+    const deepSeek = wireNamespaces().find(view => view.ns === 'llm-deepseek')!
+    const namespaces = new Map([...b.controller.store.getSnapshot().namespaces, ['llm-deepseek', deepSeek]])
+    act(() => { b.controller.store.update((state) => {
+      state.rows = [...state.rows.map(row => row.entry.provider === 'chatgpt' ? { ...row, accountAvailable: true } : row), {
+        entry: { provider: 'deepseek-official', displayName: 'DeepSeek', settingsNs: 'llm-deepseek', settingsPath: [], active: true },
+        configured: true, removable: false, apiKeyEnv: undefined, credential: undefined,
+      }]
+      state.namespaces = namespaces
+      state.primaryProvider = 'deepseek-official'
+    }) })
+    const primary = screen.getByRole('list', { name: en.primaryTitle })
+    const candidates = screen.getByRole('list', { name: en.candidateTitle })
+    expect(within(primary).getByText('DeepSeek')).toBeTruthy()
+    expect(within(primary).queryByText('openai-codex')).toBeNull()
+    expect(within(candidates).getByText('openai-codex')).toBeTruthy()
+    const subscription = within(candidates).getByText(en.chatGptTitle).closest('li')!
+    const legacy = within(candidates).getByText('openai-codex').closest('li')!
+    expect(within(subscription).getByRole('img', { name: en.chatGptConfigured })).toBeTruthy()
+    expect(within(legacy).queryByRole('img', { name: en.chatGptConfigured })).toBeNull()
+    expect({
+      headings: screen.getAllByRole('heading', { level: 2 }).map(heading => heading.textContent),
+      primary: primary.textContent,
+      candidates: candidates.textContent,
+      defaultRule: screen.getByText(en.primaryIntro).textContent,
+      candidatesHint: screen.getByText(en.intro).textContent,
+      divider: screen.getAllByRole('separator').length,
+    }).toMatchSnapshot()
+    act(() => { b.controller.store.update((state) => {
+      state.primaryProvider = 'chatgpt'
+      state.rows = state.rows.map(row => row.entry.provider === 'chatgpt' ? { ...row, accountAvailable: false } : row)
+    }) })
+    expect(within(screen.getByRole('list', { name: en.primaryTitle })).getByText(en.chatGptTitle)).toBeTruthy()
+    expect(within(screen.getByRole('list', { name: en.candidateTitle })).getByText('DeepSeek')).toBeTruthy()
+    expect(screen.queryByRole('img', { name: en.chatGptConfigured })).toBeNull()
+    act(() => { b.controller.store.update((state) => { state.primaryProvider = 'openai-codex' }) })
+    expect(within(screen.getByRole('list', { name: en.primaryTitle })).getByText('openai-codex')).toBeTruthy()
+    expect(within(screen.getByRole('list', { name: en.candidateTitle })).getByText(en.chatGptTitle)).toBeTruthy()
+    expect(b.mutate).not.toHaveBeenCalled()
+  })
 })

@@ -73,8 +73,10 @@ import { discoverModels } from './discovery.ts'
 import type { StoredModelDiscoveryProfile } from './discovery.ts'
 import { registerPiAiFlows } from './login.ts'
 import { providerDefaultsOf } from './provider-data.ts'
+import { chatGPTAccessToken } from './chatgpt.ts'
 
 export { PiAiAdapter } from './adapter.ts'
+export { createChatGPTAdapter } from './chatgpt-adapter.ts'
 export type { PiAiAdapterOptions } from './adapter.ts'
 export { Config } from './config.ts'
 export type {
@@ -142,6 +144,7 @@ function directoryEntries(
       // route is still one pi-ai knows.
       declared: installed === undefined,
       ...installed === undefined ? {} : providerDefaultsOf(installed),
+      ...provider !== 'chatgpt' ? {} : { nativeAuth: { env: [], oauth: true } },
       ...error === undefined ? {} : { error },
     })
   }
@@ -236,7 +239,7 @@ export function apply(ctx: Context, config: Config): void {
   // Scoped to the authorization seam rather than injected outright, because a
   // composition without it (headless, ACP) simply has no surface to sign in
   // from, while everything else this plugin does still works.
-  ctx.inject(['authorization'], (authorized) => { registerPiAiFlows(authorized, auth) })
+  ctx.inject(['authorization'], (authorized) => { registerPiAiFlows(authorized, auth, config.loginAgentName) })
   // The full installed catalog is configurable from the moment the plugin
   // mounts — dormant or not — so configuration surfaces can offer every
   // pi-ai provider before any route exists. Hand-declared routes join it as
@@ -265,10 +268,13 @@ export function apply(ctx: Context, config: Config): void {
   ): StoredModelDiscoveryProfile | undefined => {
     if (provider === undefined) return undefined
     const profile = profiles().get(provider)
-    if (profile === undefined) return undefined
+    if (profile === undefined && provider !== 'openai' && provider !== 'chatgpt') return undefined
     return {
-      headers: profile.headers,
-      resolveApiKey: () => resolveApiKey(provider, profile),
+      headers: profile?.headers,
+      resolveApiKey: () => profile === undefined ? Promise.resolve(undefined) : resolveApiKey(provider, profile),
+      ...provider !== 'openai' && provider !== 'chatgpt' ? {} : {
+        resolveChatGPTAccessToken: (signal?: AbortSignal) => chatGPTAccessToken(auth, profile, signal, provider === 'chatgpt'),
+      },
     }
   }
   // Interrogating an endpoint is a configuration-time action over a draft, so

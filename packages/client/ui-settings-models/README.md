@@ -29,7 +29,7 @@ Desktop product events use the optional [product analytics service](../product-a
 
 Saving credentials or a custom provider preserves the selected model. The user can select an available model from the composer.
 
-DeepSeek Account appears first and DeepSeek second in the provider list; third-party providers retain their directory order.
+The current application default appears under Primary model. A divider separates Candidate models, which accept subscription accounts and API providers. New Bots follow the primary model unless individually overridden; saving candidates does not change that default. Providers retain their directory order within each section. The subscription connection dot requires an active route, saved candidates, and a configured account grant; it disappears when the route is inactive, the account is disconnected, or its status cannot be confirmed. It does not indicate which route a Bot uses. API-key dots continue to indicate configured credentials rather than a continuous connection test.
 
 Open the Models page from the Settings navigation to see every configured provider as a row. A whole-section provider whose key is not configured anywhere renders as its open setup card instead, but only in the first-run posture and only until the user closes that card. Each card kind owns its own open state, so closing one never discards a draft in another.
 
@@ -39,7 +39,19 @@ After Apply closes an editor, its saved status appears when the current provider
 
 Host configuration `credentialOnboarding` defaults to `true`. Katcat Desktop uses its product welcome and conditional API-key setup. The official Desktop suppresses both Web steps because its [account plugin](../ui-settings-account/README.md#desktop-onboarding) owns the introduction. Models settings and explicit API-key editing remain available. Native shells can disable only the credential step with `credentialOnboarding: false`, including Katcat. Host publishes this boolean and optional non-empty `installationId` through `webserver/index-inject`; Client validates these public, non-secret initialization values before registering dialogs. Only Katcat Desktop consumes `installationId`; neither value is a durable completion marker.
 
-### API keys
+### Candidate verification
+
+The `modelVerification.verify({ provider: 'chatgpt', model }, signal)` Remote tests one unadopted candidate only after an explicit user action. It creates a fresh Agent and Session with an independent model catalog, prompt registry, tools, and event bus. The candidate never changes the application's live routes, and the test creates no Bot, group, task, or Workspace registration. Original user input, request state, completion, and upstream-reported token usage are stored through the Host's persistence provider; `testSessionId` identifies this audit log.
+
+Only a normal, nonempty, uninterrupted completion returns `passed`. Empty, failed, or truncated responses return `failed`; cancellation returns `cancelled`. Setup, persistence, and cleanup failures reject with `model-verification/failed`, so an untrusted or unflushed result cannot be adopted as a pass. Carrier cancellation and plugin disposal stop and drain the isolated Agent before releasing its writer. The Remote never adopts settings itself.
+
+### ChatGPT / Codex subscription account
+
+Open **ChatGPT subscription → Edit**, or **Configure ChatGPT subscription** on a legacy **openai-codex** card, to sign in through OpenAI's official browser authorization, fetch account-specific models, and select multiple candidates. This editor replaces the API-key form for the subscription entry; it is also used when adding that provider. **Test and save selected models** verifies every selected candidate before saving; a failure preserves the previous configured list. Eligible models and limits come from the connected account, and tests consume account usage. In Katcats, each Bot can then select a candidate independently or follow the global model. Connecting the account or saving candidates does not change any Bot's selection or the global default.
+
+The settings page presents the dedicated `chatgpt` route as **ChatGPT subscription** and retains any configured **openai-codex** card with a Legacy route label. Each card remains in the section matching its actual provider identity. A subscription grant does not authorize the legacy route; Bots still using it must explicitly select a ChatGPT candidate in their model settings. The `llm-pi-ai/chatgpt` grant stays separate from legacy Codex and OpenAI API-key records. Disconnecting removes only that grant; affected Bot selections remain visible as unavailable. Closing the editor cancels its authorization or test, and late results cannot publish success.
+
+### API-key storage
 
 API-key inputs start empty and use `autocomplete="new-password"` to ask browsers not to autofill saved login passwords. A nonempty draft has the same eye control as masked conversation text: **Show secret** reveals the current input and **Hide secret** masks it. Changing or clearing the input masks it again. Stored credentials are never read into the input.
 
@@ -122,11 +134,19 @@ The `settings.models.sign-in` slot lets account login offer a choice before the 
 <a id="model-experience"></a>
 ## Model Experience
 
-None, as the package is a browser-side UI plugin layer that registers nothing model-facing.
+### Explicit candidate verification
+
+#### What the model sees
+
+An explicit candidate test sends `Reply with exactly OK.` as the sole user message in a fresh Session with the standard System Prompt and one local probe tool whose empty arguments and fixed `OK` result have no side effects. The tool schema is sent on every test; the prompt does not require a tool call. Ordinary settings reads, account sign-in, and candidate discovery send no model request.
+
+#### Token effect
+
+Each tested candidate makes its own short verification request and records the token usage the upstream reports. No existing conversation history enters that request.
 
 #### KV Cache effect
 
-None; this package neither assembles nor sends a provider request.
+Verification makes an independent request with a fixed prompt prefix; it changes no existing conversation prefix. Different candidate models have independent provider cache behavior.
 
 ## Known Limitations and Deferred Work
 
@@ -134,6 +154,8 @@ None; this package neither assembles nor sends a provider request.
 
 
 These limits define the editor's field coverage and the page's reach; they are current package constraints, not a settings roadmap.
+
+- **Host-wide shutdown can interrupt audit storage** — the shared persistence provider does not order concurrent root disposal. If it closes a verification writer early, the test drains and reports failure with a Host warning; it never returns a pass. Cancellation or Models-plugin disposal while the provider remains mounted drains the complete log.
 
 - **Only the API key and curated fold fields are editable on the card** — the hand-written editor traded schema-generic field coverage for the mockup layout. Retry policy, timeouts, DeepSeek model descriptions, and other advanced fields remain in `cordis.patch.yml`; existing model fields the editor does not show are preserved.
 - **Credential cleanup is intentionally narrow** — deleting a row removes the configured, writable credential only when its reference is the exact `<ROUTE>_API_KEY` target this page derives. Custom references, environment credentials, and unidentifiable targets are retained because the row cannot prove ownership of them.

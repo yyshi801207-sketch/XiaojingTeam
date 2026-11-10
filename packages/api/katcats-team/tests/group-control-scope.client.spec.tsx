@@ -32,6 +32,7 @@ function fixture() {
   const control = vi.fn(async () => { await pending.promise })
   const props = { sessionId: first.rootSessionId, useChats: bindSnapshotSelector(chats),
     useDirectory: bindSnapshotSelector(team),
+    useGroupQuestions: bindSnapshotSelector(createSnapshotStore([])),
     useSessionStatus: bindSnapshotSelector(createSnapshotStore<SessionStatusSnapshot>(new Map())),
     control, t: makeTranslate(zh) } as ChatControlsProps
   return { chats, pending, control, props }
@@ -130,8 +131,54 @@ for (const [locale, dictionary] of [['zh', zh], ['en', en]] as const) {
         expect(screen.queryByText(dictionary['chat.pauseOther'])).toBeNull()
         expect(screen.queryByText(dictionary['chat.pauseUnknown'])).toBeNull()
         expect(screen.getByRole('alert').textContent).toBe(dictionary['chat.errorMemberMalformedResponse'])
-        expect(screen.getByRole('button', { name: dictionary['chat.resume'] })).toBeTruthy()
-        expect(screen.getByRole('button', { name: dictionary['chat.stop'] })).toBeTruthy()
+        expect(screen.getByRole('button', { name: dictionary['chat.endFailedRun'] })).toBeTruthy()
+        expect(screen.queryByRole('button', { name: dictionary['chat.resume'] })).toBeNull()
+        expect(screen.queryByRole('button', { name: dictionary['chat.stop'] })).toBeNull()
       })
+
+    it('ends a failed malformed run before guiding the owner to send a new instruction', async () => {
+      const { chats, pending, control, props } = fixture()
+      const failed: TeamChat = { ...first, pauseReason: 'unknown-result',
+        error: { code: 'KATCATS_CHAT_MEMBER_MALFORMED_RESPONSE', message: 'Incomplete tool arguments.' } }
+      chats.set({ phase: 'ready', snapshot: { ...initial, chats: [failed] } })
+      render(<ChatControls {...props} t={makeTranslate(dictionary)} />)
+      expect(screen.getAllByRole('button')).toHaveLength(1)
+      fireEvent.click(screen.getByRole('button', { name: dictionary['chat.endFailedRun'] }))
+      expect(control).toHaveBeenCalledExactlyOnceWith('stop', { id: failed.id,
+        expectedRunId: failed.run!.id, expectedGeneration: failed.generation })
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: dictionary['chat.endFailedRun'] }).disabled).toBe(true)
+      expect(screen.getByText(dictionary['chat.controlPending'])).toBeTruthy()
+      expect(screen.queryByText(dictionary['chat.stopped'])).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: dictionary['chat.endFailedRun'] }))
+      expect(control).toHaveBeenCalledTimes(1)
+      await act(async () => { pending.resolve(undefined) })
+      act(() => { chats.set({ phase: 'ready', snapshot: { ...initial, chats: [{ ...failed,
+        status: 'stopped', run: null, generation: 2, error: null }] } }) })
+      expect(screen.getByText(dictionary['chat.stopped'])).toBeTruthy()
+      expect(screen.getAllByText(dictionary['chat.stoppedHint'])).toHaveLength(1)
+      expect(screen.queryByRole('button', { name: dictionary['chat.endFailedRun'] })).toBeNull()
+    })
+
+    it('keeps a fresh malformed run controllable without letting an older Stop reply unlock its pending action', async () => {
+      const { chats, pending, control, props } = fixture()
+      const failed: TeamChat = { ...first, pauseReason: 'unknown-result',
+        error: { code: 'KATCATS_CHAT_MEMBER_MALFORMED_RESPONSE', message: 'Incomplete tool arguments.' } }
+      const following = Promise.withResolvers<undefined>()
+      control.mockImplementationOnce(async () => { await pending.promise })
+        .mockImplementationOnce(async () => { await following.promise })
+      chats.set({ phase: 'ready', snapshot: { ...initial, chats: [failed] } })
+      render(<ChatControls {...props} t={makeTranslate(dictionary)} />)
+      fireEvent.click(screen.getByRole('button', { name: dictionary['chat.endFailedRun'] }))
+      const next: TeamChat = { ...failed, generation: 3, run: { id: 'fresh-failed-run' as ChatRunId, generation: 3, relayCount: 0 } }
+      act(() => { chats.set({ phase: 'ready', snapshot: { ...initial, revision: 3, chats: [next] } }) })
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: dictionary['chat.endFailedRun'] }).disabled).toBe(false)
+      fireEvent.click(screen.getByRole('button', { name: dictionary['chat.endFailedRun'] }))
+      expect(control).toHaveBeenNthCalledWith(2, 'stop', { id: next.id,
+        expectedRunId: next.run!.id, expectedGeneration: next.generation })
+      await act(async () => { pending.resolve(undefined) })
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: dictionary['chat.endFailedRun'] }).disabled).toBe(true)
+      await act(async () => { following.resolve(undefined) })
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: dictionary['chat.endFailedRun'] }).disabled).toBe(false)
+    })
   })
 }

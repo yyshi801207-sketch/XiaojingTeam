@@ -11,7 +11,7 @@ it('uses the Shanghai build date and retains the original installer bytes', asyn
     const installer = Buffer.from('installer bytes')
     await writeFile(source, installer)
     const destination = await copyWindowsInstallerDelivery(source, join(root, 'delivery'), '1.0.2', new Date('2026-10-24T16:00:00Z'))
-    expect(destination).toBe(join(root, 'delivery', '小兢会计团队版-V1.0.2-Windows-x64-20261025.exe'))
+    expect(destination).toBe(join(root, 'delivery', '小兢Bot-V1.0.2-Windows-x64-20261025.exe'))
     expect(await readFile(destination)).toEqual(installer)
     expect(await readFile(source)).toEqual(installer)
   } finally { await rm(root, { recursive: true, force: true }) }

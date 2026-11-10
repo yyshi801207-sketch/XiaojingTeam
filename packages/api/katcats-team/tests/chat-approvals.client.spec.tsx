@@ -121,6 +121,7 @@ describe('visible group worker approval requests', () => {
       fixture.groups.set({ phase: 'ready', snapshot: { ...snapshot, chats: [{ ...chat, status: 'stopped', run: null }] } })
     })
     const controlProps = { sessionId: chat.rootSessionId, useSessionStatus: fixture.props.useSessionStatus,
+      useGroupQuestions: bindSnapshotSelector(createSnapshotStore([])),
       useChats: fixture.props.useChats, useDirectory: fixture.props.useDirectory, control, t } as ChatControlsProps
     render(<><ChatApprovals {...fixture.props} /><ChatControls {...controlProps} /></>)
     expect(screen.getByRole<HTMLButtonElement>('button', { name: zh['chat.stop'] }).disabled).toBe(false)

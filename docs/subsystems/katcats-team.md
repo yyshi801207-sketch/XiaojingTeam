@@ -69,6 +69,7 @@ binding(sessionId: SessionId): { chatId: ChatId; botId: BotId | 'root' } | undef
 
 /**
  * Create an isolated group and one persistent execution Session per selected ordinary member.
+ * Newly created groups precede existing groups in the durable directory.
  * @param request - name, ordinary members, and optional positive dispatch limit.
  * @returns the fully committed group and replacement directory.
  */
@@ -203,8 +204,9 @@ modelSelection(botId: BotId): ModelSelection
 
 /**
  * Create a general member and a durable ordinary private Session.
+ * New members precede existing ordinary members; an omitted group uses 未分组.
  * A retry matching a still-pending name, group, avatar, and empty role returns that recovered member.
- * @param request - member name, optional group, and optional approved avatar.
+ * @param request - member name, optional explicit group, and optional approved avatar.
  * @returns the committed member and replacement snapshot.
  */
 @Remote async createBot(request: CreateBotRequest): Promise<BotMutationValue>
@@ -226,7 +228,7 @@ modelSelection(botId: BotId): ModelSelection
 @Remote async deleteBot(request: DeleteBotRequest): Promise<TeamSnapshot>
 
 /**
- * Create a logical group for ordinary members.
+ * Create a logical group before existing custom groups, retaining system-group order.
  * @param request - non-empty group name.
  * @returns the committed group and replacement snapshot.
  */

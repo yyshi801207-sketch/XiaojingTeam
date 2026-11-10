@@ -2,7 +2,7 @@
   "darwin:en-US": {
     "menu": [
       {
-        "label": "About Xiaojing Accounting Team",
+        "label": "About 小兢Bot",
         "role": "about"
       },
       {
@@ -10,7 +10,7 @@
       }
     ],
     "options": {
-      "applicationName": "Xiaojing Accounting Team",
+      "applicationName": "小兢Bot",
       "applicationVersion": "1.0.0",
       "version": "",
       "copyright": "",
@@ -20,7 +20,7 @@
   "darwin:zh-CN": {
     "menu": [
       {
-        "label": "关于 小兢会计团队版",
+        "label": "关于 小兢Bot",
         "role": "about"
       },
       {
@@ -28,7 +28,7 @@
       }
     ],
     "options": {
-      "applicationName": "小兢会计团队版",
+      "applicationName": "小兢Bot",
       "applicationVersion": "1.0.0",
       "version": "",
       "copyright": "",
@@ -38,14 +38,14 @@
   "win32:zh-CN": {
     "menu": [
       {
-        "label": "关于 小兢会计团队版"
+        "label": "关于 小兢Bot"
       },
       {
         "type": "separator"
       }
     ],
     "options": {
-      "applicationName": "小兢会计团队版",
+      "applicationName": "小兢Bot",
       "applicationVersion": "1.0.0",
       "version": "",
       "copyright": "",
@@ -55,14 +55,14 @@
   "win32:en-US": {
     "menu": [
       {
-        "label": "About Xiaojing Accounting Team"
+        "label": "About 小兢Bot"
       },
       {
         "type": "separator"
       }
     ],
     "options": {
-      "applicationName": "Xiaojing Accounting Team",
+      "applicationName": "小兢Bot",
       "applicationVersion": "1.0.0",
       "version": "",
       "copyright": "",

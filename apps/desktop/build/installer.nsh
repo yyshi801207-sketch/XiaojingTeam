@@ -47,7 +47,7 @@ xiaojingAppCheckRetry:
   Pop $R0
   Pop $R1
   StrCmp $R0 "0" xiaojingAppCheckDone
-  MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "无法安全关闭旧版小兢会计团队版。请结束旧版进程后重试。" /SD IDCANCEL IDRETRY xiaojingAppCheckRetry
+  MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "无法安全关闭旧版小兢Bot。请结束旧版进程后重试。" /SD IDCANCEL IDRETRY xiaojingAppCheckRetry
   Quit
 
 xiaojingAppCheckDone:
@@ -126,17 +126,17 @@ xiaojingRefreshShortcutsRetry:
 
       ; Reserve space for the title, actions, and bottom consent on short screens.
       IntOp $xiaojingInstallerArtworkHeight $5 - 230
-      ${if} $xiaojingInstallerArtworkHeight > 400
-        StrCpy $xiaojingInstallerArtworkHeight 400
+      ${if} $xiaojingInstallerArtworkHeight > 360
+        StrCpy $xiaojingInstallerArtworkHeight 360
       ${endif}
       IntOp $1 $4 - 40
-      IntOp $1 $1 * 5
-      IntOp $1 $1 / 6
+      IntOp $1 $1 * 9
+      IntOp $1 $1 / 16
       ${if} $xiaojingInstallerArtworkHeight > $1
         StrCpy $xiaojingInstallerArtworkHeight $1
       ${endif}
-      IntOp $xiaojingInstallerArtworkWidth $xiaojingInstallerArtworkHeight * 6
-      IntOp $xiaojingInstallerArtworkWidth $xiaojingInstallerArtworkWidth / 5
+      IntOp $xiaojingInstallerArtworkWidth $xiaojingInstallerArtworkHeight * 16
+      IntOp $xiaojingInstallerArtworkWidth $xiaojingInstallerArtworkWidth / 9
 
       Pop $5
       Pop $4
@@ -267,7 +267,7 @@ xiaojingRefreshShortcutsRetry:
       System::Call 'USER32::SetWindowPos(p $xiaojingWelcomeProductControl, p 0, i R0, i 8, i $xiaojingInstallerArtworkWidth, i $xiaojingInstallerArtworkHeight, i 0x0004)'
       ${NSD_SetStretchedImage} $xiaojingWelcomeProductControl "$PLUGINSDIR\xiaojing-product-logo.bmp" $xiaojingWelcomeProductBitmap
 
-      ${NSD_CreateLabel} 0u 0u 1u 1u "小兢会计团队版"
+      ${NSD_CreateLabel} 0u 0u 1u 1u "小兢Bot"
       Pop $xiaojingWelcomeTitleControl
       ${NSD_AddStyle} $xiaojingWelcomeTitleControl ${SS_CENTER}|${SS_CENTERIMAGE}
       SetCtlColors $xiaojingWelcomeTitleControl "102A36" "FFFFFF"
@@ -436,7 +436,7 @@ xiaojingRefreshShortcutsRetry:
       IntOp $R0 $xiaojingInstallerPageWidth - 480
       IntOp $R0 $R0 / 2
       IntOp $R1 $xiaojingInstallerArtworkHeight + 22
-      System::Call 'USER32::CreateWindowExW(i 0, w "STATIC", w "正在安装小兢会计团队版，请稍候…", i 0x50000201, i R0, i R1, i 480, i 36, p $mui.InstFilesPage, p 0, p 0, p 0) p .r0'
+      System::Call 'USER32::CreateWindowExW(i 0, w "STATIC", w "正在安装小兢Bot，请稍候…", i 0x50000201, i R0, i R1, i 480, i 36, p $mui.InstFilesPage, p 0, p 0, p 0) p .r0'
       StrCpy $xiaojingProgressTitleControl $0
       SetCtlColors $xiaojingProgressTitleControl "102A36" "FFFFFF"
       CreateFont $1 "Microsoft YaHei UI" "15" "600"
@@ -453,10 +453,10 @@ xiaojingRefreshShortcutsRetry:
       ${NSD_AddStyle} $mui.InstFilesPage.Text ${SS_CENTER}|${SS_CENTERIMAGE}
       SetCtlColors $mui.InstFilesPage.Text "657A82" "FFFFFF"
 
-      IntOp $R0 $xiaojingInstallerPageWidth - 110
+      IntOp $R0 $xiaojingInstallerPageWidth - 180
       IntOp $R0 $R0 / 2
-      IntOp $R1 $xiaojingInstallerPageHeight - 46
-      System::Call 'USER32::CreateWindowExW(i 0, w "STATIC", w "", i 0x5000020E, i R0, i R1, i 110, i 28, p $mui.InstFilesPage, p 0, p 0, p 0) p .r0'
+      IntOp $R1 $xiaojingInstallerPageHeight - 76
+      System::Call 'USER32::CreateWindowExW(i 0, w "STATIC", w "", i 0x5000020E, i R0, i R1, i 180, i 58, p $mui.InstFilesPage, p 0, p 0, p 0) p .r0'
       StrCpy $xiaojingProgressCompanyControl $0
       ${NSD_SetImage} $xiaojingProgressCompanyControl "$PLUGINSDIR\xiaojing-company-logo.bmp" $xiaojingProgressCompanyBitmap
     FunctionEnd

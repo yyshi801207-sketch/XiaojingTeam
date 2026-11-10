@@ -1,1 +1,10 @@
-<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" color="light-dark(#62666f,#b9bdc6)" style="color-scheme:light dark"><defs><mask id="katcat-set-4"><rect width="36" height="36" fill="white"/><g transform="translate(14.1 9.1) scale(0.14444444444444443) translate(-4 -10)"><path d="M10 28C9 22 9 13 12 10C14 9 21 13 24 16C29 14 35 14 40 16C44 13 51 9 53 10C56 13 55 22 54 28C59 35 59 42 55 48C50 56 40 59 32 59C22 59 13 56 8 49C3 42 4 34 10 28Z" fill="black"/></g></mask></defs><g mask="url(#katcat-set-4)"><rect x="12.4" y="5.2" width="11.2" height="17.2" rx="5.6" fill="currentColor"/><path d="M9.1 17.5V18.8A8.9 8.9 0 0 0 26.9 18.8V17.5M18 27.7V30.5" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"/></g><path d="M14.5 30.5H21.5" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" color="light-dark(#62666f,#b9bdc6)" style="color-scheme:light dark">
+  <defs>
+    <mask id="voice-input-grille">
+      <rect width="36" height="36" fill="white"/>
+      <path d="M15.8 12.1h4.4M15.8 15.2h4.4" stroke="black" stroke-width="1.5" stroke-linecap="round"/>
+    </mask>
+  </defs>
+  <rect x="12.2" y="5.1" width="11.6" height="17.6" rx="5.8" fill="currentColor" mask="url(#voice-input-grille)"/>
+  <path d="M8.8 17.7v1.1a9.2 9.2 0 0 0 18.4 0v-1.1M18 28v2.5M14.4 30.5h7.2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

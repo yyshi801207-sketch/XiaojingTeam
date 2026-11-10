@@ -43,7 +43,7 @@
       "path": "../ui-settings/tsconfig.client.json"
     },
     {
-      "path": "../ui-settings-models"
+      "path": "../ui-settings-models/tsconfig.client.json"
     },
     {
       "path": "../ui-sidebar"

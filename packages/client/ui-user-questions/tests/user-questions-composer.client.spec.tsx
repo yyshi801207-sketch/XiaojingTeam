@@ -113,10 +113,10 @@ const inputState: InputState = {
  *  plain stubs per the client testing discipline). */
 const kitBase: Omit<QuestionComposerProps, 'matched' | 'useStore' | 'useQuestionCard' | 'actions'> = {
   renderSlot: () => null,
+  renderFactorySlot: () => null,
   SessionProvider: ({ children }) => children,
-  session: undefined,
   sessionId: SID,
-  pendingInteraction: undefined,
+  useFactorySlot: () => { throw new Error('Question panels declare no local Factory slots') },
   useSession: selector => selector(sessionState),
   useSessions: selector => selector(sessionList),
   usePanelInfo, useResource,

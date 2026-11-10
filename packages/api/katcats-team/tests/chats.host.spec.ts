@@ -8,15 +8,17 @@ import CredentialsLocal from '@deepseek-ai/dsh-credentials-local'
 import Commands from '@deepseek-ai/dsh-commands'
 import * as Connection from '@deepseek-ai/dsh-client-connection'
 import { formatSessionReferenceMention } from '@deepseek-ai/dsh-session-reference'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import type {} from '@deepseek-ai/dsh-working-directory'
 import type { SessionPromptRequest, SessionRequestId } from '@deepseek-ai/dsh-api-session-controller/types'
 import KatcatsChats from '../src/chats.ts'
 import type { ChatsConfig } from '../src/chats.ts'
 import { chatsDomainSpec, chatsStateSchema } from '../src/chats-storage.ts'
 import { GroupTranscript } from '../src/group-transcript.ts'
 import { formatMemberMention } from '../src/member-mentions.ts'
-import { chatGroupId, mainBotId, ordinaryGroupId } from '../src/storage.ts'
+import { chatGroupId, mainBotId, ordinaryGroupId, teamStateSchema } from '../src/storage.ts'
 import type { BotId, GroupId } from '../src/types.ts'
-import type { ChatControlRequest, TeamChat } from '../src/chats-types.ts'
+import type { ChatControlRequest, TeamChat, UpdateChatRequest } from '../src/chats-types.ts'
 import { harness } from './member-fixture.ts'
 
 async function setup(providedRoot?: string, configuredLimit: number | null = 2) {
@@ -58,6 +60,97 @@ function stateOf(h: Awaited<ReturnType<typeof setup>>) {
 }
 
 describe('Katcats durable groups', () => {
+  it('resolves deployment history and review limits and refuses nonpositive or fractional limits', () => {
+    const input = { workspaceRoot: '/synthetic-workspaces', relayLimit: 8 } as ChatsConfig
+    expect(KatcatsChats.Config(input)).toMatchObject({ initialHistoryMessages: 20, historyPageSize: 20,
+      historyPageMaxChars: 16000, reviewCandidateMaxBytes: 8388608 })
+    for (const field of ['initialHistoryMessages', 'historyPageSize', 'historyPageMaxChars', 'reviewCandidateMaxBytes']) {
+      for (const value of [0, -1, 0.5]) expect(() => KatcatsChats.Config({ ...input, [field]: value })).toThrow()
+    }
+  })
+
+  it('uses the first saved group member when the sidebar member order changes without saving a manager', async () => {
+    const h = await setup()
+    const first = (await h.team.createBot({ name: 'First' })).bot
+    const second = (await h.team.createBot({ name: 'Second' })).bot
+    const chat = (await h.chats.createChat({ name: 'Stable dispatch', memberIds: [first.id, second.id] })).chat
+    await h.chats.sendMessage(prompt(chat, 'First broadcast', 'first-order'), new AbortController().signal)
+    await settled(h.chats, chat.id)
+    const domain = h.ctx.storageDomain.get('katcats_team')!
+    const saved = teamStateSchema.parse(domain.global.get())
+    await domain.global.set({ ...saved, revision: saved.revision + 1,
+      bots: [...saved.bots.filter(bot => bot.kind === 'main'), ...saved.bots.filter(bot => bot.kind === 'ordinary').toReversed()] })
+    await h.chats.sendMessage(prompt(chat, 'Second broadcast', 'second-order'), new AbortController().signal)
+    await settled(h.chats, chat.id)
+    expect(stateOf(h).inbounds.map(input => input.recipients)).toEqual([[first.id], [first.id]])
+    expect(stateOf(h).chats[0]?.managerId).toBeNull()
+    expect(h.adapter.requests.map(request => request.sessionId)).toEqual([chat.executors[0]!.sessionId, chat.executors[0]!.sessionId])
+  })
+
+  it('captures the responsible member once and preserves explicit mentions independently of the manager', async () => {
+    const h = await setup()
+    const first = (await h.team.createBot({ name: 'First' })).bot
+    const manager = (await h.team.createBot({ name: 'Manager' })).bot
+    const last = (await h.team.createBot({ name: 'Last' })).bot
+    const chat = (await h.chats.createChat({ name: 'Responsible routing', memberIds: [first.id, manager.id, last.id], managerId: manager.id })).chat
+    await h.chats.pause(control(chat))
+    const initial = prompt(chat, 'Ordinary request', 'routing-ordinary')
+    await h.chats.sendMessage(initial, new AbortController().signal)
+    await h.chats.sendMessage(prompt(chat, '@Last Direct request', 'routing-explicit'), new AbortController().signal)
+    await h.chats.sendMessage(prompt(chat, '@Manager @First Both requested', 'routing-multiple'), new AbortController().signal)
+    await settled(h.chats, chat.id)
+    await h.chats.updateChat({ id: chat.id, managerId: last.id, memberIds: [last.id, first.id, manager.id] })
+    await h.chats.sendMessage(initial, new AbortController().signal)
+    await h.chats.sendMessage(prompt(chat, 'New ordinary request', 'routing-new'), new AbortController().signal)
+    await settled(h.chats, chat.id)
+    expect(stateOf(h).inbounds.map(({ recipients, addressing, collaborationVersion }) => ({ recipients, addressing, collaborationVersion }))).toEqual([
+      { recipients: [manager.id], addressing: 'broadcast', collaborationVersion: 1 },
+      { recipients: [last.id], addressing: 'explicit', collaborationVersion: 1 },
+      { recipients: [first.id, manager.id], addressing: 'explicit', collaborationVersion: 1 },
+      { recipients: [last.id], addressing: 'broadcast', collaborationVersion: 1 },
+    ])
+    expect(h.adapter.requests).toHaveLength(0)
+    const saved = stateOf(h).inbounds
+    await h.close()
+    const reopened = await setup(h.root)
+    expect(stateOf(reopened).inbounds).toEqual(saved)
+    expect(reopened.adapter.requests).toHaveLength(0)
+  })
+
+  it('retains legacy broadcast recipients when a paused accepted message is reopened', async () => {
+    const h = await setup()
+    const first = (await h.team.createBot({ name: 'First' })).bot
+    const second = (await h.team.createBot({ name: 'Second' })).bot
+    const chat = (await h.chats.createChat({ name: 'Legacy accepted routing', memberIds: [first.id, second.id], managerId: second.id })).chat
+    await h.chats.pause(control(chat))
+    await h.chats.sendMessage(prompt(chat, 'Previously accepted broadcast', 'legacy-broadcast'), new AbortController().signal)
+    await settled(h.chats, chat.id)
+    const state = stateOf(h)
+    const inbounds = state.inbounds.map(({ collaborationVersion: _version, ...input }) => ({ ...input, recipients: [first.id, second.id] }))
+    await h.ctx.storageDomain.get(chatsDomainSpec.name)!.global.set({ ...state, inbounds })
+    await h.close()
+    const reopened = await setup(h.root)
+    expect(stateOf(reopened).inbounds).toEqual(inbounds)
+    const paused = (await reopened.chats.snapshot()).chats[0]!
+    await reopened.chats.resume(control(paused))
+    await settled(reopened.chats, chat.id)
+    expect(reopened.adapter.requests.map(request => request.sessionId)).toEqual(chat.executors.map(executor => executor.sessionId))
+  })
+
+  it('prepends new groups, retains existing settings and order, and restores that order after reopening', async () => {
+    const first = await setup()
+    const writer = (await first.team.createBot({ name: 'Writer' })).bot
+    const older = (await first.chats.createChat({ name: 'Older', memberIds: [writer.id] })).chat
+    const newer = (await first.chats.createChat({ name: 'Newer', memberIds: [writer.id] })).chat
+    const newest = await first.chats.createChat({ name: 'Newest', memberIds: [writer.id] })
+    expect(newest.snapshot.chats).toEqual([newest.chat, newer, older])
+    const renamed = (await first.chats.updateChat({ id: older.id, name: 'Renamed' })).chat
+    expect((await first.chats.snapshot()).chats).toEqual([newest.chat, newer, renamed])
+    await first.close()
+    const reopened = await setup(first.root)
+    expect((await reopened.chats.snapshot()).chats).toEqual([newest.chat, newer, renamed])
+  })
+
   it('uses sixteen dispatches for new groups while preserving an existing eight-dispatch group after reopening', async () => {
     const first = await setup(undefined, 8)
     const writer = (await first.team.createBot({ name: 'Writer' })).bot
@@ -305,6 +398,91 @@ describe('Katcats durable groups', () => {
     expect(restored.executors).toEqual(chat.executors)
   })
 
+  it('keeps dispatching after each group settings change', async () => {
+    const h = await setup()
+    const writer = (await h.team.createBot({ name: 'Writer' })).bot
+    const reviewer = (await h.team.createBot({ name: 'Reviewer' })).bot
+    const group = (await h.team.createGroup({ name: 'Shared' })).group
+    const chat = (await h.chats.createChat({ name: 'Editorial', memberIds: [writer.id] })).chat
+    const changes: readonly { label: string; request: UpdateChatRequest; recipient: string }[] = [
+      { label: 'name', request: { id: chat.id, name: 'Renamed' }, recipient: 'Writer' },
+      { label: 'add member', request: { id: chat.id, memberIds: [writer.id, reviewer.id] }, recipient: 'Reviewer' },
+      { label: 'manager', request: { id: chat.id, managerId: reviewer.id }, recipient: 'Writer' },
+      { label: 'member role', request: { id: chat.id, memberRoles: [{ botId: writer.id, role: 'Draft reports.' }] }, recipient: 'Writer' },
+      { label: 'relay limit', request: { id: chat.id, relayLimit: 4 }, recipient: 'Writer' },
+      { label: 'handoff display', request: { id: chat.id, showHandoffRecords: false }, recipient: 'Writer' },
+      { label: 'group section', request: { id: chat.id, groupId: group.id }, recipient: 'Writer' },
+      { label: 'remove member', request: { id: chat.id, memberIds: [writer.id] }, recipient: 'Writer' },
+    ]
+    for (const [index, change] of changes.entries()) {
+      const saved = (await h.chats.updateChat(change.request)).chat
+      await h.chats.sendMessage(prompt(saved, `@${change.recipient} Continue after ${change.label}.`,
+        `settings-followup-${index}`), new AbortController().signal)
+      await settled(h.chats, chat.id)
+      const snapshot = await h.chats.snapshot()
+      expect(snapshot.chats[0], change.label).toMatchObject({ status: 'active', pauseReason: null, run: null, error: null })
+      expect(snapshot.deliveries.at(-1), change.label).toMatchObject({
+        botId: change.recipient === 'Reviewer' ? reviewer.id : writer.id,
+        state: 'completed', receipt: { text: 'Fixture response' },
+      })
+      expect(h.adapter.requests, change.label).toHaveLength(index + 1)
+    }
+  })
+
+  it('carries queued workspace context into the next group task without treating it as work', async () => {
+    const h = await setup()
+    const writer = (await h.team.createBot({ name: 'Writer' })).bot
+    const chat = (await h.chats.createChat({ name: 'Editorial', memberIds: [writer.id] })).chat
+    const worker = h.ctx.agents.get(chat.executors[0]!.sessionId)!
+    const instructions = createUserMessage({ content: [{ type: 'text', text: 'Workspace instructions were updated.' }],
+      source: { kind: 'agent-instructions', form: 'instructions', changes: [] } })
+    const directory = createUserMessage({ content: [{ type: 'text', text: 'The working directory changed.' }],
+      source: { kind: 'working-directory' } })
+    for (const [index, context] of [instructions, directory].entries()) {
+      worker.inject(context)
+      expect(worker.status).toBe('idle')
+      expect(worker.inbox.nextStep.map(message => message.id)).toEqual([context.id])
+      await h.chats.sendMessage(prompt(chat, '@Writer Continue after the workspace update.',
+        `workspace-context-followup-${index}`), new AbortController().signal)
+      await settled(h.chats, chat.id)
+      const snapshot = await h.chats.snapshot()
+      expect(snapshot.chats[0], context.source.kind)
+        .toMatchObject({ status: 'active', pauseReason: null, run: null, error: null })
+      expect(snapshot.deliveries.at(-1), context.source.kind)
+        .toMatchObject({ state: 'completed', receipt: { text: 'Fixture response' } })
+      expect(h.adapter.requests).toHaveLength(index + 1)
+      expect(h.adapter.requests[index]!.messages.some(message => message.id === context.id)).toBe(true)
+    }
+    const speech = (events: ReturnType<typeof worker.session.snapshotEvents>) => events.flatMap(event =>
+      event.type === 'user/message' ? [{ source: event.data.source.kind,
+        text: event.data.source.kind === 'katcats-group-task' ? '[saved group task]'
+          : event.data.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('\n') }] : [])
+    expect({ member: speech(worker.session.snapshotEvents()),
+      group: speech(h.ctx.agents.get(chat.rootSessionId)!.session.snapshotEvents()) }).toMatchSnapshot()
+  })
+
+  it('still blocks a real queued task beside workspace context', async () => {
+    const h = await setup()
+    const writer = (await h.team.createBot({ name: 'Writer' })).bot
+    const chat = (await h.chats.createChat({ name: 'Editorial', memberIds: [writer.id] })).chat
+    const worker = h.ctx.agents.get(chat.executors[0]!.sessionId)!
+    const context = createUserMessage({ content: [{ type: 'text', text: 'Workspace instructions were updated.' }],
+      source: { kind: 'agent-instructions', form: 'instructions', changes: [] } })
+    const pending = createUserMessage({ content: [{ type: 'text', text: 'An earlier task is still pending.' }],
+      source: { kind: 'user' } })
+    worker.inject(context)
+    worker.inject(pending)
+    await h.chats.sendMessage(prompt(chat, '@Writer Do not overlap the queued task.', 'real-work-followup'),
+      new AbortController().signal)
+    await settled(h.chats, chat.id)
+    const snapshot = await h.chats.snapshot()
+    expect(snapshot.chats[0]).toMatchObject({ status: 'paused', pauseReason: 'member-failed',
+      error: { code: 'KATCATS_CHAT_EXECUTOR_BUSY' } })
+    expect(snapshot.deliveries[0]).toMatchObject({ state: 'failed', error: { code: 'KATCATS_CHAT_EXECUTOR_BUSY' } })
+    expect(worker.inbox.nextStep.map(message => message.id)).toEqual([context.id, pending.id])
+    expect(h.adapter.requests).toEqual([])
+  })
+
   it('rejects stale controls and stops only the displayed group generation', async () => {
     const h = await setup()
     const writer = (await h.team.createBot({ name: 'Writer' })).bot
@@ -431,16 +609,16 @@ describe('Katcats durable groups', () => {
     '@"@[Not a member](katcats-member:foreign/outside)"',
     '@"@[Old session](dsh-session:foreign-session)"',
     '@"relative/draft.md" Please review this file.',
-  ])('broadcasts a file reference without interpreting its filename as member addressing: %s', async (text) => {
+  ])('routes a file reference to the responsible member without interpreting its filename as member addressing: %s', async (text) => {
     const h = await setup()
     const first = (await h.team.createBot({ name: 'Reviewer' })).bot
     const second = (await h.team.createBot({ name: 'Reviewer' })).bot
     const chat = (await h.chats.createChat({ name: 'Attachments', memberIds: [first.id, second.id] })).chat
     await h.chats.sendMessage(prompt(chat, text), new AbortController().signal)
     await settled(h.chats, chat.id)
-    expect(stateOf(h).inbounds).toMatchObject([{ recipients: [first.id, second.id], addressing: 'broadcast',
+    expect(stateOf(h).inbounds).toMatchObject([{ recipients: [first.id], addressing: 'broadcast',
       userMessage: { content: [{ type: 'text', text }] } }])
-    expect(h.adapter.requests.map(request => request.sessionId)).toEqual(chat.executors.map(executor => executor.sessionId))
+    expect(h.adapter.requests.map(request => request.sessionId)).toEqual([chat.executors[0]!.sessionId])
     const history = (await h.ctx.sessionController.inspect(chat.rootSessionId)).events
     expect(history.some(event => event.type === 'turn/start')).toBe(false)
     if (text === '@"Reviewer"') {
@@ -451,7 +629,6 @@ describe('Katcats durable groups', () => {
       }).toMatchInlineSnapshot(`
         {
           "addressedNames": [
-            "Reviewer",
             "Reviewer",
           ],
           "content": [
@@ -487,11 +664,11 @@ describe('Katcats durable groups', () => {
     await h.chats.sendMessage(request, new AbortController().signal)
     await settled(h.chats, chat.id)
     const input = stateOf(h).inbounds[0]!
-    expect(input).toMatchObject({ recipients: [first.id, second.id], addressing: 'broadcast' })
+    expect(input).toMatchObject({ recipients: [first.id], addressing: 'broadcast' })
     expect(input.userMessage.content.map(part => part.type)).toEqual(withText ? ['file', 'text'] : ['file'])
     expect(input.userMessage.content[0]).toMatchObject({ type: 'file', attachment: { name: 'Reviewer' } })
     expect(h.ctx.fileUploads.resolve(container.agent, upload.receiptId)).toBeUndefined()
-    expect(h.adapter.requests.map(value => value.sessionId)).toEqual(chat.executors.map(executor => executor.sessionId))
+    expect(h.adapter.requests.map(value => value.sessionId)).toEqual([chat.executors[0]!.sessionId])
   })
 
   it('keeps real spaced member addressing and refuses unknown, ambiguous and foreign mentions beside file references', async () => {
@@ -623,14 +800,14 @@ describe('Katcats durable groups', () => {
     expect(h.adapter.requests).toEqual([])
   })
 
-  it('keeps the creator outside new groups and exposes no group tools in private conversations', async () => {
+  it('keeps the creator outside groups while allowing it to create them', async () => {
     const h = await setup()
     const writer = (await h.team.createBot({ name: 'Writer' })).bot
     const main = h.ctx.agents.get((await h.team.snapshot()).bots[0]!.sessionId)!
     const ordinary = h.ctx.agents.get(writer.sessionId)!
     expect(h.ctx.tools.get('create_group_chat', ordinary)).toBeUndefined()
-    expect(h.ctx.tools.get('create_group_chat', main)).toBeUndefined()
-    expect(h.ctx.tools.get('list_group_chats', main)).toBeUndefined()
+    expect(h.ctx.tools.get('create_group_chat', main)).toBeDefined()
+    expect(h.ctx.tools.get('list_group_chats', main)).toBeDefined()
     expect(h.ctx.tools.get('set_group_roles', main)).toBeUndefined()
     expect(h.ctx.tools.get('set_group_roles', ordinary)).toBeUndefined()
     const { chat } = await h.chats.createChat({ name: 'Editorial', memberIds: [writer.id] })
@@ -726,7 +903,7 @@ describe('Katcats durable groups', () => {
     const first = await setup()
     const writer = (await first.team.createBot({ name: 'Writer' })).bot
     await first.chats.createChat({ name: 'Editorial', memberIds: [writer.id] })
-    const path = join(first.root, 'storage', 'katcats_chats_v2.json')
+    const path = join(first.root, 'storage', 'katcats_chats_v3.json')
     await first.close()
     const original: unknown = JSON.parse(await readFile(path, 'utf8'))
     if (typeof original !== 'object' || original === null || !('global' in original)) throw new Error('Expected group storage fixture')
@@ -742,7 +919,7 @@ describe('Katcats durable groups', () => {
     const first = await setup()
     const writer = (await first.team.createBot({ name: 'Writer' })).bot
     await first.chats.createChat({ name: 'Editorial', memberIds: [writer.id] })
-    const groupPath = join(first.root, 'storage', 'katcats_chats_v2.json')
+    const groupPath = join(first.root, 'storage', 'katcats_chats_v3.json')
     const teamPath = join(first.root, 'storage', 'katcats_team.json')
     await first.close()
     const teamBefore = await readFile(teamPath, 'utf8')

@@ -21,7 +21,8 @@ async function setup(root?: string) {
   await h.ctx.plugin(Connection)
   await h.ctx.plugin(Commands)
   await h.ctx.plugin(FileUploads)
-  const chatFiber = h.ctx.plugin(KatcatsChats, { workspaceRoot: join(h.root, 'workspaces'), relayLimit: 2 })
+  const chatFiber = h.ctx.plugin(KatcatsChats, { workspaceRoot: join(h.root, 'workspaces'), relayLimit: 2,
+    initialHistoryMessages: 20, historyPageSize: 20, historyPageMaxChars: 16000, reviewCandidateMaxBytes: 8388608 })
   await chatFiber
   await h.ctx.katcatsChats.snapshot()
   return { ...h, chats: h.ctx.katcatsChats, chatFiber }

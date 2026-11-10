@@ -27,6 +27,7 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 const t = makeTranslate(zh)
 const useSessionStatus = bindSnapshotSelector(createSnapshotStore<SessionStatusSnapshot>(new Map()))
+const useGroupQuestions = bindSnapshotSelector(createSnapshotStore([]))
 const main: TeamBot = { id: 'main' as BotId, kind: 'main', name: 'Katcats', role: 'Coordinate',
   avatar: { shape: 'classic', color: '#FF2849' }, model: { kind: 'follow-global' }, groupId: null,
   sessionId: 'main-private' as SessionId, workDir: '/synthetic/main' }
@@ -56,6 +57,22 @@ const permissionDefaults = {
 }
 
 describe('explicit group forms', () => {
+  it('opens saved records without submitting unsaved settings and follows group updates', () => {
+    const source = groups()
+    const save = vi.fn()
+    const props = { ...permissionDefaults, sessionId: chat.rootSessionId, useDirectory: bindSnapshotSelector(directory()),
+      useChats: bindSnapshotSelector(source), save, t } as ChatSettingsProps
+    render(<ChatSettings {...props} />)
+    fireEvent.change(screen.getByLabelText(zh['chat.name']), { target: { value: 'Unsaved name' } })
+    fireEvent.click(screen.getByRole('button', { name: '任务档案' }))
+    expect(screen.getByRole('heading', { name: /^Editorial\s*\/ 任务档案$/ })).toBeTruthy()
+    act(() => { source.set({ phase: 'ready', snapshot: { ...snapshot, revision: 2,
+      chats: [{ ...chat, name: 'Saved name' }] } }) })
+    expect(screen.getByRole('heading', { name: /^Saved name\s*\/ 任务档案$/ })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '关闭任务档案' }))
+    expect(screen.getByLabelText<HTMLInputElement>(zh['chat.name']).value).toBe('Unsaved name')
+    expect(save).not.toHaveBeenCalled()
+  })
   it('withdraws a batch confirmation scope for unsaved form edits and reopens it only after a successful save', async () => {
     const saved = { ...chat, memberIds: [writer.id] }
     const source = groups()
@@ -243,7 +260,7 @@ describe('run-aware group controls', () => {
     const source = groups()
     let finish!: () => void
     const control = vi.fn(() => new Promise<void>((resolve) => { finish = resolve }))
-    const props = { sessionId: chat.rootSessionId, useSessionStatus, useChats: bindSnapshotSelector(source),
+    const props = { sessionId: chat.rootSessionId, useSessionStatus, useGroupQuestions, useChats: bindSnapshotSelector(source),
       useDirectory: bindSnapshotSelector(directory()), control, t } as ChatControlsProps
     render(<ChatControls {...props} />)
     fireEvent.click(screen.getByRole('button', { name: zh['chat.pause'] }))
@@ -260,7 +277,7 @@ describe('run-aware group controls', () => {
   it('keeps rejected commands scoped to their group and presents only acknowledged errors', async () => {
     const source = groups()
     const control = vi.fn(async () => { throw new Error('stale synthetic run') })
-    const props = { sessionId: chat.rootSessionId, useSessionStatus, useChats: bindSnapshotSelector(source),
+    const props = { sessionId: chat.rootSessionId, useSessionStatus, useGroupQuestions, useChats: bindSnapshotSelector(source),
       useDirectory: bindSnapshotSelector(directory()), control, t } as ChatControlsProps
     render(<ChatControls {...props} />)
     fireEvent.click(screen.getByRole('button', { name: zh['chat.stop'] }))
@@ -277,12 +294,13 @@ describe('run-aware group controls', () => {
     ['unknown-result', 'KATCATS_CHAT_OUTCOME_UNKNOWN', 'chat.pauseUnknown', 'chat.pauseUnknown'],
     ['unknown-result', 'KATCATS_CHAT_DURABILITY_UNCONFIRMED', 'chat.pauseUnknown', 'chat.errorDurability'],
     ['member-failed', 'KATCATS_CHAT_NO_REPLY', 'chat.pauseMemberFailed', 'chat.errorNoReply'],
+    ['blocker-followup-pending', 'KATCATS_CHAT_FOLLOWUP_INCOMPLETE', 'chat.errorFollowupIncomplete', 'chat.errorFollowupIncomplete'],
   ] as const)('localizes distinct pause and error guidance for %s / %s', (reason, code, key, errorKey) => {
     const source = groups()
     source.set({ phase: 'ready', snapshot: { ...snapshot, chats: [{ ...chat, status: 'paused', pauseReason: reason,
       error: code === null ? null : { code, message: 'Technical English explanation' } }] } })
     const props = { sessionId: chat.rootSessionId, useChats: bindSnapshotSelector(source), useDirectory: bindSnapshotSelector(directory()),
-      useSessionStatus, control: vi.fn(async () => {}), t } as ChatControlsProps
+      useSessionStatus, useGroupQuestions, control: vi.fn(async () => {}), t } as ChatControlsProps
     const view = render(<ChatControls {...props} />)
     expect(screen.getAllByText(zh[key])).toHaveLength(1)
     expect(screen.queryByRole('alert')?.textContent).not.toBe('Technical English explanation')
@@ -317,6 +335,16 @@ describe('run-aware group controls', () => {
     }
   })
 
+  it.each([['zh', zh], ['en', en]] as const)('explains incomplete review and retained drafts in %s', (_language, dictionary) => {
+    const source = groups()
+    source.set({ phase: 'ready', snapshot: { ...snapshot, chats: [{ ...chat, status: 'paused',
+      pauseReason: 'member-failed', error: { code: 'KATCATS_CHAT_REVIEW_INCOMPLETE', message: 'Review evidence is missing.' } }] } })
+    const props = { sessionId: chat.rootSessionId, useChats: bindSnapshotSelector(source), useDirectory: bindSnapshotSelector(directory()),
+      useSessionStatus, useGroupQuestions, control: vi.fn(async () => {}), t: makeTranslate(dictionary) } as ChatControlsProps
+    const view = render(<ChatControls {...props} />)
+    expect(view.getByRole('alert').textContent).toBe(dictionary['chat.errorReviewIncomplete'])
+  })
+
   it('shows each recorded member ending once with localized guidance while keeping its outcome unconfirmed', () => {
     const causes = [
       ['KATCATS_CHAT_MEMBER_ERROR', 'chat.errorMemberError',
@@ -333,7 +361,7 @@ describe('run-aware group controls', () => {
     const source = groups()
     const control = vi.fn(async () => {})
     const props = { sessionId: chat.rootSessionId, useChats: bindSnapshotSelector(source), useDirectory: bindSnapshotSelector(directory()),
-      useSessionStatus, control, t } as ChatControlsProps
+      useSessionStatus, useGroupQuestions, control, t } as ChatControlsProps
     const view = render(<ChatControls {...props} />)
     const notices: { language: string; code: string; explanation: string | null }[] = []
     for (const [language, dictionary] of [['zh', zh], ['en', en]] as const) {
@@ -349,7 +377,8 @@ describe('run-aware group controls', () => {
         expect(details.open).toBe(false)
         expect(details.querySelector('code')?.textContent).toBe(code)
         expect(details.querySelector('p')?.textContent).toBe(diagnostic)
-        expect(screen.getByRole('button', { name: dictionary['chat.resume'] })).toBeTruthy()
+        expect(screen.getByRole('button', { name: dictionary[code === 'KATCATS_CHAT_MEMBER_MALFORMED_RESPONSE'
+          ? 'chat.endFailedRun' : 'chat.resume'] })).toBeTruthy()
         notices.push({ language, code, explanation: screen.getByRole('alert').textContent })
       }
     }
@@ -363,7 +392,7 @@ describe('run-aware group controls', () => {
         },
         {
           "code": "KATCATS_CHAT_MEMBER_MALFORMED_RESPONSE",
-          "explanation": "模型响应格式异常，结果尚未确认。已保存内容保留，请先检查现有结果再安排后续任务",
+          "explanation": "模型响应格式异常，本轮已暂停。结束失败轮次后，发送新指令即可继续；聊天记录与已保存结果保留",
           "language": "zh",
         },
         {
@@ -388,7 +417,7 @@ describe('run-aware group controls', () => {
         },
         {
           "code": "KATCATS_CHAT_MEMBER_MALFORMED_RESPONSE",
-          "explanation": "The model response format was invalid; its result is unconfirmed. Saved content is retained. Check it before assigning more work.",
+          "explanation": "The model response was invalid. End the failed run, then send a new instruction to continue; chat history and saved results are retained.",
           "language": "en",
         },
         {
@@ -413,7 +442,7 @@ describe('run-aware group controls', () => {
   it('distinguishes a paused policy from a member still working and accepts same-revision activity frames', () => {
     const source = groups()
     const props = { sessionId: chat.rootSessionId, useChats: bindSnapshotSelector(source), useDirectory: bindSnapshotSelector(directory()),
-      useSessionStatus, control: vi.fn(async () => {}), t } as ChatControlsProps
+      useSessionStatus, useGroupQuestions, control: vi.fn(async () => {}), t } as ChatControlsProps
     render(<ChatControls {...props} />)
     expect(screen.getByText(zh['chat.idle'])).toBeTruthy()
     act(() => { source.set({ phase: 'ready', snapshot: { ...snapshot, chats: [{ ...chat, status: 'paused' }],
@@ -437,7 +466,7 @@ describe('run-aware group controls', () => {
       if (action === 'resume') finishResume = resolve
       else finishStop = resolve
     }))
-    const props = { sessionId: chat.rootSessionId, useSessionStatus, useChats: bindSnapshotSelector(source),
+    const props = { sessionId: chat.rootSessionId, useSessionStatus, useGroupQuestions, useChats: bindSnapshotSelector(source),
       useDirectory: bindSnapshotSelector(directory()), control, t } as ChatControlsProps
     render(<ChatControls {...props} />)
     fireEvent.click(screen.getByRole('button', { name: zh['chat.resume'] }))
@@ -462,7 +491,7 @@ describe('run-aware group controls', () => {
     source.set({ phase: 'ready', snapshot: { ...snapshot,
       activities: [{ chatId: chat.id, processing: true, runningBotIds: [writer.id], pendingControl: 'resume' }] } })
     const props = { sessionId: chat.rootSessionId, useChats: bindSnapshotSelector(source), useDirectory: bindSnapshotSelector(directory()),
-      useSessionStatus, control: vi.fn(async () => {}), t } as ChatControlsProps
+      useSessionStatus, useGroupQuestions, control: vi.fn(async () => {}), t } as ChatControlsProps
     render(<ChatControls {...props} />)
     expect(screen.getByRole<HTMLButtonElement>('button', { name: zh['chat.pause'] }).disabled).toBe(true)
     expect(screen.getByRole<HTMLButtonElement>('button', { name: zh['chat.stop'] }).disabled).toBe(false)
@@ -485,7 +514,8 @@ describe('run-aware group controls', () => {
       useWorkspaces: bindSnapshotSelector(createSnapshotStore<WorkspaceSnapshot>({
         items: [], archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null })),
       entityActions: { pin: vi.fn(), move: vi.fn(), rename: vi.fn(), copyId: vi.fn(), remove: vi.fn() },
-      useSidebarOverflow: bindSnapshotSelector(createSnapshotStore(false)), observeScrollList: vi.fn(), scrollDown: vi.fn(), t } as TeamSidebarProps
+      useSidebarOverflow: bindSnapshotSelector(createSnapshotStore(false)),
+      useSidebarReveal: bindSnapshotSelector(createSnapshotStore(null)), observeScrollList: vi.fn(), scrollDown: vi.fn(), t } as TeamSidebarProps
     render(<TeamSidebar {...props} />)
     expect(screen.getByRole('region', { name: zh['team.chats'] }).textContent).toContain(chat.name)
     expect(screen.getByRole('region', { name: zh['team.bots'] }).textContent).toContain(writer.name)

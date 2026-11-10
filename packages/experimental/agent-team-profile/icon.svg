@@ -1,1 +1,7 @@
-<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" color="light-dark(#62666f,#b9bdc6)" style="color-scheme:light dark"><defs><mask id="katcat-set-3-back"><rect width="36" height="36" fill="white"/><circle cx="18" cy="22.4" r="9.5" fill="black"/></mask><mask id="katcat-set-3"><rect width="36" height="36" fill="white"/><g transform="translate(12.5 17.6) scale(0.2037037037037037) translate(-4 -10)"><path d="M10 28C9 22 9 13 12 10C14 9 21 13 24 16C29 14 35 14 40 16C44 13 51 9 53 10C56 13 55 22 54 28C59 35 59 42 55 48C50 56 40 59 32 59C22 59 13 56 8 49C3 42 4 34 10 28Z" fill="black"/></g></mask></defs><g mask="url(#katcat-set-3)"><g mask="url(#katcat-set-3-back)"><circle cx="11.4" cy="11.5" r="5.4" fill="currentColor"/><circle cx="24.6" cy="11.5" r="5.4" fill="currentColor"/></g><circle cx="18" cy="22.4" r="8.1" fill="currentColor"/></g></svg>
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" color="light-dark(#62666f,#b9bdc6)" style="color-scheme:light dark">
+  <circle cx="18" cy="10.4" r="4.1" fill="currentColor"/>
+  <circle cx="8.9" cy="14.1" r="3.3" fill="currentColor"/>
+  <circle cx="27.1" cy="14.1" r="3.3" fill="currentColor"/>
+  <path d="M4.8 26.9v-1.2a6.1 6.1 0 0 1 6.1-6.1c1.2 0 2.3.3 3.2.9M31.2 26.9v-1.2a6.1 6.1 0 0 0-6.1-6.1c-1.2 0-2.3.3-3.2.9" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M9.5 29.4v-.9a8.5 8.5 0 0 1 17 0v.9" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+</svg>

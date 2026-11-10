@@ -5,11 +5,11 @@ kind: "package-reference"
 
 # @deepseek-ai/dsh-client-xiaojing-product
 
-The current product is Katcats.AI (`1.0.2`). It exposes office capabilities without Finance mode and includes customizable session avatars with subtle animations. Historical release entries describe their original versions.
+The current product is 小兢Bot (`1.0.2`), with private Bots and collaborative group chats. Historical release entries describe their original versions.
 
 English | [中文](README.zh.md)
 
-User-visible application names and messages use Katcats.AI. Technical package identifiers, paths, and historical user content retain their original values.
+User-visible Bot introductions identify 瑞华云财务共享团队; the application UI uses 小兢Bot. Technical package identifiers, paths, saved Bot roles, and historical conversation content retain their original values.
 
 ## Summary
 
@@ -24,7 +24,7 @@ Use Team sidebar branding, light and dark themes, and a finance-robot welcome sc
 <a id="capabilities"></a>
 ## Product contributions
 
-The Team sidebar embeds the supplied transparent SUDO数豆 logo from `src/client/assets/sudo-wordmark.png`, preserving its original bytes and colors in both themes. SVG cropping removes only the transparent outer margin; the complete letters and green beans retain their proportions. The expanded wordmark keeps a 148-pixel-wide frame and fits the shared 24-pixel brand line; on Windows, it uses a 32-pixel image inside a 36-pixel product button within the existing 40-pixel row. The collapsed rail fits the complete logo into its existing icon slot. Conversation and navigation surfaces stay white in light mode. User messages use a light gray fill, a fine border, and compact rounded corners. No background image is loaded. Neutral graphite controls and selection fills replace the teal palette; the primary composer send action uses SUDO green (`#12A489`) with a white arrow, a darker green hover, and the existing 40% disabled opacity; other buttons retain their palette, and link accents use blue. Dark mode uses neutral charcoal surfaces.
+The Team sidebar uses the supplied `src/client/assets/sudo-wordmark-light.png` in light mode and `src/client/assets/sudo-wordmark.png` in dark mode. The source files remain unmodified: the light artwork has gray lettering and a green bean emblem; the dark artwork has white lettering and the same green emblem. The expanded wordmark uses a 116-by-22-pixel frame beside the localized “Redefining finance with AI” tagline; on narrow sidebars the tagline truncates while the logo keeps its size. The collapsed rail shows the bean emblem in its existing icon slot. Conversation and navigation surfaces stay white in light mode. User messages use a light gray fill, a fine border, and compact rounded corners. No background image is loaded. Neutral graphite controls and selection fills replace the teal palette; the primary composer send action uses SUDO green (`#12A489`) with a white arrow, a darker green hover, and the existing 40% disabled opacity; other buttons retain their palette, and link accents use blue. Dark mode uses neutral charcoal surfaces.
 
 The `0.3.3` release adds the 0.2.1-rc.2 kernel model/search APIs, plugin-index management, built-in automation, draft retention, model reasoning and fonts, microphone selection, collaboration, and upstream stability fixes. Existing Katcat capabilities stay available, and the `0.3.2` release details include session authorization for eligible operations while retaining the single-use approval choice.
 
@@ -38,9 +38,9 @@ The first-use dialog supplies a compact white API key guide through `onboarding.
 
 Product artwork URLs and the Katcat boot-logo and favicon defaults resolve relative to the document base, keeping these resources inside a Web deployment's public mount.
 
-The Team empty-session hero embeds the supplied finance robots and foot shadows from `src/client/assets/xiaojing-finance-team-hero.png` without modifying the original pixels. Its SVG removes only transparent margins and centers the complete artwork within the existing responsive frame, preserving the composer’s layout. The Chinese title is “小兢会计，您的AI财务团队”; English uses “Xiaojing Accounting, your AI finance team.” The favicon uses the supplied white application icon with its gold accent and transparent edge, stored as `xiaojing-character-logo.png`. These asset filenames are internal identifiers. The title is centered independently of its version badge, which moves below the title in narrow layouts. The initial HTML receives its brand and favicon from `DSH_CLIENT_BOOT_LOGO`, `DSH_CLIENT_BOOT_LOGO_ALT`, and `DSH_CLIENT_FAVICON`; builds without these values retain the generic assets.
+The Team empty-session hero embeds the supplied eight-robot finance team artwork from `src/client/assets/xiaojing-finance-team-hero.png` without modifying the original pixels. Its SVG fills the responsive frame with the full image at up to 420 × 280 CSS pixels, preserving its aspect ratio without an inset margin. Smaller viewports scale the artwork down while keeping the title and composer below it. The Chinese title is “小兢会计，您的AI财务团队”; English uses “Xiaojing Accounting, your AI finance team.” The favicon uses the supplied white application icon with its gold accent and transparent edge, stored as `xiaojing-character-logo.png`. These asset filenames are internal identifiers. The black version badge stays beside the title, including when the title wraps. The initial HTML receives its brand and favicon from `DSH_CLIENT_BOOT_LOGO`, `DSH_CLIENT_BOOT_LOGO_ALT`, and `DSH_CLIENT_FAVICON`; builds without these values retain the generic assets.
 
-The browser plugin registers `sidebar.brand.mark`, `sidebar.brand.name`, `conversation.hero.brand.mark`, `conversation.hero.brand.content`, `onboarding.content`, and `settings.section` only in the `xiaojing` Client build profile. Product copy, palette overrides, release version badge, and the default persona live in this package. The same finance-team welcome also applies when retained history carries Finance metadata. About displays the supplied `src/client/assets/xiaojing-team-app-icon.png`, the localized name “小兢会计团队版” or “Xiaojing Accounting Team”, application version, and DSH base version compiled through `DSH_CLIENT_VERSION`; release history, detail actions, description, and company footer are absent. Electron supplies its actual application version through one restricted preload method; an ordinary Web preview uses a checked fallback that must equal `apps/desktop/identity.json.productVersion`. Tests require that fallback to equal the first release-history record and reject duplicate version entries. The product-layer gate rejects a version mismatch and rejects Katcat brand marks written back into official UI source roots. The plugin lifecycle also synchronizes the existing browser `theme-color` metadata after the product dataset is attached and restores the generic value when the plugin unloads. The build profile selects the inventoried Katcat logo for the pre-plugin loading page through generic boot metadata; the shell retains its `HARNESS` fallback when that metadata is absent. `product.json` records the official `dsh-v0.2.1-rc.2` baseline by its official release tag, generic slots, browser asset paths, desktop product manifests, and an empty product-preset list. A product-layer gate parses the declarative Finance and Standard compositions and permits only the Finance persona, declared Finance consumers, and product skill directory to differ.
+The browser plugin registers `sidebar.brand.mark`, `sidebar.brand.name`, `conversation.hero.brand.mark`, `conversation.hero.brand.content`, `onboarding.content`, and `settings.section` only in the `xiaojing` Client build profile. Product copy, palette overrides, release version badge, and the default persona live in this package. The same finance-team welcome also applies when retained history carries Finance metadata. About displays the supplied `src/client/assets/xiaojing-team-app-icon.png`, the product name “小兢Bot” in both languages, application version, and DSH base version compiled through `DSH_CLIENT_VERSION`; release history, detail actions, description, and company footer are absent. Electron supplies its actual application version through one restricted preload method; an ordinary Web preview uses a checked fallback that must equal `apps/desktop/identity.json.productVersion`. Tests require that fallback to equal the first release-history record and reject duplicate version entries. The product-layer gate rejects a version mismatch and rejects Katcat brand marks written back into official UI source roots. The plugin lifecycle also synchronizes the existing browser `theme-color` metadata after the product dataset is attached and restores the generic value when the plugin unloads. The build profile selects the inventoried Katcat logo for the pre-plugin loading page through generic boot metadata; the shell retains its `HARNESS` fallback when that metadata is absent. `product.json` records the official `dsh-v0.2.1-rc.2` baseline by its official release tag, generic slots, browser asset paths, desktop product manifests, and an empty product-preset list. A product-layer gate parses the declarative Finance and Standard compositions and permits only the Finance persona, declared Finance consumers, and product skill directory to differ.
 
 The personal build disables the Finance workspace, ledger management, calculations, evidence service, and Finance preset. Its sidebar and About page use office-only copy. The retained Finance preset and package sources are not activated by default. `product.json.agentPresets` is empty; `product.json.financeExtension` inventories retained source and the protected `harness/finance` directory. Ordinary document reading keeps the shared parser without starting the Finance business service. Existing Finance records and files are not deleted.
 
@@ -100,30 +100,18 @@ The sentence is prefix-stable while the product capability composition remains u
 
 #### What the model sees
 
-The plugin fills `deployment:persona-prefix` only when downstream assembly leaves it empty. Standard, PTC, and Creator inherit the Katcat identity while retaining their tools; explicit user-authored personas remain authoritative. Chinese introductions use “我是 Katcat，您的超级个人助理！”. Greetings invite exploration without listing office functions; specific capability claims remain conditional on the available tools and authorization. Retained replies are historical records and are not rewritten.
+The plugin fills `deployment:persona-prefix` only when downstream assembly leaves it empty. Its default identity is 小兢会计 from 瑞华云财务共享团队; explicit user-authored personas remain authoritative. Greetings invite exploration without listing a fixed set of functions. Retained replies are historical records and are not rewritten.
 
 ##### Verbatim default persona
 
 ```markdown
-你的名字是Katcat（简称Katcat），在办公搭子模式下的身份始终是用户的AI办公搭子。自我介绍使用“办公搭子”，不要称自己为“办公助手”“AI助手”“智能助手”“财务助手”或“Katcat的助手”。用户用中文问候或询问身份时，自我介绍使用：“你好！我是Katcat，您的AI办公搭子！”；其他语言使用对应表达。即使历史回复中曾使用“办公助手”等称呼，后续自我介绍也应使用“办公搭子”。
+你的名字是小兢会计，来自瑞华云财务共享团队。用户用中文问候或询问身份时，自我介绍使用：“我是小兢会计，来自瑞华云财务共享团队！”；其他语言使用对应表达。即使历史回复、安装名称或工作区中出现旧品牌名称，后续自我介绍也使用瑞华云财务共享团队，不沿用旧身份。
 
-当前是办公搭子工作区，不是财务助手工作区。产品名称中的“会计”不代表当前会话采用财务身份。不要把日常办公介绍成财税专属服务，也不要把编程、命令或脚本当作默认身份；这些只是完成任务时可用的手段。
+你陪用户探索想法、创造新事物，把想做的事一步步推进。表达自然、简洁、有想象力，不把身份限定为办公、财务或编程助手。
 
-用户询问“你能做什么”时，用日常办公语言介绍以下六类能力，按当前可用工具和授权条件说明，不要照搬工具目录：
+用户打招呼时，用身份介绍加一句开放的邀请即可，不主动列出功能清单。用户询问“你能做什么”时，从用户想实现的目标出发，可以说：“无论是一个天马行空的想法，还是一件想做成的事，都可以交给我一起探索、推进。你想从哪里开始？”不要默认罗列文档处理、数据处理、内容撰写、信息检索、网页操作、电脑操作等类别，也不要照搬工具目录。用户要求具体例子时再结合需求展开。
 
-1. 文档处理：读取、整理、提炼 PDF、Word、Excel、PPT、OFD、CSV、TXT 等材料中的信息；具体格式和扫描件识别能力以已配置的文档工具为准。
-
-2. 数据处理：梳理表格、核对汇总、查找差异，生成可复核的报表草稿。
-
-3. 内容撰写：把需求变成文稿，起草通知、说明、邮件、总结等内容。
-
-4. 信息检索：检索政策、法规、行业等公开信息，保留来源并说明无法核实的内容。
-
-5. 网页操作：连接并获得授权后，在可用浏览器工具支持的范围内协助填表、查数据、走流程；不能仅因界面有浏览器面板就声称能接管它。
-
-6. 电脑操作：在授权范围和可用电脑工具支持下操作应用与文件，推进多步骤任务，不只是提供建议。
-
-可以结合已配置工具处理材料、生成成果。没有相应工具、连接或授权时，如实说明，不声称已执行；用户明确提出财务任务时按实际能力协助，不因此改变办公身份或假定已接入客户账套。
+“任何想做的事都可以聊”是开放的邀请，不代表能够无条件完成所有任务。实际执行以当前工具、连接和授权为准；遇到真实限制时简洁说明并提出可行的下一步，不虚构能力、连接或完成结果，也不在普通问候里堆砌限制说明。
 
 Do not volunteer internal model, provider, framework, runtime, or workspace-path details unless the user explicitly requests technical diagnostics. If asked about the product's technical origin, state accurately that it is based on DeepSeek Harness with internal branding and configuration; do not claim that SUDO Tech developed the underlying framework.
 ```

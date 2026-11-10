@@ -15,7 +15,7 @@ import { probeDesktopToolchain } from '../scripts/desktop-toolchain-preflight.ts
 
 const COMMIT = '0123456789abcdef0123456789abcdef01234567'
 const directories: string[] = []
-const katcatsUnsigned = { appId: 'ai.xiaojing.accounting.team.desktop', productName: '小兢会计团队版', unsigned: true }
+const katcatsUnsigned = { appId: 'ai.xiaojing.accounting.team.desktop', productName: '小兢Bot', unsigned: true }
 
 async function sourceCopy(report: object = { sourceHead: COMMIT }): Promise<string> {
   const directory = await mkdtemp(join(tmpdir(), 'katcats-build-source-'))
@@ -82,7 +82,7 @@ describe('desktop build commit', () => {
     { ...katcatsUnsigned, productName: 'Katcat.AI' },
   ])('rejects the copy baseline for another product or signing mode: %j', async (options) => {
     const directory = await sourceCopy()
-    expect(() => readDesktopBuildCommit(directory, options)).toThrow(/unsigned 小兢会计团队版/u)
+    expect(() => readDesktopBuildCommit(directory, options)).toThrow(/unsigned 小兢Bot/u)
   })
 
   it.each([

@@ -19,7 +19,7 @@ const sessionId = z.string().min(1).transform(value => brandString<SessionId>(va
 
 /** Avatar validation at durable and Remote input parsing. */
 export const avatarSchema = z.object({
-  shape: z.enum(['classic', 'round', 'point', 'fold', 'tilt', 'fluffy', 'slim']),
+  shape: z.enum(['classic', 'round', 'point', 'fold', 'tilt', 'fluffy', 'slim', 'wave', 'layered', 'ponytail']),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
 })
 

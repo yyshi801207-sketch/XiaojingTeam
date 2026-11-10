@@ -129,7 +129,7 @@ function initializeKatcatsDevelopment(
   application.setPath('documents', documents)
   application.setPath('userData', userData)
   application.setPath('sessionData', sessionData)
-  application.setName('小兢会计团队版 Dev')
+  application.setName('小兢Bot Dev')
   application.setAppUserModelId('ai.xiaojing.accounting.team.development')
   return { userData, dshHome: home, workspaceRoot: workspace, officeWorkspace: workspace }
 }
@@ -183,7 +183,7 @@ export function initializeXiaojingApplication(
   for (const path of [paths.userData, join(userData, 'session-data'), paths.dshHome, paths.officeWorkspace]) {
     mkdirSync(path, { recursive: true })
     if (lstatSync(path).isSymbolicLink() || !lstatSync(path).isDirectory()) {
-      throw new Error(`Xiaojing Accounting Team: expected an unlinked directory at ${path}`)
+      throw new Error(`小兢Bot: expected an unlinked directory at ${path}`)
     }
   }
   application.setPath('userData', userData)

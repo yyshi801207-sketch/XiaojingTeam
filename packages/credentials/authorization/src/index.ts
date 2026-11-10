@@ -26,18 +26,23 @@
  * @module @deepseek-ai/dsh-authorization
  */
 
-import { Context, Service } from '@deepseek-ai/cordis'
+import { Context } from '@deepseek-ai/cordis'
 import type { CredentialKey, CredentialRecord } from '@deepseek-ai/dsh-credentials'
 import { HarnessError } from '@deepseek-ai/dsh-llm'
+import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
+import { AuthorizationRemoteAttempt } from './remote-attempt.ts'
 
 import type {
   AuthorizationEntry, AuthorizationMethod, AuthorizationNotice, AuthorizationOutcome, AuthorizationPrompt,
   AuthorizationSettlement,
+  AuthorizationRemoteAnswer, AuthorizationRemoteEvent, AuthorizationRemoteRequest, AuthorizationRemoteStatus,
 } from './types.ts'
 
 export type {
   AuthorizationEntry, AuthorizationMethod, AuthorizationNotice, AuthorizationOutcome, AuthorizationPrompt,
   AuthorizationPromptOption, AuthorizationSettlement, AuthorizationStatus,
+  AuthorizationPromptContent, AuthorizationPromptId, AuthorizationRemoteAnswer, AuthorizationRemoteEvent,
+  AuthorizationRemoteRequest, AuthorizationRemoteStatus,
 } from './types.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -179,22 +184,37 @@ export interface AuthorizationRequest {
 /** One attempt in flight, with the handle that withdraws it. */
 interface InFlight {
   readonly controller: AbortController
+  readonly done: Promise<void>
   committing: boolean
+}
+
+interface RemoteInFlight {
+  readonly interaction: AuthorizationRemoteAttempt
+  readonly done: Promise<void>
 }
 
 /**
  * `ctx.authorization`: a registry of credential-obtaining flows, one attempt at
  * a time per key.
  */
-export class AuthorizationService extends Service {
+export class AuthorizationService extends TypertRemoteService {
   /** The commit this seam confirms is a credential-record write, so the store is required, not optional. */
   static inject = ['credentials']
 
   private readonly flows = new Map<CredentialKey, AuthorizationFlow>()
   private readonly running = new Map<CredentialKey, InFlight>()
+  private readonly remoteAttempts = new Map<CredentialKey, RemoteInFlight>()
+  private readonly deleting = new Set<CredentialKey>()
 
   constructor(ctx: Context) {
     super(ctx, 'authorization')
+    ctx.effect(() => async () => {
+      const running = [...this.running]
+      const remote = [...this.remoteAttempts.values()]
+      for (const attempt of remote) attempt.interaction.controller.abort()
+      for (const [key] of running) this.cancel(key)
+      await Promise.all([...running.map(([, attempt]) => attempt.done), ...remote.map(attempt => attempt.done)])
+    })
   }
 
   /**
@@ -228,6 +248,7 @@ export class AuthorizationService extends Service {
    * Every registered flow, for a surface listing what can be authorized.
    * @returns one entry per flow, in registration order.
    */
+  @Remote
   list(): readonly AuthorizationEntry[] {
     return [...this.flows.values()].map(flow => this.entry(flow))
   }
@@ -237,6 +258,7 @@ export class AuthorizationService extends Service {
    * @param key - the credential record to ask about.
    * @returns the entry, or undefined when no flow claims that key.
    */
+  @Remote
   describe(key: CredentialKey): AuthorizationEntry | undefined {
     const flow = this.flows.get(key)
     return flow === undefined ? undefined : this.entry(flow)
@@ -261,6 +283,125 @@ export class AuthorizationService extends Service {
   cancel(key: CredentialKey): void {
     const running = this.running.get(key)
     if (running !== undefined && !running.committing) running.controller.abort()
+  }
+
+  /**
+   * Read stored presence and writability without exposing credential values.
+   * @param key - credential whose status is requested.
+   * @returns record facts and whether a registered flow is running.
+   */
+  @Remote
+  async status(key: CredentialKey): Promise<AuthorizationRemoteStatus> {
+    try {
+      const record = await this.ctx.credentials.describeRecord(key)
+      return { ...record, inFlight: this.running.has(key) }
+    } catch (error) {
+      throw new RemoteError('authorization/failed', 'Credential status could not be read', {}, { cause: error })
+    }
+  }
+
+  /**
+   * Run one authorization conversation for its initiating Peer. Closing the stream
+   * or Peer cancels the attempt; an admitted credential commit finishes first.
+   * Provider errors become a secret-free Remote failure; attempts never resume.
+   * @param request - credential and optional method; absence selects the first method.
+   * @param signal - carrier cancellation for this stream.
+   * @returns ordered notices, questions, withdrawals, and one terminal outcome.
+   */
+  @Remote({ name: 'begin', mode: 'stream' })
+  async *beginRemote(request: AuthorizationRemoteRequest, signal: AbortSignal): AsyncIterable<AuthorizationRemoteEvent> {
+    const invocation = this.ctx.invocation
+    if (invocation === undefined) throw new RemoteError('authorization/not-owned', 'Authorization requires a Peer', {})
+    if (this.running.has(request.key) || this.remoteAttempts.has(request.key)) {
+      throw new RemoteError('authorization/failed', 'Authorization is already running', {})
+    }
+    const attempt = new AuthorizationRemoteAttempt(invocation.peer)
+    const completion = Promise.withResolvers<void>()
+    this.remoteAttempts.set(request.key, { interaction: attempt, done: completion.promise })
+    const withdraw = (): void => { attempt.controller.abort() }
+    signal.addEventListener('abort', withdraw, { once: true })
+    invocation.peer.signal.addEventListener('abort', withdraw, { once: true })
+    if (signal.aborted || invocation.peer.signal.aborted) withdraw()
+    const state: { finished: boolean; failure: RemoteError | undefined } = { finished: false, failure: undefined }
+    const running = this.begin({ ...request, interaction: attempt, signal: attempt.controller.signal }).then(
+      (outcome) => { attempt.push({ type: 'settled', outcome }) },
+      (error: unknown) => {
+        state.failure = new RemoteError('authorization/failed', 'Authorization failed; try signing in again', {}, { cause: error })
+      },
+    ).finally(() => {
+      state.finished = true
+      attempt.close()
+      signal.removeEventListener('abort', withdraw)
+      invocation.peer.signal.removeEventListener('abort', withdraw)
+      this.remoteAttempts.delete(request.key)
+      completion.resolve()
+    })
+    try {
+      while (true) {
+        const event = attempt.events.shift()
+        if (event !== undefined) yield event
+        else if (state.finished) break
+        else await attempt.wait()
+      }
+      if (state.failure !== undefined) throw state.failure
+    } finally {
+      withdraw()
+      await running
+    }
+  }
+
+  /**
+   * Answer one pending question from this Peer's own attempt.
+   * @param request - credential, opaque question identity, and answer.
+   * @throws when another Peer owns the attempt or the question already ended.
+   */
+  @Remote
+  answer(request: AuthorizationRemoteAnswer): void {
+    this.ownedAttempt(request.key).answer(request.id, request.answer)
+  }
+
+  /**
+   * Cancel this Peer's attempt and wait until credential persistence has settled.
+   * @param key - credential whose owned attempt should stop.
+   * @returns after the attempt has released its credential key; absent attempts are a no-op.
+   */
+  @Remote
+  async cancelAttempt(key: CredentialKey): Promise<void> {
+    if (!this.running.has(key) && !this.remoteAttempts.has(key)) return
+    this.ownedAttempt(key).controller.abort()
+    const running = this.running.get(key)
+    if (running !== undefined) await running.done
+  }
+
+  /**
+   * Forget a credential locally after cancelling and settling any attempt.
+   * New attempts for the key are refused until deletion finishes. This explicit
+   * operation never revokes the grant at its issuer.
+   * @param key - credential record to remove.
+   * @returns once the credential store has removed the record.
+   */
+  @Remote
+  async disconnect(key: CredentialKey): Promise<void> {
+    if (this.deleting.has(key)) throw new RemoteError('authorization/failed', 'Credential removal is already running', {})
+    this.deleting.add(key)
+    try {
+      const running = this.running.get(key)
+      this.cancel(key)
+      if (running !== undefined) await running.done
+      await this.ctx.credentials.deleteRecord(key)
+    } catch (error) {
+      throw new RemoteError('authorization/failed', 'Credential removal failed; check its status before retrying', {}, { cause: error })
+    } finally {
+      this.deleting.delete(key)
+    }
+  }
+
+  private ownedAttempt(key: CredentialKey): AuthorizationRemoteAttempt {
+    const attempt = this.remoteAttempts.get(key)?.interaction
+    if (attempt === undefined || attempt.peer !== this.ctx.invocation?.peer) {
+      throw new RemoteError('authorization/not-owned', 'Authorization attempt belongs to another Peer', {})
+    }
+    return attempt
   }
 
   /**
@@ -291,7 +432,7 @@ export class AuthorizationService extends Service {
       throw new AuthorizationError(
         `authorization flow for "${key}" offers no method "${method}"`, 'UNKNOWN_METHOD')
     }
-    if (this.running.has(key)) {
+    if (this.running.has(key) || this.deleting.has(key)) {
       throw new AuthorizationError(
         `an authorization attempt for "${key}" is already running`, 'ALREADY_IN_FLIGHT')
     }
@@ -307,7 +448,8 @@ export class AuthorizationService extends Service {
       if (running !== undefined && !running.committing) controller.abort(request.signal?.reason)
     }
     request.signal?.addEventListener('abort', withdraw, { once: true })
-    this.running.set(key, { controller, committing: false })
+    const completion = Promise.withResolvers<void>()
+    this.running.set(key, { controller, committing: false, done: completion.promise })
     let settlement: AuthorizationSettlement = 'failed'
     try {
       const outcome = await this.attempt(flow, method, controller.signal, request.interaction)
@@ -319,6 +461,7 @@ export class AuthorizationService extends Service {
       // After the slot is released, so a listener that reacts by starting the
       // next attempt is not refused by the one that just finished.
       this.settle(key, settlement)
+      completion.resolve()
     }
   }
 

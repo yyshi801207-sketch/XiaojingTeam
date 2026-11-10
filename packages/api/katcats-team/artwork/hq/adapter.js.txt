@@ -1,0 +1,196 @@
+// Injected inside mountHQ. Only the parent supplies participants and recorded handoffs.
+var roomPayload = null, roomRosterKey = '', roomCameraKey = '';
+var roomHover = null, roomHoverId = null;
+var roomPointer = null, roomVisitorId = null;
+function hideRoomInfo() {
+  roomHoverId = null;
+  if (roomHover) roomHover.hidden = true;
+}
+function showRoomInfo(id) {
+  if (!roomPayload) return;
+  var m = roomPayload.members.concat(roomPayload.visitors).find(function (item) { return item.id === id; });
+  if (!m) { hideRoomInfo(); return; }
+  if (!roomHover) {
+    roomHover = document.createElement('div'); roomHover.className = 'room-info';
+    roomHover.id = 'room-bot-info'; roomHover.setAttribute('role', 'tooltip'); SR.appendChild(roomHover);
+  }
+  roomHoverId = id; roomHover.hidden = false;
+  var text = [m.name, m.position, m.role, m.label];
+  if (roomHover.dataset.content !== JSON.stringify(text)) {
+    roomHover.dataset.content = JSON.stringify(text);
+    roomHover.replaceChildren();
+    text.forEach(function (value, index) {
+      var node = document.createElement(index === 0 ? 'strong' : 'p');
+      node.textContent = value; roomHover.appendChild(node);
+    });
+  }
+  roomHover.style.borderColor = m.color;
+  var person = PEOPLE.find(function (p) { return p.botId === id; });
+  if (!person) return;
+  var box = person.tag.el.getBoundingClientRect(), width = roomHover.offsetWidth, height = roomHover.offsetHeight;
+  roomHover.style.left = Math.max(8, Math.min(innerWidth - width - 8, box.left)) + 'px';
+  roomHover.style.top = Math.max(8, box.bottom + height + 8 <= innerHeight ? box.bottom - 1 : box.top - height + 1) + 'px';
+}
+// Public corridor waypoints reuse HQ navigation; visitors never take work seats.
+var visitorPlaces = NODES.filter(function (point) {
+  return point[1] === HALL_N || point[1] === HALL_S || point[0] === COR_W || point[0] === COR_E;
+}).map(function (point) { return mkPlace(point[0], point[1], 0, 'stand', [point], point); });
+host.applyRoom = function (payload) {
+  roomPayload = payload;
+  var key = JSON.stringify([payload.members, payload.visitors].map(function (list) {
+    return list.map(function (m) { return [m.id, m.name, m.role, m.color, m.manager]; });
+  }));
+  if (key !== roomRosterKey) {
+    hideRoomInfo();
+    roomVisitorId = null;
+    roomRosterKey = key;
+    roomCameraKey = '';
+    PEOPLE.forEach(function (p) { p.tag.el.remove(); if (p.seat) p.seat.own = null; });
+    PEOPLE = []; CHIEF = null; PID = 0;
+    visitorPlaces.forEach(function (place) { place.occ = null; });
+    DEPTS.forEach(function (d) { d.seats.concat([d.headSeat]).forEach(function (s) { s.own = null; }); });
+    CHIEF_SEAT.own = null;
+    var regular = 0;
+    payload.members.forEach(function (m, index) {
+      var d = regular % ND, seat;
+      if (m.manager) seat = CHIEF_SEAT;
+      else { seat = DEPTS[d].headSeat.own ? freeSeat(d, null) : DEPTS[d].headSeat; regular++; }
+      var p = mkPerson({ n: m.name, role: m.role, d: m.manager ? -1 : d, ai: true, head: m.manager,
+        hs: index % 5, hc: '#2a221c', sc: m.color, skin: SKINS[index % SKINS.length], skills: [] });
+      p.botId = m.id;
+      if (seat) { takeSeat(p, seat); placeHome(p); }
+      else {
+        // Every member remains visible even after the furnished seats are occupied.
+        p.home = { x: -8 + (index % 16), z: 13 + Math.floor(index / 16), yaw: 0, pose: 'stand', sh: 0 };
+        p.deskPt = [p.home.x, 0.8, p.home.z]; p.trayYaw = 0; placeHome(p);
+      }
+      if (m.manager) { CHIEF = p; p.isChief = true; }
+      p.tag.el.setAttribute('data-bot-id', m.id);
+    });
+    payload.visitors.forEach(function (m, index) {
+      var p = mkPerson({ n: m.name, role: m.role, d: -1, ai: true, head: false,
+        hs: index % 5, hc: '#2a221c', sc: m.color, skin: SKINS[index % SKINS.length], skills: [] });
+      p.botId = m.id; p.visitor = true; p.home = visitorPlaces[index % visitorPlaces.length];
+      placeHome(p); p.wait = 1 + Math.random() * 8;
+      p.tag.el.setAttribute('data-visitor-id', m.id);
+      p.tag.el.hidden = true;
+    });
+  }
+  PEOPLE.forEach(function (p) {
+    var m = (p.visitor ? payload.visitors : payload.members).find(function (item) { return item.id === p.botId; });
+    p.phase = m.phase; p.label = m.label;
+    p.cur = !p.visitor && m.phase === 'started' ? { st: 'work', P: { colL: lin(hex3(m.color)) }, rw: false } : null;
+    p.tag.st.textContent = m.label; p.tag.t2.textContent = m.role;
+    p.tag.bd.style.color = m.color; p.tag.el.style.borderColor = m.color;
+    p.tag.el.tabIndex = 0;
+    p.tag.el.setAttribute('aria-describedby', 'room-bot-info');
+  });
+  var target = PEOPLE.find(function (p) { return p.botId === payload.cameraTarget; });
+  var cameraKey = JSON.stringify([payload.cameraMode, payload.cameraTarget]);
+  if (cameraKey !== roomCameraKey) {
+    roomCameraKey = cameraKey;
+    view = payload.cameraMode;
+    goView(target ? 'ps' : 'ov', target || 0, true);
+    if (view === 1) { TOUR.i = -1; TOUR.t = 0; }
+    else startFly(0);
+  }
+};
+function roomAnimate(dt) {
+  PEOPLE.forEach(function (p) {
+    if (!p.visitor) { p.ph += dt * 3; return; }
+    if (RM) return;
+    p.yaw += angDiff(p.yaw, p.yawT) * Math.min(1, dt * 8);
+    if (p.mode === 'walk') { stepWalk(p, dt); return; }
+    p.wait -= dt;
+    if (p.wait > 0) return;
+    var choices = visitorPlaces.filter(function (place) { return place !== p.at && !place.occ; });
+    if (!choices.length) { p.wait = 3; return; }
+    walkTo(p, choices[Math.floor(Math.random() * choices.length)], function () { p.wait = 4 + Math.random() * 12; });
+  });
+}
+function roomLinks() {
+  if (!roomPayload) return;
+  var links = new Map();
+  roomPayload.links.forEach(function (link) {
+    var key = JSON.stringify([link.from, link.to]), previous = links.get(key);
+    if (!previous || link.active) links.set(key, link);
+  });
+  links.forEach(function (link) {
+    var from = PEOPLE.find(function (p) { return p.botId === link.from; });
+    var to = PEOPLE.find(function (p) { return p.botId === link.to; });
+    if (!from || !to || from === to || from.visitor || to.visitor) return;
+    var a = headPt(from, 0.4), b = headPt(to, 0.4);
+    var h = 2.6 + v3len(v3sub(a, b)) * 0.12;
+    // Native HQ WebGL arcs participate in the scene's glow and camera projection.
+    arc(a, b, h, link.active ? CYAN : [0.5, 0.57, 0.68], link.active ? 0.85 : 0.14,
+      link.active && !RM ? 3 : 0, 0.32);
+  });
+}
+function roomHud() {
+  if (!VP || !roomPayload) return;
+  if (roomPointer) {
+    var hit = dragging ? null : pick(roomPointer[0], roomPointer[1]);
+    roomVisitorId = hit && hit.p && hit.p.visitor ? hit.p.botId : null;
+  }
+  fx.setTransform(L.dpr2, 0, 0, L.dpr2, 0, 0); fx.clearRect(0, 0, L.w, L.h);
+  PEOPLE.forEach(function (p) {
+    var q = proj(headPt(p, 0.5));
+    p.tag.el.hidden = !!p.visitor && (!q || p.botId !== roomVisitorId);
+    if (p.tag.el.hidden) {
+      hideLabel(p.tag);
+      if (roomHoverId === p.botId) hideRoomInfo();
+      return;
+    }
+    if (!q) { hideLabel(p.tag); return; }
+    placeAt(p.tag, bx(q) - 60, by(q) - 60);
+  });
+  if (roomHoverId) showRoomInfo(roomHoverId);
+}
+SR.addEventListener('pointermove', function (event) {
+  var tag = event.target.closest && event.target.closest('[data-visitor-id]');
+  if (tag) { roomPointer = null; roomVisitorId = tag.getAttribute('data-visitor-id'); return; }
+  if (event.target.closest && event.target.closest('.room-info')) return;
+  roomPointer = event.target === glc ? hostXY(event) : null;
+  if (!roomPointer) roomVisitorId = null;
+});
+host.addEventListener('pointerleave', function () {
+  roomPointer = null; roomVisitorId = null; hideRoomInfo();
+});
+SR.addEventListener('pointerover', function (event) {
+  var tag = event.target.closest && event.target.closest('[data-bot-id], [data-visitor-id]');
+  if (tag) showRoomInfo(tag.getAttribute('data-bot-id') || tag.getAttribute('data-visitor-id'));
+});
+SR.addEventListener('pointerout', function (event) {
+  var next = event.relatedTarget;
+  if (next && next.closest && next.closest('[data-bot-id], [data-visitor-id], .room-info')) return;
+  hideRoomInfo();
+});
+SR.addEventListener('focusin', function (event) {
+  var tag = event.target.closest && event.target.closest('[data-bot-id], [data-visitor-id]');
+  if (tag) showRoomInfo(tag.getAttribute('data-bot-id') || tag.getAttribute('data-visitor-id'));
+});
+SR.addEventListener('focusout', hideRoomInfo);
+SR.addEventListener('click', function (event) {
+  var tag = event.target.closest && event.target.closest('[data-bot-id]');
+  if (tag) parent.postMessage({ type: 'katcats-room-member', id: tag.getAttribute('data-bot-id') }, '*');
+});
+window.addEventListener('message', function (event) {
+  if (event.source !== parent || !event.data || event.data.type !== 'katcats-room-state') return;
+  var p = event.data.payload;
+  if (!p || !Array.isArray(p.members) || !Array.isArray(p.visitors) || !Array.isArray(p.links)) return;
+  if (p.cameraTarget !== null && typeof p.cameraTarget !== 'string') return;
+  if (p.cameraMode !== 0 && p.cameraMode !== 1 && p.cameraMode !== 2) return;
+  if (!p.members.every(function (m) { return m && typeof m.id === 'string' && typeof m.name === 'string'
+    && typeof m.role === 'string' && typeof m.label === 'string' && typeof m.position === 'string' && typeof m.phase === 'string'
+    && typeof m.manager === 'boolean' && /^#[0-9a-f]{6}$/i.test(m.color); })) return;
+  if (!p.links.every(function (l) { return l && typeof l.from === 'string' && typeof l.to === 'string' && typeof l.active === 'boolean'; })) return;
+  if (!p.visitors.every(function (m) { return m && typeof m.id === 'string' && typeof m.name === 'string'
+    && typeof m.role === 'string' && typeof m.label === 'string' && typeof m.position === 'string' && /^#[0-9a-f]{6}$/i.test(m.color)
+    && !p.members.some(function (member) { return member.id === m.id; }); })) return;
+  host.applyRoom(p);
+});
+window.addEventListener('keydown', function (event) {
+  if (event.key === 'Escape') { event.preventDefault(); parent.postMessage({ type: 'katcats-room-close' }, '*'); }
+});
+if (!gl) parent.postMessage({ type: 'katcats-room-error' }, '*');
+else parent.postMessage({ type: 'katcats-room-ready' }, '*');

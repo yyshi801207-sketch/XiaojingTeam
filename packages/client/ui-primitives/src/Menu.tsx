@@ -143,12 +143,14 @@ const MEASURE_STYLE: CSSProperties = { visibility: 'hidden', left: 0, top: 0 }
  * gap and a brief overshoot survivable; coming back cancels the close.
  * @param props.dense - reduce vertical row spacing without changing the standard typography or card width.
  * @param props.compact - use reduced menu typography and spacing.
+ * @param props.spacious - widen context menus and add horizontal padding with standard typography.
  * @param props.getAnchorRect - portal mode only: supply the anchor rect
  * directly (e.g. from a host-owned trigger button) instead of measuring the
  * Menu's own wrapper span. Required when the wrapper isn't itself laid out at
  * the trigger (render-prop anchors, effect-positioned proxies — measuring the
  * wrapper there races the host's layout effects). Called on open, each animation
  * frame, and scroll/resize; return null to skip placement for that frame.
+ * @param props.getReturnFocusTarget - external control to focus after keyboard dismissal or selection.
  * @param props.footer - rows pinned below the scrolling items area, separated
  * by a hairline; they stay visible while the items above scroll.
  * @param props.children - component rows rendered after `items` in the same
@@ -165,7 +167,11 @@ const MEASURE_STYLE: CSSProperties = { visibility: 'hidden', left: 0, top: 0 }
  * document.body outside the owner's DOM subtree.
  * @returns anchor wrapper with the conditional list.
  */
-export function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onSelect, onClose, align = 'start', side = 'bottom', portal = false, closeOnPointerLeave = false, dense = false, compact = false, autoFocus = false, selection = 'check', getAnchorRect, footer, className, listClassName }: {
+export function Menu({
+  open, anchor, items = [], children, selectedId, selectedIds, onSelect, onClose, align = 'start', side = 'bottom',
+  portal = false, closeOnPointerLeave = false, dense = false, compact = false, autoFocus = false, selection = 'check',
+  spacious = false, getAnchorRect, getReturnFocusTarget, footer, className, listClassName,
+}: {
   open: boolean
   autoFocus?: boolean
   anchor: ReactNode
@@ -182,8 +188,10 @@ export function Menu({ open, anchor, items = [], children, selectedId, selectedI
   closeOnPointerLeave?: boolean
   dense?: boolean
   compact?: boolean
+  spacious?: boolean
   selection?: 'check' | 'fill'
   getAnchorRect?: () => DOMRect | null
+  getReturnFocusTarget?: (() => HTMLElement | null) | undefined
   className?: string | undefined
   listClassName?: string | undefined
 }) {
@@ -207,7 +215,7 @@ export function Menu({ open, anchor, items = [], children, selectedId, selectedI
    * @param navigation - whether explicit keyboard traversal should retain its focus indicator.
    */
   const refocusAnchor = (navigation = false): void => {
-    const trigger = triggerRef.current
+    const trigger = getReturnFocusTarget?.() ?? triggerRef.current
     const target = trigger !== null && document.contains(trigger) && !(trigger as HTMLButtonElement).disabled
       ? trigger : rootRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')
     if (target == null) return
@@ -234,6 +242,7 @@ export function Menu({ open, anchor, items = [], children, selectedId, selectedI
   openRef.current = open
   const [openSubmenuId, setOpenSubmenuId] = useState<string | null>(null)
   const [fixedPos, setFixedPos] = useState<CSSProperties | null>(null)
+  const positioned = !portal || fixedPos !== null
   const { arm: armClose, cancel: cancelClose } = usePointerGrace(onClose)
 
   // Portal mode: fixed-position the list from the anchor rect before paint;
@@ -310,11 +319,11 @@ export function Menu({ open, anchor, items = [], children, selectedId, selectedI
   }, [open])
 
   useEffect(() => {
-    if (!open || !autoFocus) return
+    if (!open || !autoFocus || !positioned) return
     const first = listRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')
     walkIndex.current = first === undefined || first === null ? null : 0
     if (first != null) focusWithoutRing(first)
-  }, [open, autoFocus])
+  }, [open, autoFocus, positioned])
 
   useEffect(() => {
     if (!open) {
@@ -477,7 +486,7 @@ export function Menu({ open, anchor, items = [], children, selectedId, selectedI
           {selected && selection === 'check' && <IconCheckOutlineRegular className={css.check} />}
         </button>
         {subOpen && entry.submenu !== undefined && (
-          <MenuSurface compact={compact} className={clsx(css.submenu, compact && css.compactList)} role="menu">
+          <MenuSurface compact={compact} className={clsx(css.submenu, compact && css.compactList, spacious && css.spaciousList)} role="menu">
             {entry.submenu.map(sub => (
               <button
                 key={sub.id}
@@ -517,7 +526,7 @@ export function Menu({ open, anchor, items = [], children, selectedId, selectedI
   const list = open && (
     <MenuSurface compact={compact}
       ref={listRef}
-      className={clsx(css.list, listClassName, dense && css.denseList, compact && css.compactList, scrollable && css.scrollable, portal && css.portal, side === 'top' && !portal && css.sideTop, align === 'end' && !portal && css.alignEnd)}
+      className={clsx(css.list, listClassName, dense && css.denseList, compact && css.compactList, spacious && css.spaciousList, scrollable && css.scrollable, portal && css.portal, side === 'top' && !portal && css.sideTop, align === 'end' && !portal && css.alignEnd)}
       style={portal ? fixedPos ?? MEASURE_STYLE : undefined}
       role="menu"
       // React portals bubble synthetic events through the REACT tree: without

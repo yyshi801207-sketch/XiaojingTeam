@@ -4,13 +4,14 @@
   overflow: hidden;
 }
 
-:global([data-sidebar-collapsed='true']) .avatar {
+:global([data-sidebar-collapsed='true']) .avatar.wordmarkLight {
   display: block;
 }
 
 .name {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   min-width: 0;
   height: 24px;
   padding-right: 4px;
@@ -20,14 +21,47 @@
 
 .wordmark {
   display: block;
-  min-width: 0;
-  width: 148px;
-  max-width: 100%;
-  height: 24px;
+  flex: none;
+  width: 116px;
+  height: 22px;
 }
 
-:global([data-windows-titlebar]) .name,
-:global([data-windows-titlebar]) .wordmark {
+.wordmarkLight {
+  mix-blend-mode: multiply;
+}
+
+.wordmarkDark {
+  display: none;
+}
+
+:global(body[data-xiaojing-product][data-ds-dark-theme]) .wordmark.wordmarkLight {
+  display: none;
+}
+
+:global(body[data-xiaojing-product][data-ds-dark-theme]) .wordmark.wordmarkDark {
+  display: block;
+}
+
+:global(body[data-xiaojing-product][data-ds-dark-theme]) :global([data-sidebar-collapsed='true']) .avatar.wordmarkLight {
+  display: none;
+}
+
+:global(body[data-xiaojing-product][data-ds-dark-theme]) :global([data-sidebar-collapsed='true']) .avatar.wordmarkDark {
+  display: block;
+}
+
+.tagline {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 16px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+:global([data-windows-titlebar]) .name {
   height: 32px;
 }
 

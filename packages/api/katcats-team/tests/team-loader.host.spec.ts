@@ -11,7 +11,8 @@ import Loader from '@deepseek-ai/cordis-plugin-loader'
 import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import AgentDefaultModel from '@deepseek-ai/dsh-agent-default-model'
-import LlmService, { ToolCallId, createUserMessage, type LlmModelInfo, type MessageId } from '@deepseek-ai/dsh-llm'
+import LlmService, { ToolCallId, createUserMessage, resolveRetryPolicy, type LlmModelInfo, type MessageId, type StreamChunk } from '@deepseek-ai/dsh-llm'
+import * as LlmRetry from '@deepseek-ai/dsh-llm-retry'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import Tools, { defineTool } from '@deepseek-ai/dsh-tools'
 import ApprovalService, { type ApprovalAnswer } from '@deepseek-ai/dsh-user-approval'
@@ -21,6 +22,7 @@ import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
 import SessionProjections from '@deepseek-ai/dsh-session-projection'
 import SessionTitle, { foldSessionTitle } from '@deepseek-ai/dsh-session-title'
 import * as JsonlPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import { logPath } from '../../../session/session-persistence-jsonl/src/format.ts'
 import SessionQuery from '@deepseek-ai/dsh-session-query-sqlite'
 import Storage from '@deepseek-ai/dsh-storage'
 import * as JsonStorage from '@deepseek-ai/dsh-storage-json'
@@ -45,9 +47,9 @@ import KatcatsChats from '../src/chats.ts'
 import { chatsDomainSpec, chatsStateSchema } from '../src/chats-storage.ts'
 import { GroupTranscript } from '../src/group-transcript.ts'
 import { groupRequestDigest } from '../src/group-input.ts'
-import { chatGroupId, mainBotId, ordinaryGroupId } from '../src/storage.ts'
+import { chatGroupId, mainBotId, ordinaryGroupId, teamStateSchema } from '../src/storage.ts'
 import type { TeamBot } from '../src/types.ts'
-import type { ChatDelivery, ChatDeliveryId, ChatInbound, TeamChat } from '../src/chats-types.ts'
+import type { ChatDelivery, ChatDeliveryId, ChatInbound, ChatRunId, TeamChat } from '../src/chats-types.ts'
 import type {} from '../src/chats-messages.ts'
 import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 
@@ -55,6 +57,11 @@ const contexts = new Set<Context>()
 const roots: string[] = []
 
 class FixtureModelCatalog extends MockAdapter {
+  override providerRetryPolicy() {
+    return resolveRetryPolicy({ mode: 'normal', maxRetries: 2,
+      backoff: { initialDelayMs: 1, maxDelayMs: 1, jitterRatio: 0 } }, 'fixture provider retryPolicy')
+  }
+
   override listModels(provider: string): Promise<readonly LlmModelInfo[]> {
     return Promise.resolve(['fixture-model', 'specialist-model'].map(id => ({ provider, id, name: id })))
   }
@@ -67,7 +74,7 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 
-async function loadComposition(root: string, script: ConstructorParameters<typeof MockAdapter>[0] = [], chats = false, mainName?: string) {
+async function loadComposition(root: string, script: ConstructorParameters<typeof MockAdapter>[0] = [], chats = false, mainName?: string, retry = false) {
   const configPath = join(root, 'cordis.yml')
   await writeFile(configPath, JSON.stringify([
     { name: 'cordis:typert' },
@@ -88,6 +95,7 @@ async function loadComposition(root: string, script: ConstructorParameters<typeo
     { name: 'cordis:tools' },
     { name: 'cordis:agents' },
     { name: 'cordis:agent-loop' },
+    ...(retry ? [{ name: 'cordis:llm-retry' }] : []),
     { name: 'cordis:agent-default-model', config: { provider: 'fixture', model: 'fixture-model' } },
     { name: 'cordis:fs', config: { cwd: root } },
     { name: 'cordis:attachments', config: { dshHome: join(root, 'home') } },
@@ -138,6 +146,7 @@ async function loadComposition(root: string, script: ConstructorParameters<typeo
     tools: Tools,
     agents: AgentRegistry,
     'agent-loop': AgentLoop,
+    'llm-retry': LlmRetry,
     'agent-default-model': AgentDefaultModel,
     fs: FsLocal,
     attachments: AttachmentLocal,
@@ -246,7 +255,78 @@ async function settledGroup(ctx: Context, id: TeamChat['id']): Promise<void> {
   } finally { abort.abort() }
 }
 
+async function resumeLegacyBroadcast(ctx: Context, chat: TeamChat, text: string): Promise<void> {
+  const before = (await ctx.katcatsChats.snapshot()).chats.find(value => value.id === chat.id)!
+  await ctx.katcatsChats.pause(control(before))
+  await sendGroup(ctx, chat, text)
+  await settledGroup(ctx, chat.id)
+  const domain = ctx.storageDomain.get(chatsDomainSpec.name)!
+  const state = chatsStateSchema.parse(domain.global.get())
+  const admitted = state.inbounds.findLast(input => input.chatId === chat.id)!
+  const { collaborationVersion: _version, ...historical } = admitted
+  await domain.global.set({ ...state, inbounds: state.inbounds.map(input => input.requestId === admitted.requestId
+    ? { ...historical, recipients: chat.memberIds } : input) })
+  expect(state.deliveries.some(delivery => delivery.source.kind === 'owner-message'
+    && delivery.source.messageId === admitted.userMessage.id)).toBe(false)
+  const paused = (await ctx.katcatsChats.snapshot()).chats.find(value => value.id === chat.id)!
+  await ctx.katcatsChats.resume(control(paused))
+}
+
+function malformedHandoff(): StreamChunk[] {
+  return [
+    { type: 'block-start', index: 0, blockType: 'text' },
+    { type: 'text-delta', index: 0, text: 'Unconfirmed handoff.' },
+    { type: 'block-end', index: 0, block: { type: 'text', text: 'Unconfirmed handoff.' } },
+    { type: 'block-start', index: 1, blockType: 'tool-call' },
+    { type: 'tool-call-delta', index: 1, id: ToolCallId('malformed-handoff'), name: 'request_group_member', argumentsDelta: '{"bot_id":' },
+    { type: 'finish', reason: { kind: 'error', failure: { code: 'MALFORMED_RESPONSE', message: 'Tool arguments were incomplete.' } } },
+  ]
+}
+
 describe('Katcats directory through the real Loader and owner Remote', () => {
+  it('creates a complete team and group from the main conversation with replayable saved receipts', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'katcats-create-team-'))
+    roots.push(root)
+    let ctx: Context
+    const h = await loadComposition(root, [
+      toolCallResponse('create-team-members', 'create_bots', { bots: [
+        { name: 'Accountant', role: 'Prepare accounts.' }, { name: 'CFO', role: 'Review and coordinate finance.' },
+      ] }),
+      () => {
+        const bots = teamStateSchema.parse(ctx.storageDomain.get('katcats_team')!.global.get()).bots.filter(bot => bot.kind === 'ordinary')
+        return toolCallResponse('create-team-chat', 'create_group_chat', {
+          name: 'Finance', member_ids: bots.map(bot => bot.id), manager_id: bots.find(bot => bot.name === 'CFO')!.id,
+        })
+      },
+      toolCallResponse('inspect-team-chat', 'list_group_chats', {}),
+      textResponse('Accountant and CFO are saved. Finance is ready in the sidebar, with CFO as manager.'),
+    ], true)
+    ctx = h.ctx
+    const main = (await ctx.katcatsTeam.snapshot()).bots.find(bot => bot.id === mainBotId)!
+    await send(requireAgent(ctx, main), 'Create an Accountant and CFO with their roles, then put them in Finance with CFO managing.')
+    const bots = (await ctx.katcatsTeam.snapshot()).bots.filter(bot => bot.kind === 'ordinary')
+    const saved = await ctx.katcatsChats.snapshot()
+    expect(bots).toHaveLength(2)
+    expect(saved.chats).toHaveLength(1)
+    expect(saved.chats[0]).toMatchObject({ name: 'Finance', memberIds: bots.map(bot => bot.id),
+      managerId: bots.find(bot => bot.name === 'CFO')!.id, run: null })
+    expect(h.adapter.requests).toHaveLength(4)
+    expect(h.adapter.requests.every(request => request.sessionId === main.sessionId)).toBe(true)
+    const log = await ctx.sessionController.inspect(main.sessionId)
+    const results = log.events.flatMap(event => event.type === 'tool/result' ? [event.data] : [])
+    expect(results).toHaveLength(3)
+    expect(results.every(result => !result.message.isError)).toBe(true)
+    const transcript = results.map(result => ({ callId: result.message.toolCallId, content: result.message.content, meta: result.meta }))
+    const stable = bots.reduce((text, bot) => text.replaceAll(bot.id, `<${bot.name}>`), JSON.stringify(transcript, null, 2))
+      .replaceAll(saved.chats[0]!.id, '<finance-chat>')
+    expect(stable).toMatchSnapshot()
+    await ctx.fiber.dispose()
+    contexts.delete(ctx)
+    const reopened = await loadComposition(root, [], true)
+    expect((await reopened.ctx.katcatsChats.snapshot()).chats).toEqual(saved.chats)
+    expect(reopened.adapter.requests).toEqual([])
+  })
+
   it('finishes an older accepted settings intent before confirming later conversational responsibilities', async () => {
     const root = await mkdtemp(join(tmpdir(), 'katcats-role-order-'))
     roots.push(root)
@@ -544,7 +624,7 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
     const nextRequest = first.adapter.requests.at(-1)!
     expect(nextRequest.messages.filter(message => message.role === 'system')
       .flatMap(message => message.content.flatMap(block => block.type === 'text' ? [block.text] : [])).join('\n'))
-      .toContain(`You are Writer, a member of the Katcats.AI team.\n${ownRole}`)
+      .toContain(`You are Writer, a member of 瑞华云财务共享团队.\n${ownRole}`)
     const mainLog = await first.ctx.sessionController.inspect(main.sessionId)
     const writerLog = await first.ctx.sessionController.inspect(created.sessionId)
     expect(mainLog.events.find(event => event.type === 'tool/call' && event.data.callId === 'create-writer'))
@@ -601,14 +681,16 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
         "nextPromptIdentity": [
           "You are an AI agent powered by DeepSeek Harness.
 
-      You are Writer, a member of the Katcats.AI team.
+      You are Writer, a member of 瑞华云财务共享团队.
       Draft and edit technical articles.
+      When introducing yourself, use the exact team name 瑞华云财务共享团队, even if earlier conversation mentions an old product name.
 
       Use set_own_role only when the user explicitly asks to establish or change your ongoing identity or responsibilities. Do not change your saved role for a temporary task. Claim a role was saved only after the tool succeeds.",
           "You are an AI agent powered by DeepSeek Harness.
 
-      You are Writer, a member of the Katcats.AI team.
+      You are Writer, a member of 瑞华云财务共享团队.
       Review technical articles for clarity and factual support.
+      When introducing yourself, use the exact team name 瑞华云财务共享团队, even if earlier conversation mentions an old product name.
 
       Use set_own_role only when the user explicitly asks to establish or change your ongoing identity or responsibilities. Do not change your saved role for a temporary task. Claim a role was saved only after the tool succeeds.",
         ],
@@ -655,7 +737,7 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
     await send(resolved.agent, 'Continue with your saved role after restarting.')
     expect(second.adapter.requests[0]!.messages.filter(message => message.role === 'system')
       .flatMap(message => message.content.flatMap(block => block.type === 'text' ? [block.text] : [])).join('\n'))
-      .toContain(`You are Writer, a member of the Katcats.AI team.\n${ownRole}`)
+      .toContain(`You are Writer, a member of 瑞华云财务共享团队.\n${ownRole}`)
     const cold = await second.ctx.sessionController.inspect(created.sessionId)
     expect(cold.events.slice(0, writerLog.events.length)).toEqual(writerLog.events)
     expect(second.ctx.tools.get('create_bot', resolved.agent)).toBeUndefined()
@@ -667,9 +749,9 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
     roots.push(root)
     const members = [
       { name: 'Ruby', role: 'Draft clear articles.', avatar: { shape: 'classic', color: '#FF2849' } },
-      { name: 'Jade', role: 'Check source material.', avatar: { shape: 'round', color: '#22BB66' } },
+      { name: 'Jade', role: 'Check source material.', avatar: { shape: 'round', color: '#10C477' } },
       { name: 'Azure', role: 'Review interface designs.', avatar: { shape: 'point', color: '#2288FF' } },
-      { name: 'Violet', role: 'Review accessibility.', avatar: { shape: 'fluffy', color: '#9955FF' } },
+      { name: 'Violet', role: 'Review accessibility.', avatar: { shape: 'fluffy', color: '#9253FF' } },
     ]
     let groupId = ''
     let targetId = ''
@@ -775,7 +857,7 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
         {
           "type": "tool/call",
           "name": "create_bot",
-          "arguments": "{\\"name\\":\\"Jade\\",\\"role\\":\\"Check source material.\\",\\"avatar\\":{\\"shape\\":\\"round\\",\\"color\\":\\"#22BB66\\"}}"
+          "arguments": "{\\"name\\":\\"Jade\\",\\"role\\":\\"Check source material.\\",\\"avatar\\":{\\"shape\\":\\"round\\",\\"color\\":\\"#10C477\\"}}"
         },
         {
           "type": "tool/result",
@@ -783,7 +865,7 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
           "content": [
             {
               "type": "text",
-              "text": "Created Bot Jade (<Jade>) with saved role:\\nCheck source material.\\nSaved avatar: round #22BB66."
+              "text": "Created Bot Jade (<Jade>) with saved role:\\nCheck source material.\\nSaved avatar: round #10C477."
             }
           ],
           "meta": {
@@ -792,7 +874,7 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
             "role": "Check source material.",
             "avatar": {
               "shape": "round",
-              "color": "#22BB66"
+              "color": "#10C477"
             }
           },
           "isError": false
@@ -825,7 +907,7 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
         {
           "type": "tool/call",
           "name": "create_bot",
-          "arguments": "{\\"name\\":\\"Violet\\",\\"role\\":\\"Review accessibility.\\",\\"avatar\\":{\\"shape\\":\\"fluffy\\",\\"color\\":\\"#9955FF\\"}}"
+          "arguments": "{\\"name\\":\\"Violet\\",\\"role\\":\\"Review accessibility.\\",\\"avatar\\":{\\"shape\\":\\"fluffy\\",\\"color\\":\\"#9253FF\\"}}"
         },
         {
           "type": "tool/result",
@@ -833,7 +915,7 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
           "content": [
             {
               "type": "text",
-              "text": "Created Bot Violet (<Violet>) with saved role:\\nReview accessibility.\\nSaved avatar: fluffy #9955FF."
+              "text": "Created Bot Violet (<Violet>) with saved role:\\nReview accessibility.\\nSaved avatar: fluffy #9253FF."
             }
           ],
           "meta": {
@@ -842,7 +924,7 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
             "role": "Review accessibility.",
             "avatar": {
               "shape": "fluffy",
-              "color": "#9955FF"
+              "color": "#9253FF"
             }
           },
           "isError": false
@@ -858,7 +940,7 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
           "content": [
             {
               "type": "text",
-              "text": "{\\"bots\\":[{\\"bot_id\\":\\"main\\",\\"name\\":\\"小兢会计\\",\\"role\\":\\"Bot 创建助手：根据用户需求创建和配置 Bot。\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"},\\"is_main\\":true},{\\"bot_id\\":\\"<Ruby>\\",\\"name\\":\\"Ruby\\",\\"role\\":\\"Draft clear articles.\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"},{\\"bot_id\\":\\"<Jade>\\",\\"name\\":\\"Jade\\",\\"role\\":\\"Check source material.\\",\\"avatar\\":{\\"shape\\":\\"round\\",\\"color\\":\\"#22BB66\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"},{\\"bot_id\\":\\"<Azure>\\",\\"name\\":\\"Azure\\",\\"role\\":\\"Review interface designs.\\",\\"avatar\\":{\\"shape\\":\\"point\\",\\"color\\":\\"#2288FF\\"},\\"is_main\\":false,\\"group_id\\":\\"<design-group>\\"},{\\"bot_id\\":\\"<Violet>\\",\\"name\\":\\"Violet\\",\\"role\\":\\"Review accessibility.\\",\\"avatar\\":{\\"shape\\":\\"fluffy\\",\\"color\\":\\"#9955FF\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"}],\\"groups\\":[{\\"group_id\\":\\"bots\\",\\"name\\":\\"未分组\\"},{\\"group_id\\":\\"<design-group>\\",\\"name\\":\\"Design team\\"}]}"
+              "text": "{\\"bots\\":[{\\"bot_id\\":\\"main\\",\\"name\\":\\"小兢会计\\",\\"role\\":\\"Bot 创建助手：根据用户需求创建和配置 Bot。\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"},\\"is_main\\":true},{\\"bot_id\\":\\"<Violet>\\",\\"name\\":\\"Violet\\",\\"role\\":\\"Review accessibility.\\",\\"avatar\\":{\\"shape\\":\\"fluffy\\",\\"color\\":\\"#9253FF\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"},{\\"bot_id\\":\\"<Azure>\\",\\"name\\":\\"Azure\\",\\"role\\":\\"Review interface designs.\\",\\"avatar\\":{\\"shape\\":\\"point\\",\\"color\\":\\"#2288FF\\"},\\"is_main\\":false,\\"group_id\\":\\"<design-group>\\"},{\\"bot_id\\":\\"<Jade>\\",\\"name\\":\\"Jade\\",\\"role\\":\\"Check source material.\\",\\"avatar\\":{\\"shape\\":\\"round\\",\\"color\\":\\"#10C477\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"},{\\"bot_id\\":\\"<Ruby>\\",\\"name\\":\\"Ruby\\",\\"role\\":\\"Draft clear articles.\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"}],\\"groups\\":[{\\"group_id\\":\\"bots\\",\\"name\\":\\"未分组\\"},{\\"group_id\\":\\"<design-group>\\",\\"name\\":\\"Design team\\"}]}"
             }
           ],
           "meta": {
@@ -874,23 +956,12 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
                 "is_main": true
               },
               {
-                "bot_id": "<Ruby>",
-                "name": "Ruby",
-                "role": "Draft clear articles.",
+                "bot_id": "<Violet>",
+                "name": "Violet",
+                "role": "Review accessibility.",
                 "avatar": {
-                  "shape": "classic",
-                  "color": "#FF2849"
-                },
-                "is_main": false,
-                "group_id": "bots"
-              },
-              {
-                "bot_id": "<Jade>",
-                "name": "Jade",
-                "role": "Check source material.",
-                "avatar": {
-                  "shape": "round",
-                  "color": "#22BB66"
+                  "shape": "fluffy",
+                  "color": "#9253FF"
                 },
                 "is_main": false,
                 "group_id": "bots"
@@ -907,12 +978,23 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
                 "group_id": "<design-group>"
               },
               {
-                "bot_id": "<Violet>",
-                "name": "Violet",
-                "role": "Review accessibility.",
+                "bot_id": "<Jade>",
+                "name": "Jade",
+                "role": "Check source material.",
                 "avatar": {
-                  "shape": "fluffy",
-                  "color": "#9955FF"
+                  "shape": "round",
+                  "color": "#10C477"
+                },
+                "is_main": false,
+                "group_id": "bots"
+              },
+              {
+                "bot_id": "<Ruby>",
+                "name": "Ruby",
+                "role": "Draft clear articles.",
+                "avatar": {
+                  "shape": "classic",
+                  "color": "#FF2849"
                 },
                 "is_main": false,
                 "group_id": "bots"
@@ -967,7 +1049,7 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
           "content": [
             {
               "type": "text",
-              "text": "{\\"bots\\":[{\\"bot_id\\":\\"main\\",\\"name\\":\\"小兢会计\\",\\"role\\":\\"Bot 创建助手：根据用户需求创建和配置 Bot。\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"},\\"is_main\\":true},{\\"bot_id\\":\\"<Ruby>\\",\\"name\\":\\"Ruby\\",\\"role\\":\\"Draft clear articles.\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"},{\\"bot_id\\":\\"<Jade>\\",\\"name\\":\\"Jade\\",\\"role\\":\\"Check source material.\\",\\"avatar\\":{\\"shape\\":\\"round\\",\\"color\\":\\"#22BB66\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"},{\\"bot_id\\":\\"<Azure>\\",\\"name\\":\\"Azure\\",\\"role\\":\\"Review interface designs.\\",\\"avatar\\":{\\"shape\\":\\"tilt\\",\\"color\\":\\"#FF9933\\"},\\"is_main\\":false,\\"group_id\\":\\"<design-group>\\"},{\\"bot_id\\":\\"<Violet>\\",\\"name\\":\\"Violet\\",\\"role\\":\\"Review accessibility.\\",\\"avatar\\":{\\"shape\\":\\"fluffy\\",\\"color\\":\\"#9955FF\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"}],\\"groups\\":[{\\"group_id\\":\\"bots\\",\\"name\\":\\"未分组\\"},{\\"group_id\\":\\"<design-group>\\",\\"name\\":\\"Design team\\"}]}"
+              "text": "{\\"bots\\":[{\\"bot_id\\":\\"main\\",\\"name\\":\\"小兢会计\\",\\"role\\":\\"Bot 创建助手：根据用户需求创建和配置 Bot。\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"},\\"is_main\\":true},{\\"bot_id\\":\\"<Violet>\\",\\"name\\":\\"Violet\\",\\"role\\":\\"Review accessibility.\\",\\"avatar\\":{\\"shape\\":\\"fluffy\\",\\"color\\":\\"#9253FF\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"},{\\"bot_id\\":\\"<Azure>\\",\\"name\\":\\"Azure\\",\\"role\\":\\"Review interface designs.\\",\\"avatar\\":{\\"shape\\":\\"tilt\\",\\"color\\":\\"#FF9933\\"},\\"is_main\\":false,\\"group_id\\":\\"<design-group>\\"},{\\"bot_id\\":\\"<Jade>\\",\\"name\\":\\"Jade\\",\\"role\\":\\"Check source material.\\",\\"avatar\\":{\\"shape\\":\\"round\\",\\"color\\":\\"#10C477\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"},{\\"bot_id\\":\\"<Ruby>\\",\\"name\\":\\"Ruby\\",\\"role\\":\\"Draft clear articles.\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"},\\"is_main\\":false,\\"group_id\\":\\"bots\\"}],\\"groups\\":[{\\"group_id\\":\\"bots\\",\\"name\\":\\"未分组\\"},{\\"group_id\\":\\"<design-group>\\",\\"name\\":\\"Design team\\"}]}"
             }
           ],
           "meta": {
@@ -983,23 +1065,12 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
                 "is_main": true
               },
               {
-                "bot_id": "<Ruby>",
-                "name": "Ruby",
-                "role": "Draft clear articles.",
+                "bot_id": "<Violet>",
+                "name": "Violet",
+                "role": "Review accessibility.",
                 "avatar": {
-                  "shape": "classic",
-                  "color": "#FF2849"
-                },
-                "is_main": false,
-                "group_id": "bots"
-              },
-              {
-                "bot_id": "<Jade>",
-                "name": "Jade",
-                "role": "Check source material.",
-                "avatar": {
-                  "shape": "round",
-                  "color": "#22BB66"
+                  "shape": "fluffy",
+                  "color": "#9253FF"
                 },
                 "is_main": false,
                 "group_id": "bots"
@@ -1016,12 +1087,23 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
                 "group_id": "<design-group>"
               },
               {
-                "bot_id": "<Violet>",
-                "name": "Violet",
-                "role": "Review accessibility.",
+                "bot_id": "<Jade>",
+                "name": "Jade",
+                "role": "Check source material.",
                 "avatar": {
-                  "shape": "fluffy",
-                  "color": "#9955FF"
+                  "shape": "round",
+                  "color": "#10C477"
+                },
+                "is_main": false,
+                "group_id": "bots"
+              },
+              {
+                "bot_id": "<Ruby>",
+                "name": "Ruby",
+                "role": "Draft clear articles.",
+                "avatar": {
+                  "shape": "classic",
+                  "color": "#FF2849"
                 },
                 "is_main": false,
                 "group_id": "bots"
@@ -1170,7 +1252,7 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
     await send(requireAgent(second.ctx, main), 'What is your name now?')
     const identity = second.adapter.requests[0]!.messages.filter(message => message.role === 'system')
       .flatMap(message => message.content.filter(part => part.type === 'text').map(part => part.text))
-    expect(identity.at(-1)).toContain('You are 小兢会计, a member of the Katcats.AI team.')
+    expect(identity.at(-1)).toContain('You are 小兢会计, a member of 瑞华云财务共享团队.')
     const migratedHistory = await second.ctx.sessionController.inspect(main.sessionId)
     await second.ctx.fiber.dispose()
     contexts.delete(second.ctx)
@@ -1328,6 +1410,86 @@ describe('Katcats directory through the real Loader and owner Remote', () => {
 })
 
 describe('Katcats groups through the real Loader and direct member turns', () => {
+  it('retries only a malformed model request and completes its group handoff without replaying saved work', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'katcats-malformed-recovery-'))
+    roots.push(root)
+    let aId = ''
+    let bId = ''
+    const { ctx, adapter } = await loadComposition(root, [
+      () => toolCallResponse('save-roles-once', 'set_group_roles', {
+        manager_id: aId, roles: [{ bot_id: aId, role: 'Coordinate the review.' }, { bot_id: bId, role: 'Review the saved draft.' }],
+      }),
+      malformedHandoff(),
+      () => toolCallResponse('confirmed-handoff', 'request_group_member', { bot_id: bId, message: 'Review the saved draft.' }, 'B, please review the saved draft.'),
+      textResponse('B reviewed the saved draft.'),
+      textResponse('A delivered the reviewed draft.'),
+    ], true, undefined, true)
+    const a = (await ctx.katcatsTeam.createBot({ name: 'A' })).bot
+    const b = (await ctx.katcatsTeam.createBot({ name: 'B' })).bot
+    aId = a.id
+    bId = b.id
+    const chat = (await ctx.katcatsChats.createChat({ name: 'Recoverable handoff', memberIds: [a.id, b.id] })).chat
+    await sendGroup(ctx, chat, '@A Save responsibilities and ask B to review the draft.')
+    await settledGroup(ctx, chat.id)
+    const saved = await ctx.katcatsChats.snapshot()
+    expect(saved.chats[0]).toMatchObject({ status: 'active', pauseReason: null, error: null, managerId: a.id,
+      memberRoles: [{ botId: a.id, role: 'Coordinate the review.' }, { botId: b.id, role: 'Review the saved draft.' }] })
+    expect(saved.deliveries.map(delivery => ({ bot: delivery.botId, state: delivery.state }))).toEqual([
+      { bot: a.id, state: 'completed' }, { bot: b.id, state: 'completed' },
+    ])
+    expect(adapter.requests.map(request => request.sessionId)).toEqual([
+      chat.executors[0]!.sessionId, chat.executors[0]!.sessionId, chat.executors[0]!.sessionId,
+      chat.executors[1]!.sessionId, chat.executors[0]!.sessionId,
+    ])
+    const firstGroupPrompt = JSON.stringify(adapter.requests[0]!.messages.filter(message => message.role === 'system'))
+    expect(firstGroupPrompt).toContain('member of 瑞华云财务共享团队, working in group Recoverable handoff')
+    expect(firstGroupPrompt).toContain('use the exact team name 瑞华云财务共享团队')
+    expect(firstGroupPrompt).not.toContain('瑞华云财务共享团队团队')
+    expect(firstGroupPrompt).not.toContain('Katcats.AI')
+    expect(adapter.requests[2]!.messages).toEqual(adapter.requests[1]!.messages)
+    const member = (await ctx.sessionController.inspect(chat.executors[0]!.sessionId)).events
+    expect(member.filter(event => event.type === 'tool/call').map(event => event.data.name)).toEqual(['set_group_roles', 'request_group_member'])
+    expect(member.filter(event => event.type === 'llm/retry').map(event => ({ step: event.data.step, retry: event.data.retry,
+      code: event.data.failure.code }))).toEqual([{ step: 2, retry: 1, code: 'MALFORMED_RESPONSE' }])
+    expect(member.filter(event => event.type === 'assistant/attempt')).toHaveLength(1)
+    const transcript = (await ctx.sessionController.inspect(chat.rootSessionId)).events.flatMap(event => event.type === 'user/message'
+      ? [{ speaker: event.data.source.kind === 'katcats-group-relay' ? event.data.source.sender.name : 'owner', content: event.data.content }] : [])
+    expect(transcript).toMatchSnapshot()
+    expect(JSON.stringify(transcript)).not.toContain('Unconfirmed handoff.')
+  })
+
+  it('pauses with a visible malformed-response error after the bounded request retry budget is exhausted', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'katcats-malformed-exhausted-'))
+    roots.push(root)
+    const { ctx, adapter } = await loadComposition(root, [malformedHandoff(), malformedHandoff(), malformedHandoff(),
+      textResponse('A completed the new request after Stop.')], true, undefined, true)
+    const a = (await ctx.katcatsTeam.createBot({ name: 'A' })).bot
+    const chat = (await ctx.katcatsChats.createChat({ name: 'Bounded recovery', memberIds: [a.id] })).chat
+    await sendGroup(ctx, chat, '@A Arrange a review.')
+    await settledGroup(ctx, chat.id)
+    const saved = await ctx.katcatsChats.snapshot()
+    expect(adapter.requests).toHaveLength(3)
+    expect(saved.chats[0]).toMatchObject({ status: 'paused', pauseReason: 'unknown-result',
+      error: { code: 'KATCATS_CHAT_MEMBER_MALFORMED_RESPONSE' } })
+    expect(saved.deliveries).toHaveLength(1)
+    expect(saved.deliveries[0]).toMatchObject({ state: 'unknown', receipt: null })
+    const member = (await ctx.sessionController.inspect(chat.executors[0]!.sessionId)).events
+    expect(member.filter(event => event.type === 'llm/retry').map(event => event.data.retry)).toEqual([1, 2])
+    expect(member.filter(event => event.type === 'assistant/attempt')).toHaveLength(3)
+    expect(member.some(event => event.type === 'tool/call')).toBe(false)
+    await expect(ctx.katcatsChats.resume(control(saved.chats[0]!))).rejects.toThrow()
+    expect(adapter.requests).toHaveLength(3)
+    await ctx.katcatsChats.stop(control(saved.chats[0]!))
+    await sendGroup(ctx, chat, '@A Start a new request after Stop.')
+    await settledGroup(ctx, chat.id)
+    const recovered = await ctx.katcatsChats.snapshot()
+    expect(recovered.chats[0]).toMatchObject({ status: 'active', pauseReason: null, error: null })
+    expect(recovered.deliveries).toHaveLength(2)
+    expect(recovered.deliveries[0]).toMatchObject({ id: saved.deliveries[0]!.id, state: 'unknown', receipt: null })
+    expect(recovered.deliveries[1]).toMatchObject({ state: 'completed', receipt: { text: 'A completed the new request after Stop.' } })
+    expect(adapter.requests).toHaveLength(4)
+  })
+
   it('shows no member handoff when a model only says that it assigned work', async () => {
     const root = await mkdtemp(join(tmpdir(), 'katcats-spoken-assignment-'))
     roots.push(root)
@@ -1564,7 +1726,7 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
         'The finalized deliverable is here.', 'The final delivery is here.',
       ])
       expect(finished.deliveries[1]).toMatchObject({ state: 'completed', relayed: true })
-      expect(finished.chats[0]).toMatchObject({ status: 'paused', pauseReason: 'relay-limit', run: { relayCount: 1 } })
+      expect(finished.chats[0]).toMatchObject({ status: 'active', pauseReason: null, run: null })
       expect(finished.deliveries[0]).toMatchObject({ state: 'completed', relayed: true })
       expect(adapter.requests.map(request => request.sessionId)).toEqual([chat.executors[0]!.sessionId, chat.executors[1]!.sessionId,
         chat.executors[0]!.sessionId, chat.executors[0]!.sessionId, chat.executors[0]!.sessionId])
@@ -1577,7 +1739,7 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
     } finally { release.resolve(undefined); remove() }
   })
 
-  it('keeps genuine broadcast passes silent while an explicitly addressed member must answer', async () => {
+  it('keeps accepted legacy broadcast passes silent while a newly addressed member must answer', async () => {
     const root = await mkdtemp(join(tmpdir(), 'katcats-all-pass-explicit-'))
     roots.push(root)
     const { ctx, adapter } = await loadComposition(root, [
@@ -1589,7 +1751,7 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
     const a = (await ctx.katcatsTeam.createBot({ name: 'A' })).bot
     const b = (await ctx.katcatsTeam.createBot({ name: 'B' })).bot
     const chat = (await ctx.katcatsChats.createChat({ name: 'Pass policy', memberIds: [a.id, b.id] })).chat
-    await sendGroup(ctx, chat, 'Contribute only if this update needs your role.')
+    await resumeLegacyBroadcast(ctx, chat, 'Contribute only if this update needs your role.')
     await settledGroup(ctx, chat.id)
     const passed = await ctx.katcatsChats.snapshot()
     expect(passed.chats[0]).toMatchObject({ status: 'active', run: null })
@@ -1629,7 +1791,7 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
       return value
     })
     try {
-      await sendGroup(ctx, chat, 'Prepare the initial draft.')
+      await sendGroup(ctx, chat, '@A @B Prepare the initial draft.')
       await entered.promise
       const previous = (await ctx.katcatsChats.snapshot()).chats[0]!
       expect((await ctx.katcatsChats.snapshot()).activities[0]?.processing).toBe(true)
@@ -1696,7 +1858,7 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
     const b = (await first.ctx.katcatsTeam.createBot({ name: 'B' })).bot
     const budget = (await first.ctx.katcatsChats.createChat({ name: 'Budget pause', memberIds: [a.id, b.id], relayLimit: 1 })).chat
     const interrupted = (await first.ctx.katcatsChats.createChat({ name: 'Interrupted', memberIds: [b.id] })).chat
-    await sendGroup(first.ctx, budget, 'Prepare a draft.')
+    await sendGroup(first.ctx, budget, '@A @B Prepare a draft.')
     await settledGroup(first.ctx, budget.id)
     const ready = Promise.withResolvers<undefined>()
     const remove = first.ctx.on('llm/stream', (request, next) => {
@@ -1705,7 +1867,7 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
     })
     await sendGroup(first.ctx, interrupted, 'Continue a slow task.')
     await ready.promise
-    const path = join(root, 'storage', 'katcats_chats_v2.json')
+    const path = join(root, 'storage', 'katcats_chats_v3.json')
     const crashImage = await readFile(path, 'utf8')
     remove()
     await first.ctx.fiber.dispose()
@@ -1763,7 +1925,7 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
     await submit('Prepare the draft together.', 'budget-original')
     expect((await ctx.katcatsChats.snapshot()).chats).toEqual(initial.chats)
     expect(adapter.requests).toHaveLength(1)
-    await submit('Where is the finalized deliverable?', 'budget-question-one', 'steer')
+    await submit('@A @B Where is the finalized deliverable?', 'budget-question-one', 'steer')
     await settledGroup(ctx, chat.id)
     const answered = await ctx.katcatsChats.snapshot()
     expect(answered.deliveries.some(delivery => delivery.receipt?.text === 'Here is the finalized deliverable.')).toBe(true)
@@ -1772,11 +1934,11 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
     expect(answered.deliveries.find(delivery => delivery.id === oldPending.id)).toMatchObject({
       state: 'failed', error: { code: 'superseded' }, inputMessageId: oldPending.inputMessageId,
     })
-    await submit('Where is the finalized deliverable?', 'budget-question-one', 'steer')
+    await submit('@A @B Where is the finalized deliverable?', 'budget-question-one', 'steer')
     await settledGroup(ctx, chat.id)
     expect((await ctx.katcatsChats.snapshot()).chats).toEqual(answered.chats)
     expect(adapter.requests).toHaveLength(2)
-    await submit('Where is the final delivery?', 'budget-question-two', 'steer')
+    await submit('@A @B Where is the final delivery?', 'budget-question-two', 'steer')
     await settledGroup(ctx, chat.id)
     const finished = await ctx.katcatsChats.snapshot()
     expect(finished.chats[0]).toMatchObject({ status: 'paused', pauseReason: 'relay-limit', run: { relayCount: 1 } })
@@ -1803,7 +1965,7 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
             {
               "content": [
                 {
-                  "text": "Where is the finalized deliverable?",
+                  "text": "@A @B Where is the finalized deliverable?",
                   "type": "text",
                 },
               ],
@@ -1821,7 +1983,7 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
             {
               "content": [
                 {
-                  "text": "Where is the final delivery?",
+                  "text": "@A @B Where is the final delivery?",
                   "type": "text",
                 },
               ],
@@ -1941,19 +2103,220 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
     expect(adapter.requests).toHaveLength(8)
   })
 
+  it('retains approval-policy context through group dispatch and Stop without treating it as pending work', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'katcats-policy-context-'))
+    roots.push(root)
+    const { ctx, adapter } = await loadComposition(root, [
+      textResponse('Writer is ready.'), textResponse('The policy-aware group task completed.'),
+      textResponse('The new task completed after Stop.'),
+    ], true)
+    await ctx.plugin(ApprovalService)
+    const writer = (await ctx.katcatsTeam.createBot({ name: 'Writer' })).bot
+    const chat = (await ctx.katcatsChats.createChat({ name: 'Policy context', memberIds: [writer.id] })).chat
+    const worker = groupAgent(ctx, chat.executors[0]!.sessionId)
+    await sendGroup(ctx, chat, 'Hello.')
+    await settledGroup(ctx, chat.id)
+    ctx.approval.setPolicy(worker, 'never')
+    const firstNotice = worker.inbox.nextStep[0]!
+    expect(firstNotice.source.kind).toBe('user-approval')
+    expect(worker.status).toBe('idle')
+    await sendGroup(ctx, chat, 'Complete the policy-aware task.')
+    await settledGroup(ctx, chat.id)
+    const first = await ctx.katcatsChats.snapshot()
+    expect(first.chats[0]).toMatchObject({ status: 'active', pauseReason: null, error: null, run: null })
+    expect(first.deliveries.at(-1)).toMatchObject({ state: 'completed', receipt: { text: 'The policy-aware group task completed.' } })
+    expect(adapter.requests[1]!.messages.some(message => message.id === firstNotice.id)).toBe(true)
+    ctx.approval.setPolicy(worker, 'ask')
+    const retainedNotice = worker.inbox.nextStep[0]!
+    await ctx.katcatsChats.stop(control(first.chats[0]!))
+    expect(worker.inbox.nextStep.map(message => message.id)).toEqual([retainedNotice.id])
+    await sendGroup(ctx, chat, 'Complete a new task after Stop.')
+    await settledGroup(ctx, chat.id)
+    const final = await ctx.katcatsChats.snapshot()
+    expect(final.chats[0]).toMatchObject({ status: 'active', pauseReason: null, error: null, run: null })
+    expect(final.deliveries.at(-1)).toMatchObject({ state: 'completed', receipt: { text: 'The new task completed after Stop.' } })
+    expect(adapter.requests[2]!.messages.some(message => message.id === retainedNotice.id)).toBe(true)
+    const log = await ctx.sessionController.inspect(worker.id)
+    const notices = log.events.flatMap(event => event.type === 'user/message' && event.data.source.kind === 'user-approval'
+      ? [event.data.id] : [])
+    expect(notices).toEqual([firstNotice.id, retainedNotice.id])
+    expect({
+      notices: log.events.flatMap(event => event.type === 'user/message' && event.data.source.kind === 'user-approval'
+        ? [{ source: event.data.source.kind, content: event.data.content }] : []),
+      group: (await ctx.sessionController.inspect(chat.rootSessionId)).events.flatMap(event => event.type === 'user/message'
+        ? [{ speaker: event.data.source.kind === 'katcats-group-relay' ? event.data.source.sender.name : 'owner',
+          content: event.data.content }] : []),
+    }).toMatchSnapshot()
+    expect(worker.inbox.nextStep).toEqual([])
+    expect(adapter.requests).toHaveLength(3)
+  })
+
+  it('dispatches both members after sequential permission changes and retained notices after Stop', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'katcats-two-member-policy-context-'))
+    roots.push(root)
+    const { ctx, adapter } = await loadComposition(root, [
+      textResponse('Ready.'), textResponse('Ready.'),
+      textResponse('Policy-aware reply.'), textResponse('Policy-aware reply.'),
+      textResponse('Reply after Stop.'), textResponse('Reply after Stop.'),
+    ], true)
+    await ctx.plugin(ApprovalService)
+    const a = (await ctx.katcatsTeam.createBot({ name: 'A' })).bot
+    const b = (await ctx.katcatsTeam.createBot({ name: 'B' })).bot
+    const chat = (await ctx.katcatsChats.createChat({ name: 'Two-member policies', memberIds: [a.id, b.id] })).chat
+    const workers = chat.executors.map(executor => groupAgent(ctx, executor.sessionId))
+    await sendGroup(ctx, chat, '@A @B Hello, team.')
+    await settledGroup(ctx, chat.id)
+
+    for (const worker of workers) ctx.approval.setPolicy(worker, 'never')
+    const firstNotices = workers.map(worker => worker.inbox.nextStep[0]!)
+    for (const worker of workers) {
+      expect(worker.status).toBe('idle')
+      expect(worker.inbox.nextStep.map(message => message.source.kind)).toEqual(['user-approval'])
+    }
+    await sendGroup(ctx, chat, '@A @B Both members complete this task.')
+    await settledGroup(ctx, chat.id)
+    const first = await ctx.katcatsChats.snapshot()
+    expect(first.chats[0]).toMatchObject({ status: 'active', pauseReason: null, error: null, run: null })
+    const firstReplies = first.deliveries.slice(-2)
+    expect(firstReplies.map(delivery => delivery.botId).sort()).toEqual([a.id, b.id].sort())
+    expect(firstReplies.every(delivery => delivery.state === 'completed'
+      && delivery.receipt?.text === 'Policy-aware reply.')).toBe(true)
+    for (const [index, worker] of workers.entries()) {
+      expect(adapter.requests.findLast(request => request.sessionId === worker.id)?.messages
+        .some(message => message.id === firstNotices[index]!.id)).toBe(true)
+    }
+
+    for (const worker of workers) ctx.approval.setPolicy(worker, 'ask')
+    const retainedNotices = workers.map(worker => worker.inbox.nextStep[0]!)
+    await ctx.katcatsChats.stop(control(first.chats[0]!))
+    for (const [index, worker] of workers.entries()) {
+      expect(worker.inbox.nextStep.map(message => message.id)).toEqual([retainedNotices[index]!.id])
+    }
+    await sendGroup(ctx, chat, '@A @B Both members answer after Stop.')
+    await settledGroup(ctx, chat.id)
+    const final = await ctx.katcatsChats.snapshot()
+    expect(final.chats[0]).toMatchObject({ status: 'active', pauseReason: null, error: null, run: null })
+    const finalReplies = final.deliveries.slice(-2)
+    expect(finalReplies.map(delivery => delivery.botId).sort()).toEqual([a.id, b.id].sort())
+    expect(finalReplies.every(delivery => delivery.state === 'completed'
+      && delivery.receipt?.text === 'Reply after Stop.')).toBe(true)
+    for (const [index, worker] of workers.entries()) {
+      expect(adapter.requests.findLast(request => request.sessionId === worker.id)?.messages
+        .some(message => message.id === retainedNotices[index]!.id)).toBe(true)
+      const log = await ctx.sessionController.inspect(worker.id)
+      expect(log.events.flatMap(event => event.type === 'user/message' && event.data.source.kind === 'user-approval'
+        ? [event.data.id] : [])).toEqual([firstNotices[index]!.id, retainedNotices[index]!.id])
+      expect(worker.inbox.nextStep).toEqual([])
+    }
+    expect(adapter.requests).toHaveLength(6)
+  })
+
+  it('continues a stored policy-notice pause once after cold reopen without replacing its accepted task', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'katcats-cold-policy-context-'))
+    roots.push(root)
+    const first = await loadComposition(root, [textResponse('Writer is ready.')], true)
+    await first.ctx.plugin(ApprovalService)
+    const writer = (await first.ctx.katcatsTeam.createBot({ name: 'Writer' })).bot
+    const chat = (await first.ctx.katcatsChats.createChat({ name: 'Stored policy pause', memberIds: [writer.id] })).chat
+    await sendGroup(first.ctx, chat, 'Hello.')
+    await settledGroup(first.ctx, chat.id)
+    const worker = groupAgent(first.ctx, chat.executors[0]!.sessionId)
+    first.ctx.approval.setPolicy(worker, 'never')
+    const notice = worker.inbox.nextStep[0]!
+    expect(await first.ctx.sessions.flush(worker.session)).toBe(true)
+    const domain = first.ctx.storageDomain.get(chatsDomainSpec.name)!
+    const previous = chatsStateSchema.parse(domain.global.get())
+    const greeting = previous.deliveries[0]!
+    const generation = previous.chats[0]!.generation + 1
+    const runId = brandString<ChatRunId>('stored-policy-paused-run')
+    const request = { sessionId: chat.rootSessionId, requestId: brandString<SessionRequestId>('stored-policy-paused-request'),
+      mode: 'queue' as const, content: [{ type: 'text' as const, text: 'Write the already accepted article.' }] }
+    const userMessage = createUserMessage({ content: request.content, source: { kind: 'user', rpcId: request.requestId } })
+    await new GroupTranscript(first.ctx).publishUser(chat, userMessage)
+    const inbound: ChatInbound = { chatId: chat.id, runId, generation, requestId: request.requestId,
+      requestDigest: groupRequestDigest(request), userMessage, recipients: [writer.id], addressing: 'broadcast', state: 'published' }
+    const pending: ChatDelivery = { ...greeting, id: brandString<ChatDeliveryId>('stored-policy-paused-delivery'),
+      runId, generation, source: { kind: 'owner-message', messageId: userMessage.id }, message: request.content[0]!.text,
+      inputMessageId: brandString<MessageId>('stored-policy-paused-worker-input'),
+      relayMessageId: brandString<MessageId>('stored-policy-paused-relay'),
+      state: 'accepted', receipt: null, pass: null, relayed: false, error: null }
+    await domain.global.set(chatsStateSchema.parse({ ...previous,
+      chats: previous.chats.map(value => ({ ...value, status: 'paused', pauseReason: 'member-execution-unconfirmed',
+        generation, run: { id: runId, generation, relayCount: 0 }, error: null })),
+      inbounds: [...previous.inbounds, inbound], deliveries: [...previous.deliveries, pending],
+    }))
+    // Preserve the flushed crash image before graceful teardown cancels pending input.
+    const path = logPath(join(root, 'sessions'), chat.workDir, worker.id, 'none')
+    const crashImage = await readFile(path, 'utf8')
+    await first.ctx.fiber.dispose()
+    contexts.delete(first.ctx)
+    await writeFile(path, crashImage)
+    const cold = await loadComposition(root, [textResponse('The already accepted article is ready.')], true)
+    const restored = await cold.ctx.katcatsChats.snapshot()
+    expect(restored.chats[0]).toMatchObject({ status: 'paused', pauseReason: 'member-execution-unconfirmed', error: null,
+      generation, run: { id: runId, relayCount: 0 } })
+    expect(restored.deliveries).toEqual([greeting, pending])
+    expect(cold.adapter.requests).toEqual([])
+    await cold.ctx.katcatsChats.resume(control(restored.chats[0]!))
+    await settledGroup(cold.ctx, chat.id)
+    const completed = await cold.ctx.katcatsChats.snapshot()
+    expect(completed.chats[0]).toMatchObject({ status: 'active', pauseReason: null, error: null, generation, run: null })
+    expect(completed.deliveries).toHaveLength(2)
+    expect(completed.deliveries[0]).toEqual(greeting)
+    expect(completed.deliveries[1]).toMatchObject({ id: pending.id, inputMessageId: pending.inputMessageId,
+      relayMessageId: pending.relayMessageId, runId, generation, state: 'completed',
+      receipt: { text: 'The already accepted article is ready.' } })
+    expect(cold.adapter.requests).toHaveLength(1)
+    expect(cold.adapter.requests[0]!.messages.some(message => message.id === notice.id)).toBe(true)
+    const log = await cold.ctx.sessionController.inspect(worker.id)
+    expect(log.events.flatMap(event => event.type === 'user/message' && event.data.source.kind === 'user-approval'
+      ? [event.data.id] : [])).toEqual([notice.id])
+    expect(log.events.flatMap(event => event.type === 'user/message' && event.data.source.kind === 'katcats-group-task'
+      ? [event.data.id] : [])).toEqual([greeting.inputMessageId, pending.inputMessageId])
+    expect((await cold.ctx.sessionController.inspect(chat.rootSessionId)).events.flatMap(event => event.type === 'user/message'
+      ? event.data.content.flatMap(block => block.type === 'text' ? [block.text] : []) : [])).toEqual([
+      'Hello.', 'Writer is ready.', 'Write the already accepted article.', 'The already accepted article is ready.',
+    ])
+  })
+
+  it('reports an actual queued executor task without dispatching or discarding it', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'katcats-pending-executor-task-'))
+    roots.push(root)
+    const { ctx, adapter } = await loadComposition(root, [], true)
+    const writer = (await ctx.katcatsTeam.createBot({ name: 'Writer' })).bot
+    const chat = (await ctx.katcatsChats.createChat({ name: 'Pending executor task', memberIds: [writer.id] })).chat
+    const worker = groupAgent(ctx, chat.executors[0]!.sessionId)
+    const pending = createUserMessage({ content: [{ type: 'text', text: 'Retain this earlier task for inspection.' }],
+      source: { kind: 'user' } })
+    worker.inject(pending)
+    await sendGroup(ctx, chat, 'Do not overlap the earlier queued task.')
+    await settledGroup(ctx, chat.id)
+    const paused = await ctx.katcatsChats.snapshot()
+    expect(paused.chats[0]).toMatchObject({ status: 'paused', pauseReason: 'member-failed',
+      error: { code: 'KATCATS_CHAT_EXECUTOR_BUSY' } })
+    expect(paused.deliveries).toMatchObject([{ state: 'failed', receipt: null, error: { code: 'KATCATS_CHAT_EXECUTOR_BUSY' } }])
+    expect(worker.inbox.nextStep.map(message => message.id)).toEqual([pending.id])
+    expect(adapter.requests).toEqual([])
+    await ctx.katcatsChats.stop(control(paused.chats[0]!))
+    expect(worker.inbox.nextStep.map(message => message.id)).toEqual([pending.id])
+  })
+
   it('can dispatch again after Stop cancels approval and a repeat guard queues a final notice', async () => {
     const root = await mkdtemp(join(tmpdir(), 'katcats-stop-approval-notice-'))
     roots.push(root)
     const approvalCall = (id: string) => toolCallResponse(id, 'fixture_approval',
       { command: 'synthetic reviewable operation' }, `Writer requests approval ${id}.`)
+    const permissionPlan = (id: string) => toolCallResponse(id, 'plan_group_work', {
+      own_task: 'Run the synthetic permission check.', assignments: [], review: { reason: 'none' },
+    })
     const { ctx, adapter } = await loadComposition(root, [
       textResponse('The image and file were received.'),
-      approvalCall('approve-one'), textResponse('The allowed operation completed.'),
-      approvalCall('approve-two'), textResponse('The denied operation was not performed.'),
-      approvalCall('approve-stop'), textResponse('The new owner request can run after Stop.'),
+      permissionPlan('plan-one'), approvalCall('approve-one'), textResponse('The allowed operation completed.'),
+      permissionPlan('plan-two'), approvalCall('approve-two'), textResponse('The denied operation was not performed.'),
+      permissionPlan('plan-stop'), approvalCall('approve-stop'), textResponse('The new owner request can run after Stop.'),
     ], true)
     await ctx.plugin(ApprovalService)
-    await ctx.plugin(RepeatToolReminder)
+    await ctx.plugin(RepeatToolReminder, { include: ['fixture_approval'] })
     const writer = (await ctx.katcatsTeam.createBot({ name: 'Writer' })).bot
     const chat = (await ctx.katcatsChats.createChat({ name: 'Approval reuse', memberIds: [writer.id] })).chat
     const worker = groupAgent(ctx, chat.executors[0]!.sessionId)
@@ -2020,7 +2383,7 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
       const latest = await ctx.katcatsChats.snapshot()
       expect(latest.deliveries.at(-1)).toMatchObject({ state: 'completed',
         receipt: { text: 'The new owner request can run after Stop.' } })
-      expect(adapter.requests).toHaveLength(7)
+      expect(adapter.requests).toHaveLength(10)
       expect(adapter.requests.at(-1)?.messages.some(message => message.source?.kind === 'repeat-tool-reminder')).toBe(false)
       expect(JSON.stringify(adapter.requests.at(-1)?.messages)).toContain('group-draft.txt')
       expect(adapter.requests.at(-1)?.messages.some(message => message.content.some(block => block.type === 'image'))).toBe(true)
@@ -2037,7 +2400,7 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
     const a = (await ctx.katcatsTeam.createBot({ name: 'A' })).bot
     const b = (await ctx.katcatsTeam.createBot({ name: 'B' })).bot
     const chat = (await ctx.katcatsChats.createChat({ name: 'Budget stop', memberIds: [a.id, b.id], relayLimit: 1 })).chat
-    await sendGroup(ctx, chat, 'Both members should contribute.')
+    await sendGroup(ctx, chat, '@A @B Both members should contribute.')
     await settledGroup(ctx, chat.id)
     const held = await ctx.katcatsChats.snapshot()
     expect(held.chats[0]).toMatchObject({ status: 'paused', pauseReason: 'relay-limit' })
@@ -2061,14 +2424,14 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
     expect(adapter.requests.map(request => request.sessionId)).toEqual(chat.executors.map(executor => executor.sessionId))
   })
 
-  it('records member silence and rejects direct model entry to the container and its internal executors', async () => {
+  it('records legacy member silence and rejects direct model entry to the container and its internal executors', async () => {
     const root = await mkdtemp(join(tmpdir(), 'katcats-direct-pass-'))
     roots.push(root)
     const { ctx, adapter } = await loadComposition(root, [toolCallResponse('actual-pass', 'pass_group_turn', {}), textResponse('B has the relevant reply.')], true)
     const a = (await ctx.katcatsTeam.createBot({ name: 'A' })).bot
     const b = (await ctx.katcatsTeam.createBot({ name: 'B' })).bot
     const chat = (await ctx.katcatsChats.createChat({ name: 'Optional contribution', memberIds: [a.id, b.id] })).chat
-    await sendGroup(ctx, chat, 'Contribute if your role is relevant.')
+    await resumeLegacyBroadcast(ctx, chat, 'Contribute if your role is relevant.')
     await settledGroup(ctx, chat.id)
     const snapshot = await ctx.katcatsChats.snapshot()
     expect(snapshot.deliveries.map(delivery => delivery.state)).toEqual(['passed', 'completed'])
@@ -2141,8 +2504,8 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
     const first = await loadComposition(root, [textResponse('A confirmed result that must not run twice.')], true)
     const writer = (await first.ctx.katcatsTeam.createBot({ name: 'Writer' })).bot
     const chat = (await first.ctx.katcatsChats.createChat({ name: 'Receipt recovery', memberIds: [writer.id] })).chat
-    const path = join(root, 'storage', 'katcats_chats_v2.json')
-    const backup = join(root, 'storage', 'katcats_chats_v2.backup.json')
+    const path = join(root, 'storage', 'katcats_chats_v3.json')
+    const backup = join(root, 'storage', 'katcats_chats_v3.backup.json')
     let blocked = false
     const remove = first.ctx.on('agent/status', ({ agent, status }) => {
       if (agent.id !== chat.executors[0]!.sessionId || status !== 'idle' || blocked) return
@@ -2257,7 +2620,7 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
         yield* stream
       })()
     })
-    await sendGroup(first.ctx, chat, 'Both members should contribute.')
+    await sendGroup(first.ctx, chat, '@A @B Both members should contribute.')
     await settledGroup(first.ctx, chat.id)
     remove()
     const paused = await first.ctx.katcatsChats.snapshot()
@@ -2283,7 +2646,7 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
     const a = (await ctx.katcatsTeam.createBot({ name: 'A' })).bot
     const b = (await ctx.katcatsTeam.createBot({ name: 'B' })).bot
     const chat = (await ctx.katcatsChats.createChat({ name: 'Budget', memberIds: [a.id, b.id], relayLimit: 1 })).chat
-    await sendGroup(ctx, chat, 'Both members reply.')
+    await sendGroup(ctx, chat, '@A @B Both members reply.')
     await settledGroup(ctx, chat.id)
     const held = await ctx.katcatsChats.snapshot()
     const pending = held.deliveries[1]!
@@ -2310,7 +2673,7 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
       if (request.sessionId === chat.executors[1]!.sessionId) ready.resolve(undefined)
       return next()
     })
-    await sendGroup(ctx, chat, 'Both members contribute.')
+    await sendGroup(ctx, chat, '@A @B Both members contribute.')
     await ready.promise
     await ctx.katcatsChats.stop(control((await ctx.katcatsChats.snapshot()).chats[0]!))
     remove()
@@ -2343,7 +2706,7 @@ describe('Katcats groups through the real Loader and direct member turns', () =>
     const reviewer = (await ctx.katcatsTeam.createBot({ name: 'Reviewer' })).bot
     await send(requireAgent(ctx, writer), 'Remember this private note.')
     const chat = (await ctx.katcatsChats.createChat({ name: 'Editorial', memberIds: [writer.id, reviewer.id] })).chat
-    await sendGroup(ctx, chat, 'Writer drafts a headline; Reviewer comments on it.')
+    await sendGroup(ctx, chat, '@Writer drafts a headline; @Reviewer comments on it.')
     await settledGroup(ctx, chat.id)
     expect((await ctx.katcatsChats.snapshot()).deliveries.map(delivery => delivery.receipt?.sender.name)).toEqual(['Writer', 'Reviewer'])
     const log = await ctx.sessionController.inspect(chat.rootSessionId)

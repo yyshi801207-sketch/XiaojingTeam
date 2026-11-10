@@ -4,13 +4,13 @@ import { describe, expect, it, vi } from 'vitest'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { RegisterFactoryOptions } from '@deepseek-ai/dsh-client-ui-slots'
 import type { InboxWireState } from '@deepseek-ai/dsh-agent/types'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import type { PendingUserQuestion, UserQuestionProjectionView } from '@deepseek-ai/dsh-user-questions/types'
-import { QuestionComposer } from '../src/client/QuestionComposer.tsx'
+import { QuestionComposer, QuestionComposerEntry } from '../src/client/QuestionComposer.tsx'
 import { PendingQuestion } from '../src/client/contract/slots.ts'
-import { createQuestionDraftStore } from '../src/client/draft-store.ts'
 import { apply, inject } from '../src/client/index.ts'
 import { TimedQuestionWait } from '../../../interaction/user-questions/src/timed-wait.ts'
 
@@ -61,6 +61,7 @@ async function bench(
   const ctx = new Context()
   await ctx.plugin(SlotRegistry).await()
   const slots = ctx.get('slots') as SlotRegistry
+  const factories = vi.spyOn(slots, 'registerFactory')
   if (declare) {
     slots.register(
       {
@@ -154,6 +155,7 @@ async function bench(
     agent,
     scopeOf,
     pending: { getSnapshot: () => [...pending.keys()] },
+    factories,
     /** The answer-panel provider this plugin fills for the tool call row. */
     panels: () => ctx.get('userQuestionPanels'),
     registerPendingInteraction,
@@ -365,12 +367,17 @@ describe('apply', () => {
     await Promise.resolve()
 
     const entry = b.slots.entries('conversation.composer')[0]!
-    expect(entry.component).toBe(QuestionComposer)
-    expect(entry.locale).toBe('question')
-    const store = entry.store as ReturnType<typeof createQuestionDraftStore>
+    expect(entry.component).toBe(QuestionComposerEntry)
+    const [registeredFactory, component] = b.factories.mock.calls[0]!
+    const factory = registeredFactory as RegisterFactoryOptions<'question.panel'>
+    expect(component).toBe(QuestionComposer)
+    expect(factory).toMatchObject({ name: 'question.panel', scope: 'session', locale: 'question',
+      children: { 'conversation.plan-review.actions': { kind: 'list', scope: 'session' } } })
+    expect(entry.store).toBeUndefined()
+    const store = typeof factory.store === 'function' ? factory.store() : factory.store
     expect(store.create(SESSION_ID).getSnapshot()).toEqual({ progressByRequest: {} })
     const pending = b.pending.getSnapshot()[0]!
-    const face = (entry.inject as () => { keyedHooks: { questionCard: (key: string) => PendingQuestion | undefined } })()
+    const face = factory.inject(SESSION_ID, store.create(SESSION_ID).actions)
     expect(face.keyedHooks.questionCard(pending.key)).toBe(pending)
     expect(face.keyedHooks.questionCard('question:missing')).toBeUndefined()
     const select = entry.select as (

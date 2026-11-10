@@ -74,6 +74,12 @@
     },
     {
       "path": "../../interaction/user-approval"
+    },
+    {
+      "path": "../../fs/fs"
+    },
+    {
+      "path": "../../compaction/compaction"
     }
   ]
 }

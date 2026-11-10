@@ -16,8 +16,23 @@ import { textResponse, toolCallResponse } from '../../../core/agent-loop/tests/m
 
 function currentTask(options: GenerateOptions): string {
   const task = options.messages.filter(message => message.role === 'user' && message.source?.kind === 'katcats-group-task').at(-1)
-    ?.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('\n') ?? ''
-  return task.split('The following is the saved public group conversation.')[0]!
+  if (task === undefined) return ''
+  const introduction = task.content[0]
+  const source = introduction?.type === 'text' ? /^Current task source: (.+)$/m.exec(introduction.text)?.[1] : undefined
+  if (source !== undefined) {
+    const start = task.content.findIndex(block => block.type === 'text' && block.text.startsWith(`\n[${source}] `))
+    if (start < 0) throw new Error('The current synthetic task source is absent')
+    const blocks = task.content.slice(start + 1)
+    const end = blocks.findIndex(block => block.type === 'text' && block.text.startsWith('\n['))
+    return blocks.slice(0, end < 0 ? undefined : end).flatMap(block => block.type === 'text' ? [block.text] : []).join('\n')
+  }
+  return task.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('\n')
+    .split('The following is the saved public group conversation.')[0]!
+}
+
+function routinePlan(): StreamChunk[] {
+  return toolCallResponse('plan-interruption-work', 'plan_group_work', { own_task: 'Prepare the requested synthetic document.',
+    assignments: [], review: { reason: 'none' } })
 }
 
 async function send(ctx: Context, chat: TeamChat, text: string, id: string, mode: 'queue' | 'steer' = 'steer') {
@@ -125,8 +140,9 @@ describe('normal group sending interrupts only the owned old work', () => {
     const h = await fixture((_members, options) => {
       if (currentTask(options).includes('FAILED_REPLACEMENT')) throw new Error('A rejected replacement must never reach a model')
       originalSteps += 1
-      if (originalSteps === 1) return toolCallResponse('hold-original-step', 'interruption_wait', {})
-      if (originalSteps === 2) return toolCallResponse('still-valid-write', 'interruption_write',
+      if (originalSteps === 1) return routinePlan()
+      if (originalSteps === 2) return toolCallResponse('hold-original-step', 'interruption_wait', {})
+      if (originalSteps === 3) return toolCallResponse('still-valid-write', 'interruption_write',
         { file: 'old.md', content: 'ORIGINAL_TASK_COMPLETED_AFTER_REJECTED_REPLACEMENT' })
       return textResponse('A completed the still-valid original task after the replacement was not accepted.')
     })
@@ -146,7 +162,7 @@ describe('normal group sending interrupts only the owned old work', () => {
     })))
     const agent = h.ctx.agents.get(h.members.a.sessionId)!
     const remove = agent.ctx.on('agent/pre-step', (payload, next) => {
-      if (payload.step === 2) nextStepEntered.resolve(undefined)
+      if (payload.step === 3) nextStepEntered.resolve(undefined)
       return next()
     }, { prepend: true })
     try {
@@ -175,7 +191,7 @@ describe('normal group sending interrupts only the owned old work', () => {
       expect(await readFile(join(h.chat.workDir, 'old.md'), 'utf8')).toBe('ORIGINAL_TASK_COMPLETED_AFTER_REJECTED_REPLACEMENT')
       const log = await h.ctx.sessionController.inspect(h.members.a.sessionId)
       expect(log.events.some(event => event.type === 'turn/end' && event.data.reason.kind === 'blocked')).toBe(false)
-      expect(h.adapter.requests).toHaveLength(3)
+      expect(h.adapter.requests).toHaveLength(4)
     } finally { releaseTool.resolve(undefined); rejectWrite.resolve(undefined); remove() }
   })
 
@@ -210,14 +226,14 @@ describe('normal group sending interrupts only the owned old work', () => {
     let oldCalls = 0
     const h = await fixture((_members, options) => currentTask(options).includes('QUEUED_QUESTION')
       ? textResponse('The queued question is answered after the actual old document.')
-      : ++oldCalls === 1 ? oldWrite() : textResponse('The old document is complete.'))
-    const held = holdResponse(h.ctx, h.members.a.sessionId, 'OLD_PRESENTATION')
+      : ++oldCalls === 1 ? routinePlan() : oldCalls === 2 ? oldWrite() : textResponse('The old document is complete.'))
+    const held = holdResponse(h.ctx, h.members.a.sessionId, 'OLD_PRESENTATION', 1)
     try {
       await send(h.ctx, h.chat, '@A OLD_PRESENTATION: prepare the document.', 'queue-original', 'queue')
       await held.entered
       await send(h.ctx, h.chat, '@A QUEUED_QUESTION: answer after the previous work.', 'queued-question', 'queue')
       expect(held.signal()?.aborted).toBe(false)
-      expect(h.adapter.requests).toHaveLength(1)
+      expect(h.adapter.requests).toHaveLength(2)
       expect(h.writes).toEqual([])
       held.release()
       await settled(h.ctx, h.chat)
@@ -374,9 +390,10 @@ describe('normal group sending interrupts only the owned old work', () => {
   })
 
   it('keeps an already-started file effect as uncertain history while the replacement runs without pretending to roll it back', async () => {
+    let originalSteps = 0
     const h = await fixture((_members, options) => currentTask(options).includes('REPLACEMENT')
       ? textResponse('A is following REPLACEMENT; the already-started old file remains for inspection.')
-      : toolCallResponse('effect-before-cancel', 'interruption_uncertain_effect', {}))
+      : ++originalSteps === 1 ? routinePlan() : toolCallResponse('effect-before-cancel', 'interruption_uncertain_effect', {}))
     const entered = Promise.withResolvers<undefined>()
     const cleanup = Promise.withResolvers<undefined>()
     let effectSignal: AbortSignal | undefined

@@ -1,0 +1,65 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`candidate model verification Host composition > persists a full successful exchange without publishing a normal Session or changing global routes 1`] = `
+{
+  "completion": {
+    "content": [
+      {
+        "text": "OK",
+        "type": "text",
+      },
+    ],
+    "usage": {
+      "inputTokens": 7,
+      "outputTokens": 1,
+    },
+  },
+  "events": [
+    "agent/inbox/spliced",
+    "turn/start",
+    "agent/inbox/spliced",
+    "step/start",
+    "system/message",
+    "user/message",
+    "request/header",
+    "request/context",
+    "assistant/message",
+    "step/end",
+    "turn/end",
+  ],
+  "request": {
+    "messages": [
+      {
+        "content": [
+          {
+            "text": "You are an AI agent powered by DeepSeek Harness.",
+            "type": "text",
+          },
+        ],
+        "role": "system",
+      },
+      {
+        "content": [
+          {
+            "text": "Reply with exactly OK.",
+            "type": "text",
+          },
+        ],
+        "role": "user",
+      },
+    ],
+    "model": "candidate",
+    "provider": "chatgpt",
+    "tools": [
+      {
+        "description": "Verify tool schema support. Accepts no arguments and returns OK without reading or changing any state.",
+        "name": "model_verification_probe",
+        "parameters": {
+          "properties": {},
+          "type": "object",
+        },
+      },
+    ],
+  },
+}
+`;

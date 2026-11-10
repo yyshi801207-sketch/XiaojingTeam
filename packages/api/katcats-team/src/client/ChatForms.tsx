@@ -12,6 +12,7 @@ import type { ChatView } from './chat-model.ts'
 import { GroupMemberAvatar } from './GroupMemberAvatar.tsx'
 import { BotIdentityAvatar } from './BotIdentityAvatar.tsx'
 import { ChatAvatar } from './ChatAvatar.tsx'
+import { TaskArchiveAction } from './TaskArchive.tsx'
 import { Choice } from './Choice.tsx'
 import { GroupPermissionSettings } from './PermissionSettings.tsx'
 import type { PermissionSessionRetainer } from './PermissionSettings.tsx'
@@ -79,7 +80,7 @@ export interface CreateChatProps {
 /**
  * Create an independent group with explicitly selected members and an optional manager.
  * @param props - Available members, configured limit and explicit commands.
- * @returns A focus-managed group creation dialog.
+ * @returns A focus-managed group creation dialog with scrollable fields and persistent actions.
  */
 export function CreateChat({ bots, defaultRelayLimit, create, close, t }: CreateChatProps) {
   const [name, setName] = useState('')
@@ -91,8 +92,11 @@ export function CreateChat({ bots, defaultRelayLimit, create, close, t }: Create
   const valid = name.trim() !== '' && Number.isSafeInteger(relayLimit) && relayLimit > 0
     && bots.some(bot => bot.kind === 'ordinary' && members.includes(bot.id))
   const dismiss = () => { if (!busy) close() }
-  return <Modal open title={t('chat.new')} closeLabel={t('team.close')} onClose={dismiss} className={css.modal ?? ''}>
-    <form className={css.createForm} aria-busy={busy} onSubmit={(event) => {
+  return <Modal open title={t('chat.new')} closeLabel={t('team.close')} onClose={dismiss}
+    className={[css.modal, css.createChatModal].join(' ')} contentClassName={css.createChatContent ?? ''}
+    footer={<><Button onClick={dismiss} disabled={busy}>{t('team.cancel')}</Button>
+      <Button type="submit" form={`${id}-form`} variant="primary" disabled={busy || !valid}>{t('team.create')}</Button></>}>
+    <form id={`${id}-form`} className={css.createForm} aria-busy={busy} onSubmit={(event) => {
       event.preventDefault()
       if (busy || !valid) return
       setBusy(true)
@@ -110,14 +114,13 @@ export function CreateChat({ bots, defaultRelayLimit, create, close, t }: Create
       <Input id={`${id}-limit`} type="number" min={1} step={1} value={Number.isNaN(relayLimit) ? '' : relayLimit} disabled={busy}
         onChange={(event) => { setRelayLimit(event.target.valueAsNumber) }} />
       <p className={css.hint}>{t('chat.relayHint')}</p>
-      <div className={css.formActions}><Button onClick={dismiss} disabled={busy}>{t('team.cancel')}</Button>
-        <Button type="submit" variant="primary" disabled={busy || !valid}>{t('team.create')}</Button></div>
     </form>
   </Modal>
 }
 
 /** Group settings read only their scoped root Session and current directory. */
 export interface ChatSettingsInjected {
+  readonly copyText: (text: string) => Promise<void>
   readonly hooks: {
     readonly directory: ObservableSnapshot<TeamView>
     readonly chats: ObservableSnapshot<ChatView>
@@ -144,7 +147,8 @@ export type ChatSettingsProps = PropsRuntime<'sidebar.right.pane.tab'> & PropsLo
  */
 export function ChatSettings({ sessionId, useDirectory, useChats, useConnection, usePermissionBatch, useTabInfo,
   activatePermissionBatch, applyPermissionBatch, cancelPermissionBatch,
-  retainPermissionSession, renderFactorySlot, renderSlot, SessionProvider, save, openMemory, openSchedules, t }: ChatSettingsProps) {
+  retainPermissionSession, renderFactorySlot, renderSlot, SessionProvider,
+  save, openMemory, openSchedules, copyText, t }: ChatSettingsProps) {
   const directory = useDirectory(value => value)
   const groups = useChats(value => value)
   const connected = useConnection(value => value === 'connected')
@@ -154,17 +158,20 @@ export function ChatSettings({ sessionId, useDirectory, useChats, useConnection,
   const chat = groups.snapshot?.chats.find(item => item.rootSessionId === sessionId)
   if (chat === undefined) return <p className={css.empty}>{t('chat.missing')}</p>
   return <SettingsForm key={chat.id} chat={chat} bots={bots} save={save} openMemory={openMemory} openSchedules={openSchedules}
+    archiveConnected={connected && groups.phase === 'ready'} copyText={copyText}
     permissionsEnabled={directory.phase === 'ready' && groups.phase === 'ready' && connected && visible}
     batch={batch} activatePermissionBatch={activatePermissionBatch} applyPermissionBatch={applyPermissionBatch}
     cancelPermissionBatch={cancelPermissionBatch} retainPermissionSession={retainPermissionSession}
     renderFactorySlot={renderFactorySlot} renderSlot={renderSlot} SessionProvider={SessionProvider} t={t} />
 }
 
-function SettingsForm({ chat, bots, permissionsEnabled, retainPermissionSession, renderFactorySlot, renderSlot, SessionProvider,
+function SettingsForm({ chat, bots, archiveConnected, permissionsEnabled,
+  retainPermissionSession, renderFactorySlot, renderSlot, SessionProvider,
   batch, activatePermissionBatch, applyPermissionBatch, cancelPermissionBatch,
-  save, openMemory, openSchedules, t }: PropsRenderSlots<'katcats.settings.permission'> & PropsRenderFactories & {
+  save, openMemory, openSchedules, copyText, t }: PropsRenderSlots<'katcats.settings.permission'> & PropsRenderFactories & {
     readonly chat: TeamChat
     readonly bots: readonly TeamBot[]
+    readonly archiveConnected: boolean
     readonly permissionsEnabled: boolean
     readonly retainPermissionSession: PermissionSessionRetainer
     readonly batch: GroupPermissionBatchView
@@ -174,6 +181,7 @@ function SettingsForm({ chat, bots, permissionsEnabled, retainPermissionSession,
     readonly save: (request: UpdateChatRequest) => Promise<void>
     readonly openMemory: () => void
     readonly openSchedules: ChatSettingsInjected['openSchedules']
+    readonly copyText: ChatSettingsInjected['copyText']
     readonly t: TranslateNS<'katcats.team'>
   }) {
   const [draft, setDraft] = useState<Omit<UpdateChatRequest, 'id'> | null>(null)
@@ -215,6 +223,11 @@ function SettingsForm({ chat, bots, permissionsEnabled, retainPermissionSession,
       <label className={css.label} htmlFor={`${id}-name`}>{t('chat.name')}</label>
       <Input id={`${id}-name`} value={value.name} maxLength={40} disabled={busy}
         onChange={(event) => { patch({ name: event.target.value }) }} />
+    </section>
+    <section className={settingsCss.section} aria-labelledby={`${id}-archive`}>
+      <h3 id={`${id}-archive`} className={settingsCss.sectionTitle}>{t('archive.open')} · {chat.tickets?.length ?? 0}</h3>
+      <p className={css.hint}>{t('archive.subtitle')}</p>
+      <TaskArchiveAction chat={chat} bots={bots} connected={archiveConnected} copyText={copyText} t={t} />
     </section>
     <section className={settingsCss.section} aria-labelledby={`${id}-people`}>
       <h3 id={`${id}-people`} className={settingsCss.sectionTitle}>{t('chat.settingsPeople')}</h3>

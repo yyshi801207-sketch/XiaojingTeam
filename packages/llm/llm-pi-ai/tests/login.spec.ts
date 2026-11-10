@@ -7,7 +7,7 @@ import AuthorizationService from '@deepseek-ai/dsh-authorization'
 import type { AuthorizationInteraction, AuthorizationNotice, AuthorizationPrompt } from '@deepseek-ai/dsh-authorization'
 import LocalCredentialProvider from '@deepseek-ai/dsh-credentials-local'
 import type { CredentialKey } from '@deepseek-ai/dsh-credentials'
-import type { AuthEvent, AuthInteraction, AuthPrompt, AuthType, Credential } from '@earendil-works/pi-ai'
+import type { AuthEvent, AuthInteraction, AuthPrompt, AuthType, Credential, LoginOptions } from '@earendil-works/pi-ai'
 
 const login = vi.hoisted(() => vi.fn())
 
@@ -27,13 +27,13 @@ const CODEX = recordKeyFor('openai-codex')
 const dirs: string[] = []
 
 /** A context with the record store, the seam, and every pi-ai login flow. */
-async function harness(): Promise<Context> {
+async function harness(agentName?: string): Promise<Context> {
   const dir = await mkdtemp(join(tmpdir(), 'dsh-pi-login-'))
   dirs.push(dir)
   const ctx = new Context()
   await ctx.plugin(LocalCredentialProvider, { path: join(dir, '.credentials.yaml'), watch: false })
   await ctx.plugin(AuthorizationService)
-  registerPiAiFlows(ctx, { credentials: credentialStoreFrom(ctx), authContext: authContextFrom(ctx) })
+  registerPiAiFlows(ctx, { credentials: credentialStoreFrom(ctx), authContext: authContextFrom(ctx) }, agentName)
   return ctx
 }
 
@@ -97,21 +97,36 @@ describe('pi-ai login flows', () => {
     // through its own prompt rather than leaving it to the settings form.
     expect(offered.find(entry => entry.key === recordKeyFor('deepseek'))?.methods.map(one => one.id))
       .toEqual(['api-key'])
-    // pi-ai ships Sign in with ChatGPT for `openai`, which needs an
-    // installation ID the harness does not supply; only the key login is offered.
     expect(catalogProvider('openai')?.auth.oauth?.loginLabel).toBe('Sign in with ChatGPT')
     expect(offered.find(entry => entry.key === recordKeyFor('openai'))?.methods.map(one => one.id))
-      .toEqual(['api-key'])
+      .toEqual(['oauth', 'api-key'])
+    expect(offered.find(entry => entry.key === recordKeyFor('chatgpt'))?.methods.map(one => one.id))
+      .toEqual(['oauth'])
   })
 
   it('runs the pi-ai auth type the chosen method names', async () => {
     const ctx = await harness()
 
     await attempt(ctx, () => Promise.resolve())
-    expect(login).toHaveBeenLastCalledWith('openai-codex', 'oauth', expect.anything())
+    expect(login).toHaveBeenLastCalledWith('openai-codex', 'oauth', expect.anything(), undefined)
 
     await attempt(ctx, () => Promise.resolve(), { key: recordKeyFor('anthropic'), method: 'api-key' })
-    expect(login).toHaveBeenLastCalledWith('anthropic', 'api_key', expect.anything())
+    expect(login).toHaveBeenLastCalledWith('anthropic', 'api_key', expect.anything(), undefined)
+  })
+
+  it('introduces the configured app with an installation UUID stable across repeated sign-ins', async () => {
+    const ctx = await harness('Katcats.AI')
+    await attempt(ctx, () => Promise.resolve(), { key: recordKeyFor('openai'), method: 'oauth' })
+    const first = login.mock.lastCall?.[3] as LoginOptions
+    expect(first.agentName).toBe('Katcats.AI')
+    const id = first.getDeviceId?.()
+    expect(id).toMatch(/^[0-9a-f-]{36}$/)
+    await attempt(ctx, () => Promise.resolve(), { key: recordKeyFor('openai'), method: 'oauth' })
+    const second = login.mock.lastCall?.[3] as LoginOptions
+    expect(second.getDeviceId?.()).toBe(id)
+    expect(await ctx.credentials.listRecords()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: 'llm-pi-ai-installation/host' }),
+    ]))
   })
 
   it('commits what the login produced, where the adapter reads it back', async () => {

@@ -94,6 +94,10 @@ kind: "package-reference"
 
 pi-ai 提供登录的提供方可以通过 harness 授权 seam 登录：流程提供 OAuth 或交互式密钥提示（密钥键入 pi-ai 自己的登录提示，而非设置表单），得到的凭据存储在 harness 凭据存储的 `llm-pi-ai/<provider id>` 记录中。存储的登录在其路由的 `apiKeyEnv` 覆盖之下完成认证，并在存储的跨进程锁下自行刷新；退出登录即删除存储记录。落在记录文法之外——小写连字符标识符——的手工声明路由键无法登录，因为对它的记录写入会以 `LlmError('UNSTORABLE_PROVIDER_ID')` 拒绝；这类路由改用 `apiKeyEnv` 或提供方 ambient 设置认证。
 
+独立的 `chatgpt` 路由通过 [Sign in with ChatGPT](https://developers.openai.com/siwc/token-sharing-open-source/sign-in) 接入 ChatGPT 订阅。授权流程与凭据记录使用 `llm-pi-ai/chatgpt`，与现有 `openai` API-key 配置分离。流程使用存储在 `llm-pi-ai-installation/host` 的稳定 UUID 标识当前 home 的安装实例；`loginAgentName` 指定授权页面中的应用名称。安装身份无法持久化时登录失败。安装身份和令牌都不取自遥测或 Codex 安装。该路由必须使用订阅授权，绝不回退到 `OPENAI_API_KEY`，并且只接受 OpenAI 官方 Responses 端点。现有 `openai` 配置保留原生 API-key 与 OAuth 方法。
+
+订阅请求使用 `stream: true` 与 `store: false`，将系统指令映射为 developer 消息，并将 function/custom 工具放入 `functions` 命名空间，包含必填的非空描述。适配器省略[预览版不支持的请求字段](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations)，API-key 请求继续保留原有选项。令牌刷新通过现有凭据存储锁，持久化签发的 client ID、scope 与轮换后的 refresh token。
+
 ### 解析模型目录
 
 profile 的 `models` 列表会替换而非扩展路由的已安装目录；每个条目从同 id 已安装模型取未设置字段的默认值，因此把路由收窄到两个模型、修正一个容量或添加比已安装目录更新的模型都是一行编辑。`modelOverrides` 无需该代价即可重塑个别已安装目录模型——修正一个模型，保留其余三十七个——当它与 `models` 列表并存、位于手工声明路由上、或点名目录未描述的模型时会被拒绝，因为静默不变的模型会成为别人日后寻找的拼写错误。
@@ -112,6 +116,10 @@ profile 的 `models` 列表会替换而非扩展路由的已安装目录；每�
 
 ### 从端点发现模型
 
+`chatgpt` 的发现操作读取已登录账号的 `GET https://api.openai.com/v1/models` 响应，包括含 `slug` 与 `display_name` 的 `models` 数组。尚未配置路由也可以发现模型；账号请求失败时不会替换为静态目录。原生 `openai` 路由存在订阅授权且没有优先使用的显式 API-key 引用时，也使用同样的账号模型发现。发现结果须采纳到路由的 `models` 配置后，才成为该路由可供选择的目录。
+
+`createChatGPTAdapter(ctx, candidates)` 为独立且记录日志的 Agent 运行时构造仅含候选模型的适配器。它通过传入的 Host 上下文读取共享订阅凭据，自身不注册路由或设置。因此连接检查可以先测试多个候选，再采纳成功的模型，不改变正在工作的 Bot 或全局模型配置。
+
 插件会回答「该提供方可以提供哪些模型？」，供配置界面正在编辑或起草的路由使用。已安装目录提供的路由直接由目录回答，不发网络请求，并将其 `input` 数组保留为发现结果的 `inputModalities`；只有目录未描述的路由才会经网络询问。`openai-completions` 与 `openai-responses` 使用带 bearer 鉴权的 `GET {baseURL}/models`，`anthropic-messages` 则以 `x-api-key` 和 `anthropic-version` 使用原生 `GET /v1/models?limit=1000` 语义；其列表 URL 接受带或不带末尾 `/v1` 的 API 根地址，因为网关文档两种写法都会发布，且只有该列表 URL 会归一化这一段，模型请求收到的仍是配置原样的 `baseURL`。已配置且具名的路由会在 Host 内部提供已存凭据与 profile `headers`，因此通过 `cordis.patch.yml` 或 Cordis 配置设置的部署标头可以到达模型发现请求，但不会成为发现请求或 Models 页面的字段；表单中新键入的密钥仍优先于已存凭据。解析器接受标准 `data` 数组或富信息 `models` 对象，并归一化每个候选的 id、显示名、上下文窗口与最大输出 token 数；Anthropic 的 `max_input_tokens` 与 `max_tokens` 会进入相同容量字段，即使对象条目点名了另一个规范 id，对象键仍是请求 id，原始类型的对象属性会被忽略，缺失的显示名则回退到该请求 id。回答是界面可以提供给用户采纳的候选元数据——不存储任何内容，`cordis.patch.yml` 仍然是决定路由服务内容的唯一事实。
 
 ### 失败与恢复
@@ -122,7 +130,7 @@ Config 更新严格验证发生变化的 provider。初始加载将已存储的�
 
 只修改 `displayName`、`apiKeyEnv` 或 `baseURL` 而未解决提供方的模型配置错误时，保存仍会被拒绝。例如，OpenRouter 路由的模型 `111` 缺少 `api` 时，不能单独保存路由名称的修改：需要在同一份编辑草稿中修复或删除该模型，再保存完整的提供方配置。中间修复状态保留在草稿中，直到整条提供方配置通过校验；其他提供方可以独立保存。
 
-模型发现会解析各路由的凭据配置。缺少必需凭据时返回空目录；其他解析错误继续抛出。使用原生认证或无需密钥的路由保留其配置的目录。此检查不会探测推理端点。
+可选模型目录会解析每条路由声明的凭据引用。缺少必需凭据时返回空目录；其他解析错误继续向上传播。仅支持 OAuth 的路由（如 `openai-codex`）只有在自身存储的 OAuth 授权存在时才列出模型。这项本地检查既不刷新授权，也不联系提供方；授权记录存在并不表示提供方仍然接受它。显式引用 API key 或使用其他原生认证的路由保留现有目录行为。
 
 -----
 
@@ -147,6 +155,8 @@ Config 更新严格验证发生变化的 provider。初始加载将已存储的�
 | [`src/index.ts`](src/index.ts) | Config 快照、目录及路由注册 |
 | [`src/auth.ts`](src/auth.ts) | 覆盖 harness 凭据平面的凭据存储与 ambient auth context |
 | [`src/login.ts`](src/login.ts) | 面向提供登录的已安装提供方的授权流程 |
+| [`src/chatgpt.ts`](src/chatgpt.ts) | 订阅凭据隔离、安装身份与 Responses 兼容处理 |
+| [`src/chatgpt-adapter.ts`](src/chatgpt-adapter.ts) | 为独立且记录日志的连接检查构造仅含候选模型的适配器 |
 | [`src/config.ts`](src/config.ts) | Profile schema、解析与可服务性校验 |
 | [`src/catalog.ts`](src/catalog.ts) | 已安装目录集成与漂移门禁 |
 | [`src/provider-data.ts`](src/provider-data.ts) | 配置界面使用的认证与端点生成数据 |
@@ -242,7 +252,7 @@ pi-ai 事件变成 harness 的推理、文本、工具调用、用量与 finish 
 
 - **`maxRequestImageBytes` 只计算 base64 图片载荷**，文本、工具、描述符与 JSON 结构在该上限之外，因此它必须留有余量地低于网关请求体上限。
 - **登录只存在于发起它的进程中**——授权尝试不持久，因此登录中途刷新页面会放弃它，用户需要重新开始。退出登录是对已存储记录执行 `deleteRecord`，只在本地忘记它，不会告知签发方。
-- **OpenAI 不提供 ChatGPT 登录**——pi-ai 的 Sign in with ChatGPT 用应用提供的稳定 UUID 向 OpenAI 标识安装实例，而 harness 没有用于第三方账号登录的安装 ID；`openai` 路由改用 API key 登录。
+- **ChatGPT 订阅访问遵循提供方预览版限制**——可用套餐、模型与用量限制由已登录账号决定；适配器不会将订阅变为无限制 API 额度，也不会通过旧版 Codex 后端转接。退出 `chatgpt` 不会删除现有 `openai` 凭据。
 - **提供方原生发现经本插件的 ambient context 回答**——不点名凭据的路由交由目录提供方自身解析，它会询问环境值（`AZURE_OPENAI_API_KEY`、`AWS_PROFILE` 及各提供方自有集合）与本地凭据文件。两个问题都在这里得到回答：凭据 seam 先于进程环境被查询，文件存在性则针对宿主进程的文件系统以 `~` 展开后检查。它做不到的是*读取*凭据文件内容——自行解析 `~/.aws/credentials` 的提供方会直接读取，不经该 seam。
 - **重置恢复继承配置**——重置下层 profile 提供的路由会恢复该路由。
 - **完整替换 Config 可以移除继承的字典条目**——字段重置则恢复其继承值。

@@ -47,6 +47,7 @@ kind: "package-library"
 | `Input` | 单行文本输入，用于搜索框与行内表单。ref 指向原生输入框，供焦点控制使用，并在卸载时清空。 |
 | `InlineEditor` | 自动聚焦的多行行内编辑器，用于排队消息、goal 等短草稿。它随文本和宽度增高，最多六行，之后滚动；Enter 保存，Shift+Enter 换行，输入法组合中的 Enter 不生效，Escape 取消。调用方提供本地化 `label`，并在 elevated 表面上重绑滚动条。 |
 | `Menu`, `MenuItemButton` | 由 `items` 数据行、分隔线与分组标题构成的下拉菜单，支持嵌套子菜单；`children` 在同一列表中加入组件行，每行一个 `MenuItemButton`（`separatorBefore` 开启新分组）。所有行共享样式、键盘走位与焦点归还；两类行的关闭都是 owner 状态的改变。打开期间 `↑`／`↓`（以及 Home、End）在列表中走位，Tab 选定聚焦行，Escape 或 Shift+Tab 关闭并把焦点还给锚点；选定一行同样把键盘还给锚点——除非拥有者自己移动了焦点。只拦截位于锚点或列表内的键盘，`autoFocus` 仅决定打开时是否聚焦首行。 |
+| `ContextMenu` | 对象的就地操作菜单，复用共享宽松样式，在鼠标位置打开；Shift+F10 或菜单键则在当前聚焦对象下方打开。render prop 提供的事件处理器直接附加到 owner 已有的可聚焦元素，不增加布局包裹。菜单经 portal 挂载并限制在视口内；关闭或选定后将焦点还给原对象，操作主动移动焦点时则保留新位置。编辑框、链接、媒体与选中文字上的右键仍使用原生操作。owner 提供本地化条目及允许的操作。 |
 | `MenuGroup`、`observeStickyMenuGroups` | 为自定义菜单与列表框提供本地化、可访问的分组，共用吸顶标题样式与原生交叉／尺寸观察；调用方负责观察器的生命周期。 |
 | `Pill` | 可选中的胶囊按钮，用于视图切换与筛选器；接受 `active` 与 `onClick`。 |
 | `SegmentedTabs` | 受控的等宽分段标签，支持滑动指示条及左／右方向键、Home、End 导航。调用方提供文案、标签与面板 id，以及面板内容。 |
@@ -71,7 +72,7 @@ kind: "package-library"
 | `TerminalBlock`、`ReadBlock`、`DiffBlock`、`SearchBlock`、`WebBlock` | 与各类工具结果意图对应的 agent 输出卡片。 |
 | `icons/*`、`FishLogo`、`BrandWordmark`、`ReferenceIconRegular`/`ReferenceIconMedium`、`LinkIconRegular`/`LinkIconMedium` | 字形与品牌标识。思考图标的轨道在 16px 视口内保留内边距。`LinkIconMedium` 用于 14px 的可点击链接分类及已知站点标记。 |
 | `PermissionIconReadOnlyRegular`/`Medium`、`PermissionIconWorkspaceWriteRegular`/`Medium`、`PermissionIconFullAccessRegular`/`Medium`、`PermissionIconAutoApprovalRegular`/`Medium`、`PermissionIconAutoReviewRegular`/`Medium` | 只读、工作区写入、完全访问、自动审批与自动审查选项使用的权限模式图形。 |
-| `PluginArtworkTerminal`/`Loop`/`Subagent`/`Search`/`Default` | 36×36 插件插画。四个配置图标采用 Katcat 轮廓，随当前配色方案使用石墨灰（`#62666F`）或雾灰白（`#B9BDC6`）。终端提示符与猫形留白均透明，派发循环环绕独立猫头。`Terminal` 也用于侧边栏开始页入口。`Default` 为没有自有插画的插件保留渐变。def id 按实例生成。 |
+| `PluginArtworkTerminal`/`Loop`/`Subagent`/`Search`/`Default` | 36×36 插件插画。四个配置图标分别表现终端提示符、循环中的执行节点、派发的任务节点和搜索结果，随当前配色方案使用石墨灰（`#62666F`）或雾灰白（`#B9BDC6`）；镂空部分保持透明。`Terminal` 也用于侧边栏开始页入口。`Default` 为没有自有插画的插件保留渐变，其 def id 按实例生成。 |
 | `GuideArtworkBrowser`/`Files` | 固定配色的 36×36 浏览器与文件夹插画，用于侧栏引导入口。 |
 | `FileTypeIcon`、`classifyFileType`、`fileExtension` | 按类别着色的 28px 文件或文件夹图形，以及它背后共享的不区分大小写文件名映射。代码与配置文件使用细分的全彩技术图形；链接前置图形使用 `LinkIconMedium`，图片内容使用图片预览。 |
 | `languageForPath`、`CODE_HIGHLIGHT_EXTENSIONS`、`useCodeHighlighter` | 代码预览与 diff review 共用的惰性逐行 token 高亮。文件名 grammar 选择再导出自 `@deepseek-ai/dsh-util-code-language`，即 read 卡片持久化短 id `lang` 提示背后的同一张扩展名表。 |
@@ -124,7 +125,9 @@ kind: "package-library"
 
 `Button` 的 `md` 使用 H36/R12，`sm` 使用 H28/R8，包含描边控件。菜单与卡片遵循[共享圆角规则](../../../docs/web-styling.zh.md#corner-radii-and-settings-cards)；功能样式保留控件几何。
 
-`Menu.listClassName` 独立控制菜单卡片样式，不影响入口容器，也适用于 portal 模式。前置图标使用 `--dsw-alias-menu-icon` 文本色；破坏性操作图标保留错误色。
+`Menu.listClassName` 独立控制菜单卡片样式，不影响入口容器，也适用于 portal 模式。通过 `getAnchorRect` 定位但未在菜单内渲染触发控件时，`getReturnFocusTarget` 提供用于恢复焦点的外部控件。点击菜单外部关闭时，焦点保留在被点击的控件。前置图标使用 `--dsw-alias-menu-icon` 文本色；破坏性操作图标保留错误色。
+
+`Menu.spacious` 保留标准字号和行高，增大主菜单与子菜单的宽度、左右留白及分组间距。`ContextMenu` 默认使用该样式，已有紧凑或密集菜单保留各自样式。Portal 菜单完成可见定位后才自动聚焦；之后入口位置变化时保留当前选中行。
 
 `Menu` 将卡片材质交给 `MenuSurface`，自定义菜单也使用该组件。`MenuSurface` 转发 div 属性和 ref，采用透明填充及模糊，`compact` 使用较小圆角。默认相对定位使材质层限制在容器内；调用方的类可以设置 fixed 或 absolute 定位。macOS 上，不接收交互的底层通过 CSS 锚点跟随卡片，并随卡片卸载；该底层要求 Web 外壳隔离 body 的层叠上下文。功能类控制布局和层级，组件负责材质和外圆角（[菜单规则](../../../docs/web-styling.zh.md#component-rules)）。 模态遮罩保留黑色半透明填充，不模糊背景。
 

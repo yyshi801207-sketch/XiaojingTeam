@@ -21,7 +21,8 @@ async function setup(providedRoot?: string) {
   await h.ctx.plugin(Connection)
   await h.ctx.plugin(Commands)
   await h.ctx.plugin(FileUploads)
-  await h.ctx.plugin(KatcatsChats, { workspaceRoot: join(h.root, 'workspaces'), relayLimit: 16 })
+  await h.ctx.plugin(KatcatsChats, { workspaceRoot: join(h.root, 'workspaces'), relayLimit: 16,
+    initialHistoryMessages: 20, historyPageSize: 20, historyPageMaxChars: 16000, reviewCandidateMaxBytes: 8388608 })
   await h.ctx.katcatsChats.snapshot()
   return { ...h, chats: h.ctx.katcatsChats }
 }
@@ -50,12 +51,12 @@ describe('group transcript presentation preference', () => {
     expect(first.adapter.requests).toEqual([])
     await first.close()
     const cold = await setup(first.root)
-    expect((await cold.chats.snapshot()).chats).toEqual([saved, b])
+    expect((await cold.chats.snapshot()).chats).toEqual([b, saved])
     expect(await readFile(file, 'utf8')).toBe('Keep this deliverable.')
     expect((await cold.chats.updateChat({ id: a.id, showHandoffRecords: true })).chat).toEqual(a)
   })
 
-  it('reads a pre-setting group without rewriting its v2 bytes or changing its enabled interpretation', async () => {
+  it('reads a pre-setting group without rewriting its bytes or changing its enabled interpretation', async () => {
     const first = await setup()
     const writer = (await first.team.createBot({ name: 'Writer' })).bot
     const created = (await first.chats.createChat({ name: 'Old group', memberIds: [writer.id] })).chat
@@ -73,8 +74,8 @@ describe('group transcript presentation preference', () => {
     expect(await readFile(path, 'utf8')).toBe(bytes)
     expect(chatSchema.safeParse({ ...old, showHandoffRecords: 'false' }).success).toBe(false)
     expect(chatSchema.parse({ ...old, showHandoffRecords: false }).showHandoffRecords).toBe(false)
-    expect(chatsDomainSpec.name).toBe('katcats_chats_v2')
-    expect(chatsDomainSpec.version).toBe(2)
+    expect(chatsDomainSpec.name).toBe('katcats_chats_v3')
+    expect(chatsDomainSpec.version).toBe(3)
   })
 
   it('does not acknowledge a failed save, change another group, or bypass owner access', async () => {

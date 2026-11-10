@@ -1,0 +1,201 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Katcats directory through the real Loader and owner Remote > creates a complete team and group from the main conversation with replayable saved receipts 1`] = `
+"[
+  {
+    "callId": "create-team-members",
+    "content": [
+      {
+        "type": "text",
+        "text": "{\\"bots\\":[{\\"bot_id\\":\\"<Accountant>\\",\\"name\\":\\"Accountant\\",\\"role\\":\\"Prepare accounts.\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"}},{\\"bot_id\\":\\"<CFO>\\",\\"name\\":\\"CFO\\",\\"role\\":\\"Review and coordinate finance.\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#202124\\"}}]}"
+      }
+    ],
+    "meta": {
+      "bots": [
+        {
+          "bot_id": "<Accountant>",
+          "name": "Accountant",
+          "role": "Prepare accounts.",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        },
+        {
+          "bot_id": "<CFO>",
+          "name": "CFO",
+          "role": "Review and coordinate finance.",
+          "avatar": {
+            "shape": "classic",
+            "color": "#202124"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "callId": "create-team-chat",
+    "content": [
+      {
+        "type": "text",
+        "text": "{\\"chat_id\\":\\"<finance-chat>\\",\\"name\\":\\"Finance\\",\\"member_ids\\":[\\"<CFO>\\",\\"<Accountant>\\"],\\"manager_id\\":\\"<CFO>\\",\\"relay_limit\\":8}"
+      }
+    ],
+    "meta": {
+      "chat_id": "<finance-chat>",
+      "name": "Finance",
+      "member_ids": [
+        "<CFO>",
+        "<Accountant>"
+      ],
+      "manager_id": "<CFO>",
+      "relay_limit": 8
+    }
+  },
+  {
+    "callId": "inspect-team-chat",
+    "content": [
+      {
+        "type": "text",
+        "text": "{\\"chats\\":[{\\"chat_id\\":\\"<finance-chat>\\",\\"name\\":\\"Finance\\",\\"member_ids\\":[\\"<CFO>\\",\\"<Accountant>\\"],\\"manager_id\\":\\"<CFO>\\",\\"relay_limit\\":8}]}"
+      }
+    ],
+    "meta": {
+      "chats": [
+        {
+          "chat_id": "<finance-chat>",
+          "name": "Finance",
+          "member_ids": [
+            "<CFO>",
+            "<Accountant>"
+          ],
+          "manager_id": "<CFO>",
+          "relay_limit": 8
+        }
+      ]
+    }
+  }
+]"
+`;
+
+exports[`Katcats groups through the real Loader and direct member turns > retains approval-policy context through group dispatch and Stop without treating it as pending work 1`] = `
+{
+  "group": [
+    {
+      "content": [
+        {
+          "text": "Hello.",
+          "type": "text",
+        },
+      ],
+      "speaker": "owner",
+    },
+    {
+      "content": [
+        {
+          "text": "Writer is ready.",
+          "type": "text",
+        },
+      ],
+      "speaker": "Writer",
+    },
+    {
+      "content": [
+        {
+          "text": "Complete the policy-aware task.",
+          "type": "text",
+        },
+      ],
+      "speaker": "owner",
+    },
+    {
+      "content": [
+        {
+          "text": "The policy-aware group task completed.",
+          "type": "text",
+        },
+      ],
+      "speaker": "Writer",
+    },
+    {
+      "content": [
+        {
+          "text": "Complete a new task after Stop.",
+          "type": "text",
+        },
+      ],
+      "speaker": "owner",
+    },
+    {
+      "content": [
+        {
+          "text": "The new task completed after Stop.",
+          "type": "text",
+        },
+      ],
+      "speaker": "Writer",
+    },
+  ],
+  "notices": [
+    {
+      "content": [
+        {
+          "text": "The approval policy changed from "ask" to "never" (changed by the user).",
+          "type": "text",
+        },
+      ],
+      "source": "user-approval",
+    },
+    {
+      "content": [
+        {
+          "text": "The approval policy changed from "never" to "ask" (changed by the user).",
+          "type": "text",
+        },
+      ],
+      "source": "user-approval",
+    },
+  ],
+}
+`;
+
+exports[`Katcats groups through the real Loader and direct member turns > retries only a malformed model request and completes its group handoff without replaying saved work 1`] = `
+[
+  {
+    "content": [
+      {
+        "text": "@A Save responsibilities and ask B to review the draft.",
+        "type": "text",
+      },
+    ],
+    "speaker": "owner",
+  },
+  {
+    "content": [
+      {
+        "text": "B, please review the saved draft.",
+        "type": "text",
+      },
+    ],
+    "speaker": "A",
+  },
+  {
+    "content": [
+      {
+        "text": "B reviewed the saved draft.",
+        "type": "text",
+      },
+    ],
+    "speaker": "B",
+  },
+  {
+    "content": [
+      {
+        "text": "A delivered the reviewed draft.",
+        "type": "text",
+      },
+    ],
+    "speaker": "A",
+  },
+]
+`;

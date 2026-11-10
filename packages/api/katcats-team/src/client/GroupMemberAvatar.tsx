@@ -8,7 +8,7 @@ import css from './group-member-avatar.module.css'
 /**
  * Show the saved member appearance with a tiny diamond only for the current group manager.
  * @param props - Actual member identity, current group manager, appearance and localized marker label.
- * @returns The financial robot avatar and, when applicable, its neutral manager marker.
+ * @returns The selected silhouette avatar and, when applicable, its neutral manager marker.
  */
 export function GroupMemberAvatar({ botId, managerId, appearance, size = 28, managerLabel }: {
   readonly botId: BotId

@@ -17,6 +17,7 @@ const HOST_DEPENDENCY_PACKAGES: readonly string[] = [
 
 /** Required Cordis services whose Host imports are type-only. */
 const REQUIRED_SERVICE_PEERS = {
+  '@deepseek-ai/dsh-client-ui-settings-models': ['@deepseek-ai/dsh-credentials'],
   '@deepseek-ai/dsh-api-terminal-controller': ['@deepseek-ai/dsh-subprocess'],
 } as const satisfies Readonly<Record<string, readonly string[]>>
 
@@ -61,18 +62,22 @@ const SAFE_HOST_DEPENDENCY_EXPORTS = {
 
 /** Runtime exports that require every consumer to resolve the provider's shared peer instance. */
 const PEER_REQUIRED_HOST_EXPORTS = {
+  '@deepseek-ai/dsh-agent': ['default'],
+  '@deepseek-ai/dsh-agent-loop': ['default'],
+  '@deepseek-ai/dsh-llm-pi-ai': ['createChatGPTAdapter'],
+  '@deepseek-ai/dsh-session-projection': ['default'],
   '@deepseek-ai/dsh-storage-domain': ['defineDomain'],
-  '@deepseek-ai/dsh-system-prompt': ['PERSONA_PREFIX_SECTION'],
+  '@deepseek-ai/dsh-system-prompt': ['default', 'PERSONA_PREFIX_SECTION'],
   '@deepseek-ai/dsh-skill': ['BUNDLED_SKILL_RANK'],
-  '@deepseek-ai/dsh-tools': ['defineTool', 'TOOL_ABORTED'],
-  '@deepseek-ai/dsh-llm': ['HarnessError', 'createUserMessage', 'ReasoningEffortId'],
+  '@deepseek-ai/dsh-tools': ['default', 'defineTool', 'TOOL_ABORTED'],
+  '@deepseek-ai/dsh-llm': ['default', 'HarnessError', 'createUserMessage', 'ReasoningEffortId'],
   // `instanceof` checks need the translator's own class instance.
   '@deepseek-ai/dsh-experimental-translator': ['TranslationError'],
   '@deepseek-ai/dsh-scope': ['carrierKeyOf', 'createScope', 'scopeOf', 'scopeTarget'],
-  '@deepseek-ai/dsh-session': ['SESSION_FORMAT_VERSION'],
+  '@deepseek-ai/dsh-session': ['default', 'SESSION_FORMAT_VERSION'],
   '@deepseek-ai/dsh-session-reference': ['decodeSessionReferenceUri', 'SessionReferenceError'],
   '@deepseek-ai/dsh-util-time': ['canonicalClientTimeZone'],
-  '@deepseek-ai/dsh-session-persistence': ['SessionPersistenceNotFoundError'],
+  '@deepseek-ai/dsh-session-persistence': ['default', 'SessionPersistenceNotFoundError'],
 } as const satisfies HostDependencyExports
 
 /** Exact import specifier to reviewed runtime exports. */

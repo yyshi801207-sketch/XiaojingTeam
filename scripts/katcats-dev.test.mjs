@@ -278,6 +278,6 @@ test('a child failure propagates and the installed CLI root cannot be redirected
     args: [join(REPOSITORY, 'scripts', 'katcats-dev.mjs'), 'check'], cwd: paths.root, env }, true)
   const state = JSON.parse(result.stdout)
   assert.equal(state.project, REPOSITORY)
-  assert.equal(state.developmentIdentity, '小兢会计团队版 Dev')
+  assert.equal(state.developmentIdentity, '小兢Bot Dev')
   assert.deepEqual(state.ports, { web: 3390, renderer: 19422, main: 19429, host: 19430 })
 })

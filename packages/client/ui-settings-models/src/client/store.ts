@@ -2,14 +2,15 @@
  * Models settings page store: one snapshot joining the configurable-provider
  * directory (`llm/listProviders` joined with `llm/listConfigurableProviders`),
  * the settings namespaces (shared settings mirror),
- * and the referenced credentials (`credentials/describe`). The host stays the
+ * the application default (`session/modelCatalog`), and the referenced
+ * credentials (`credentials/describe`). The host stays the
  * single fact source — every mutation writes through the wire and the page
  * re-renders from the next describe, pushed or refetched.
  */
 
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {
-  CredentialInfo, LlmConfigurableProvider, LlmNativeAuth, LlmProviderInfo, SettingsNamespaceView,
+  CredentialInfo, CredentialKey, LlmConfigurableProvider, LlmNativeAuth, LlmProviderInfo, SettingsNamespaceView,
 } from '@deepseek-ai/dsh-api-remotes/client'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
@@ -77,7 +78,7 @@ export function joinProviderDirectory(
 
 /** One provider row the page renders. */
 export interface ProviderRow {
-  /** Account route has usable credentials for the configured inference origin. */
+  /** Confirmed account model choices; ChatGPT requires an active route, saved candidates, and a configured grant. */
   accountAvailable?: boolean
   /** The directory entry (route id, display name, settings address, live state). */
   entry: ProviderDirectoryEntry
@@ -103,6 +104,8 @@ export interface ProviderRow {
 /** Page snapshot. */
 export interface ModelsSettingsState {
   status: 'idle' | 'loading' | 'ready' | 'error'
+  /** Last confirmed application default provider; absent before a successful catalog read. */
+  primaryProvider?: string
   /** Whole-load failure text; row-level write failures stay in the editor. */
   error: string | null
   /** Credential enrichment failure; provider/settings rows remain usable. */
@@ -194,8 +197,8 @@ export class ModelsSettingsStore {
   private readonly pendingLoads = new Set<PromiseWithResolvers<void>>()
 
   /**
-   * @param ctx - the page plugin's context, whose `remote.llm` and
-   * `remote.credentials` namespaces carry the directory and credential reads.
+   * @param ctx - the page plugin's context, whose Remote namespaces carry provider,
+   * application default, account authorization, and credential reads.
    * @param schema - settings-owned schema and immutable path operations.
    * @param describeFace - the shared mirror's describe face (namespace views and writability).
    */
@@ -207,10 +210,11 @@ export class ModelsSettingsStore {
 
   /**
    * Refresh the whole page snapshot: the provider directory and the mirror's
-   * settings answer in parallel, then one batched credential describe over
-   * every referenced ref. Provider failure or absence of an initial settings
+   * settings and application model catalog answers in parallel, then describes
+   * account authorization and referenced credentials. Provider failure or absence of an initial settings
    * answer keeps the last good rows and surfaces an error; a failed settings
-   * refresh reuses the mirror's held view. Concurrent callers resolve only
+   * refresh reuses the mirror's held view. A refused catalog read retains the
+   * last confirmed default provider. Concurrent callers resolve only
    * after the current refresh publishes its ready or error snapshot.
    * @returns resolution after the current snapshot is published.
    * @throws the current read's unexpected rejection; superseded rejections are ignored.
@@ -229,9 +233,10 @@ export class ModelsSettingsStore {
   /** Publish one joined answer; stale answers leave the current refresh in charge. */
   private async read(generation: number): Promise<void> {
     this.store.update((s) => { s.status = 'loading'; s.error = null })
-    const [registered, declared] = await Promise.all([
+    const [registered, declared, catalog] = await Promise.all([
       this.ctx.remote.llm.listProviders(),
       this.ctx.remote.llm.listConfigurableProviders(),
+      this.ctx.remote.session.modelCatalog(),
       this.describeFace.ensure(),
     ])
     if (generation !== this.generation) return
@@ -265,11 +270,20 @@ export class ModelsSettingsStore {
       }
     })
     if (rows.some(row => row.entry.provider === 'deepseek-account')) {
-      const catalog = await this.ctx.remote.session.modelCatalog()
       for (const row of rows) {
         if (row.entry.provider === 'deepseek-account') row.accountAvailable = catalog.ok
           && catalog.value.groups.some(group => group.id === 'deepseek-account' && group.models.length > 0)
       }
+    }
+    for (const row of rows) {
+      if (row.entry.provider !== 'chatgpt') continue
+      row.accountAvailable = false
+      const namespace = namespaces.get(row.entry.settingsNs)
+      const models = namespace === undefined ? undefined
+        : this.schema.getPath(namespace.value, [...row.entry.settingsPath, 'models'])
+      if (!row.entry.active || !Array.isArray(models) || models.length === 0) continue
+      const authorization = await this.ctx.remote.authorization.status('llm-pi-ai/chatgpt' as CredentialKey)
+      row.accountAvailable = authorization.ok && authorization.value.configured && authorization.value.kind === 'grant'
     }
     const refs = [...new Set(rows.filter(row => row.entry.provider !== 'deepseek-account').flatMap(row =>
       row.apiKeyEnv === undefined ? [deriveKeyRef(row.entry.provider), ...row.entry.nativeAuth?.env ?? []] : [row.apiKeyEnv]))]
@@ -290,6 +304,7 @@ export class ModelsSettingsStore {
       s.error = null
       s.credentialError = credentialError
       s.writable = writable
+      if (catalog.ok) s.primaryProvider = catalog.value.default.provider
       s.rows = rows.filter(row => row.entry.provider !== 'deepseek-account' || row.accountAvailable === true).map((row) => {
         if (row.entry.provider === 'deepseek-account') return row
         const named = row.apiKeyEnv === undefined ? undefined : credentials[row.apiKeyEnv]

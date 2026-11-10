@@ -1,0 +1,464 @@
+[
+  {
+    "type": "session",
+    "version": 4,
+    "id": "{{session:2}}",
+    "createdAt": 0,
+    "cwd": "{{cwd}}",
+    "isSeeded": false,
+    "delegationDepth": 0,
+    "agentPreset": "standard"
+  },
+  {
+    "type": "permission/preset",
+    "data": {
+      "preset": "workspace-write"
+    }
+  },
+  {
+    "type": "sandbox/mode",
+    "data": {
+      "mode": "workspace-write"
+    }
+  },
+  {
+    "type": "approval/policy",
+    "data": {
+      "policy": "ask"
+    }
+  },
+  {
+    "type": "session/title",
+    "data": {
+      "title": "Group question snapshot",
+      "messageSeqs": [],
+      "source": {
+        "kind": "user"
+      }
+    }
+  },
+  {
+    "type": "user/message",
+    "data": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Ask me which color to use before completing this task."
+        }
+      ],
+      "source": {
+        "kind": "user",
+        "rpcId": "{{rpc:1}}"
+      },
+      "role": "user",
+      "id": "{{message:12}}"
+    },
+    "surfaceOp": "append"
+  },
+  {
+    "type": "katcats/group-task-lifecycle",
+    "data": {
+      "schemaVersion": 1,
+      "chatId": "{{id:1}}",
+      "rootSessionId": "{{session:2}}",
+      "runId": "{{workflow:1}}",
+      "generation": 1,
+      "deliveryId": "{{id:2}}",
+      "parentDeliveryId": null,
+      "actor": {
+        "kind": "owner"
+      },
+      "target": {
+        "kind": "member",
+        "botId": "{{id:3}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        }
+      },
+      "message": "Ask me which color to use before completing this task.",
+      "eventId": "{{id:6}}",
+      "status": "queued",
+      "recovered": false,
+      "error": null
+    }
+  },
+  {
+    "type": "katcats/group-task-lifecycle",
+    "data": {
+      "schemaVersion": 1,
+      "chatId": "{{id:1}}",
+      "rootSessionId": "{{session:2}}",
+      "runId": "{{workflow:1}}",
+      "generation": 1,
+      "deliveryId": "{{id:2}}",
+      "parentDeliveryId": null,
+      "actor": {
+        "kind": "owner"
+      },
+      "target": {
+        "kind": "member",
+        "botId": "{{id:3}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        }
+      },
+      "message": "Ask me which color to use before completing this task.",
+      "eventId": "{{id:7}}",
+      "status": "started",
+      "recovered": false,
+      "error": null
+    }
+  },
+  {
+    "type": "user/message",
+    "data": {
+      "content": [
+        {
+          "type": "text",
+          "text": "QUEUED_FOLLOWUP: confirm the chosen color after the first task finishes."
+        }
+      ],
+      "source": {
+        "kind": "user",
+        "rpcId": "{{rpc:2}}"
+      },
+      "role": "user",
+      "id": "{{message:13}}"
+    },
+    "surfaceOp": "append"
+  },
+  {
+    "type": "katcats/group-task-lifecycle",
+    "data": {
+      "schemaVersion": 1,
+      "chatId": "{{id:1}}",
+      "rootSessionId": "{{session:2}}",
+      "runId": "{{workflow:1}}",
+      "generation": 1,
+      "deliveryId": "{{id:2}}",
+      "parentDeliveryId": null,
+      "actor": {
+        "kind": "owner"
+      },
+      "target": {
+        "kind": "member",
+        "botId": "{{id:3}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        }
+      },
+      "message": "Ask me which color to use before completing this task.",
+      "eventId": "{{id:8}}",
+      "status": "completed",
+      "recovered": false,
+      "error": null
+    }
+  },
+  {
+    "type": "user/message",
+    "data": {
+      "id": "{{message:14}}",
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "The selected color is Green."
+        }
+      ],
+      "source": {
+        "kind": "katcats-group-relay",
+        "form": "relay",
+        "schemaVersion": 1,
+        "chatId": "{{id:1}}",
+        "runId": "{{workflow:1}}",
+        "generation": 1,
+        "deliveryId": "{{id:2}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        },
+        "executionSessionId": "{{session:1}}",
+        "inputMessageId": "{{message:1}}",
+        "outputMessageId": "{{message:6}}"
+      }
+    },
+    "surfaceOp": "append"
+  },
+  {
+    "type": "katcats/group-task-lifecycle",
+    "data": {
+      "schemaVersion": 1,
+      "chatId": "{{id:1}}",
+      "rootSessionId": "{{session:2}}",
+      "runId": "{{workflow:2}}",
+      "generation": 2,
+      "deliveryId": "{{id:4}}",
+      "parentDeliveryId": null,
+      "actor": {
+        "kind": "owner"
+      },
+      "target": {
+        "kind": "member",
+        "botId": "{{id:3}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        }
+      },
+      "message": "QUEUED_FOLLOWUP: confirm the chosen color after the first task finishes.",
+      "eventId": "{{id:9}}",
+      "status": "queued",
+      "recovered": false,
+      "error": null
+    }
+  },
+  {
+    "type": "katcats/group-task-lifecycle",
+    "data": {
+      "schemaVersion": 1,
+      "chatId": "{{id:1}}",
+      "rootSessionId": "{{session:2}}",
+      "runId": "{{workflow:2}}",
+      "generation": 2,
+      "deliveryId": "{{id:4}}",
+      "parentDeliveryId": null,
+      "actor": {
+        "kind": "owner"
+      },
+      "target": {
+        "kind": "member",
+        "botId": "{{id:3}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        }
+      },
+      "message": "QUEUED_FOLLOWUP: confirm the chosen color after the first task finishes.",
+      "eventId": "{{id:10}}",
+      "status": "started",
+      "recovered": false,
+      "error": null
+    }
+  },
+  {
+    "type": "katcats/group-task-lifecycle",
+    "data": {
+      "schemaVersion": 1,
+      "chatId": "{{id:1}}",
+      "rootSessionId": "{{session:2}}",
+      "runId": "{{workflow:2}}",
+      "generation": 2,
+      "deliveryId": "{{id:4}}",
+      "parentDeliveryId": null,
+      "actor": {
+        "kind": "owner"
+      },
+      "target": {
+        "kind": "member",
+        "botId": "{{id:3}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        }
+      },
+      "message": "QUEUED_FOLLOWUP: confirm the chosen color after the first task finishes.",
+      "eventId": "{{id:11}}",
+      "status": "completed",
+      "recovered": false,
+      "error": null
+    }
+  },
+  {
+    "type": "user/message",
+    "data": {
+      "id": "{{message:15}}",
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Queued follow-up completed: Green remains selected."
+        }
+      ],
+      "source": {
+        "kind": "katcats-group-relay",
+        "form": "relay",
+        "schemaVersion": 1,
+        "chatId": "{{id:1}}",
+        "runId": "{{workflow:2}}",
+        "generation": 2,
+        "deliveryId": "{{id:4}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        },
+        "executionSessionId": "{{session:1}}",
+        "inputMessageId": "{{message:7}}",
+        "outputMessageId": "{{message:8}}"
+      }
+    },
+    "surfaceOp": "append"
+  },
+  {
+    "type": "user/message",
+    "data": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Ask another question and wait; this task will be cancelled."
+        }
+      ],
+      "source": {
+        "kind": "user",
+        "rpcId": "{{rpc:3}}"
+      },
+      "role": "user",
+      "id": "{{message:16}}"
+    },
+    "surfaceOp": "append"
+  },
+  {
+    "type": "katcats/group-task-lifecycle",
+    "data": {
+      "schemaVersion": 1,
+      "chatId": "{{id:1}}",
+      "rootSessionId": "{{session:2}}",
+      "runId": "{{workflow:3}}",
+      "generation": 3,
+      "deliveryId": "{{id:5}}",
+      "parentDeliveryId": null,
+      "actor": {
+        "kind": "owner"
+      },
+      "target": {
+        "kind": "member",
+        "botId": "{{id:3}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        }
+      },
+      "message": "Ask another question and wait; this task will be cancelled.",
+      "eventId": "{{id:12}}",
+      "status": "queued",
+      "recovered": false,
+      "error": null
+    }
+  },
+  {
+    "type": "katcats/group-task-lifecycle",
+    "data": {
+      "schemaVersion": 1,
+      "chatId": "{{id:1}}",
+      "rootSessionId": "{{session:2}}",
+      "runId": "{{workflow:3}}",
+      "generation": 3,
+      "deliveryId": "{{id:5}}",
+      "parentDeliveryId": null,
+      "actor": {
+        "kind": "owner"
+      },
+      "target": {
+        "kind": "member",
+        "botId": "{{id:3}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        }
+      },
+      "message": "Ask another question and wait; this task will be cancelled.",
+      "eventId": "{{id:13}}",
+      "status": "started",
+      "recovered": false,
+      "error": null
+    }
+  },
+  {
+    "type": "katcats/group-task-lifecycle",
+    "data": {
+      "schemaVersion": 1,
+      "chatId": "{{id:1}}",
+      "rootSessionId": "{{session:2}}",
+      "runId": "{{workflow:3}}",
+      "generation": 3,
+      "deliveryId": "{{id:5}}",
+      "parentDeliveryId": null,
+      "actor": {
+        "kind": "owner"
+      },
+      "target": {
+        "kind": "member",
+        "botId": "{{id:3}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        }
+      },
+      "message": "Ask another question and wait; this task will be cancelled.",
+      "eventId": "{{id:14}}",
+      "status": "unknown",
+      "recovered": false,
+      "error": {
+        "code": "KATCATS_CHAT_MEMBER_ABORTED",
+        "message": "The member execution was cancelled before confirming completion. Inspect saved group results before retrying."
+      }
+    }
+  }
+]

@@ -1,6 +1,6 @@
 {
-  "name": "小兢会计团队版",
-  "short_name": "小兢会计团队版",
+  "name": "小兢Bot",
+  "short_name": "小兢Bot",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",

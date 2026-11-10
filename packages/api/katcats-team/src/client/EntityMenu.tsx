@@ -54,6 +54,7 @@ export interface EntityMenuProps {
   readonly busy: boolean
   readonly pinAvailable: boolean
   readonly getAnchorRect: () => DOMRect | null
+  readonly getReturnFocusTarget?: () => HTMLElement | null
   readonly onClose: () => void
   readonly onPin: () => void
   readonly onMove: (groupId: GroupId) => void
@@ -68,7 +69,7 @@ export interface EntityMenuProps {
  * @returns A primitive menu with one nested destination menu and neutral icons.
  */
 export function EntityMenu({
-  entity, open, pinned, targets, labels, busy, pinAvailable, getAnchorRect, onClose,
+  entity, open, pinned, targets, labels, busy, pinAvailable, getAnchorRect, getReturnFocusTarget, onClose,
   onPin, onMove, onRename, onCopyId, onRemove,
 }: EntityMenuProps) {
   const select = (id: string): void => {
@@ -84,7 +85,8 @@ export function EntityMenu({
       }
     }
   }
-  return <Menu open={open} anchor={null} getAnchorRect={getAnchorRect} portal autoFocus compact
+  return <Menu open={open} anchor={null} getAnchorRect={getAnchorRect} portal autoFocus spacious
+    getReturnFocusTarget={getReturnFocusTarget}
     onClose={onClose} onSelect={select} items={[
       { id: 'pin', label: pinned ? labels.unpin : labels.pin, icon: pinned ? <IconPinFillRegular /> : <IconPinOutlineRegular />,
         disabled: busy || !pinAvailable },
@@ -92,6 +94,7 @@ export function EntityMenu({
         submenu: targets.map(target => ({ id: `move:${target.id}`, label: target.name, disabled: busy || target.id === entity.currentGroup })) },
       { id: 'rename', label: labels.rename, icon: <IconEditOutlineRegular />, disabled: busy },
       { id: 'copy', label: labels.copyId, icon: <IconCopyOutlineRegular />, disabled: busy },
-      { id: 'remove', label: labels.remove, icon: <IconTrashOutlineRegular />, disabled: busy },
+      { type: 'separator', id: 'remove-separator' },
+      { id: 'remove', label: labels.remove, icon: <IconTrashOutlineRegular />, disabled: busy, danger: true },
     ]} />
 }

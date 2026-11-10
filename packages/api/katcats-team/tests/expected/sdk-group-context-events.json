@@ -1,0 +1,55 @@
+[
+  {
+    "type": "user/message",
+    "seq": 0,
+    "time": 0,
+    "surfaceOp": "append",
+    "data": {
+      "id": "sdk-review-input",
+      "role": "user",
+      "source": {
+        "kind": "katcats-group-task",
+        "form": "relay",
+        "chatId": "sdk-group",
+        "runId": "sdk-run",
+        "generation": 1,
+        "deliveryId": "sdk-review-delivery",
+        "target": { "botId": "reviewer", "name": "Reviewer", "role": "Independent reviewer", "avatar": { "shape": "round", "color": "#10B8A6" } },
+        "collaborationVersion": 1,
+        "context": {
+          "schemaVersion": 1,
+          "rootSessionId": "sdk-group-root",
+          "deliveredIds": ["message:current-correction", "handoff:sdk-review-delivery"],
+          "archivedIds": ["message:earlier-evidence"]
+        },
+        "reviewRequest": {
+          "parentDeliveryId": "sdk-parent-delivery",
+          "candidate": {
+            "version": "a091748d07da3494eeab476d3b2ca96f2c7451636920a04cd111b5a1677fa467",
+            "text": "Verified total: 30.",
+            "files": []
+          }
+        }
+      },
+      "content": [{ "type": "text", "text": "Review the corrected total against the original rows." }]
+    }
+  },
+  {
+    "type": "user/message",
+    "seq": 1,
+    "time": 0,
+    "surfaceOp": "append",
+    "data": {
+      "id": "sdk-review-notice",
+      "role": "user",
+      "source": {
+        "kind": "katcats-group-review-notice",
+        "form": "notice",
+        "summary": "Independent review remains incomplete.",
+        "chatId": "sdk-group",
+        "deliveryId": "sdk-review-delivery"
+      },
+      "content": [{ "type": "text", "text": "Submit the actual review findings before claiming completion." }]
+    }
+  }
+]

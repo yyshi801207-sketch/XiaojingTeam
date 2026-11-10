@@ -1,0 +1,13 @@
+Required Notice: Copyright (c) 2026 赛博老爸
+
+HQ scene adapted from the user-provided Agent调度大作战 project.
+Source checkout: ff44824a741d9b2a767b82f39d3dd34c75c87e3f (with local changes).
+Source index.html SHA-256: 37212b706ecefc47e75118a9c0e23fb3371c49aa93cb8673316589e712fc91fe
+License: PolyForm Noncommercial 1.0.0; see LICENSE.
+
+Adaptations: isolated read-only iframe, real group roster and task edges,
+no simulation updates, no sample roster, no warm-start projects, no external
+bridge, no department-progress strip, and no model/tool execution controls.
+
+extract.mjs generates src/client/hq-scene.generated.ts from the supplied
+index.html and adapter.js.txt. The generated document is bundled locally.

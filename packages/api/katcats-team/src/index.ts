@@ -272,7 +272,8 @@ export class KatcatsTeam extends TypertRemoteService {
     await workspace.attachSession(bot.sessionId)
     await this.ctx.sessionController.rename({ sessionId: bot.sessionId, title: bot.name })
     if (!await this.ctx.sessions.flush(agent.session)) throw new Error('Katcats private Session has no durability owner')
-    await this.commit({ ...this.state, bots: [...this.state.bots, bot], pendingBot: null })
+    const index = bot.kind === 'main' ? 0 : this.state.bots.findIndex(member => member.kind === 'main') + 1
+    await this.commit({ ...this.state, bots: [...this.state.bots.slice(0, index), bot, ...this.state.bots.slice(index)], pendingBot: null })
     return bot
   }
 
@@ -405,9 +406,9 @@ export class KatcatsTeam extends TypertRemoteService {
           const bot = this.memberForSession(agent.id)
           if (bot === undefined) throw new Error('Katcats member identity is unavailable')
           const scope = bot.kind === 'main'
-            ? '\nYour product scope is creating and configuring Bots. You do not automatically join or manage group chats. Do not claim to have created a group or delegated group work. These limits take precedence over a saved role that describes broader coordination.'
+            ? '\nYour product scope is creating and configuring Bots and, when create_group_chat is available, creating requested group chats from saved members. You remain outside the group. Group work is coordinated by its ordinary members, not by this private creation assistant. Claim creation only after the corresponding tool confirms it. These limits take precedence over a saved role that describes broader coordination.'
             : ''
-          return `You are ${bot.name}, a member of the Katcats.AI team.\n${bot.role || 'You are a general assistant. Work with the user to establish your role.'}${scope}\n\n${memberToolGuidance(bot.kind)}`
+          return `You are ${bot.name}, a member of 瑞华云财务共享团队.\n${bot.role || 'You are a general assistant. Work with the user to establish your role.'}${scope}\nWhen introducing yourself, use the exact team name 瑞华云财务共享团队, even if earlier conversation mentions an old product name.\n\n${memberToolGuidance(bot.kind)}`
         },
       })
       const authorize = (exec: ToolRunContext, mainOnly: boolean) => () => {
@@ -434,8 +435,9 @@ export class KatcatsTeam extends TypertRemoteService {
 
   /**
    * Create a general member and a durable ordinary private Session.
+   * New members precede existing ordinary members; an omitted group uses 未分组.
    * A retry matching a still-pending name, group, avatar, and empty role returns that recovered member.
-   * @param request - member name, optional group, and optional approved avatar.
+   * @param request - member name, optional explicit group, and optional approved avatar.
    * @returns the committed member and replacement snapshot.
    */
   @Remote
@@ -475,7 +477,7 @@ export class KatcatsTeam extends TypertRemoteService {
 
   private avatarValue(avatar: TeamBot['avatar']): TeamBot['avatar'] {
     const parsed = avatarSchema.safeParse(avatar)
-    if (!parsed.success) throw new RemoteError('gateway/bad-request', 'Choose a financial robot avatar and a six-digit color', {})
+    if (!parsed.success) throw new RemoteError('gateway/bad-request', 'Choose a silhouette avatar and a six-digit color', {})
     return parsed.data
   }
 
@@ -575,7 +577,7 @@ export class KatcatsTeam extends TypertRemoteService {
   }
 
   /**
-   * Create a logical group for ordinary members.
+   * Create a logical group before existing custom groups, retaining system-group order.
    * @param request - non-empty group name.
    * @returns the committed group and replacement snapshot.
    */
@@ -587,7 +589,9 @@ export class KatcatsTeam extends TypertRemoteService {
       await this.finishPendingRename()
       await this.finishPending()
       const group: TeamGroup = { id: brandString<GroupId>(`group-${randomUUID()}`), name: this.nameValue(request.name), kind: 'bots', system: false }
-      await this.commit({ ...this.state, groups: [...this.state.groups, group] })
+      const firstCustom = this.state.groups.findIndex(item => !item.system)
+      const index = firstCustom === -1 ? this.state.groups.length : firstCustom
+      await this.commit({ ...this.state, groups: [...this.state.groups.slice(0, index), group, ...this.state.groups.slice(index)] })
       return { group, snapshot: this.snapshotValue() }
     })
   }

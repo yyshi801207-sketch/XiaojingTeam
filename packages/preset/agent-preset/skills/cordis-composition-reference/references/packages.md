@@ -77,7 +77,6 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-client-ui-conversation` | no | Target-neutral Conversation assembly, shell, composer, queue, and view navigation |
 | `@deepseek-ai/dsh-client-ui-deepseek-model-label-1017` | no | Temporary 1017 release badge for official DeepSeek Flash model labels |
 | `@deepseek-ai/dsh-client-ui-deliverables` | no | Changed-files card with per-file comparison tabs, delivery cards, and clickable final-response file references for Web |
-| `@deepseek-ai/dsh-client-ui-desktop-companion` | no | Katcat settings page for the Windows desktop companion |
 | `@deepseek-ai/dsh-client-ui-directory-picker-browse` | no | In-app directory browsing surface: the workspace directory-flow owner rendering the host's listing and creation primitives |
 | `@deepseek-ai/dsh-client-ui-directory-picker-native` | no | Native directory-picker surface: the renderless workspace directory-flow occupant driving the local Desktop or Host OS chooser |
 | `@deepseek-ai/dsh-client-ui-goal` | no | Session goal surface: GoalBar docked above the composer, read from the goal session projection |
@@ -108,7 +107,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-client-ui-settings-subagent` | no | Settings page of Subagent delegation on the dsh web client's Plugins page: recursion depth, parallel capacity, and the models agents may choose for subagents |
 | `@deepseek-ai/dsh-client-ui-settings-web-search` | no | Settings page of the DeepSeek web-search provider on the dsh web client's Plugins page: its API key, endpoint, and per-request search budget |
 | `@deepseek-ai/dsh-client-ui-shortcuts` | no | Keyboard shortcut reference, recording, and local preference editing |
-| `@deepseek-ai/dsh-client-ui-sidebar` | no | Sidebar plugin: session multi-level tree, search, grouping, state dots |
+| `@deepseek-ai/dsh-client-ui-sidebar` | yes | Sidebar plugin: session multi-level tree, search, grouping, state dots |
 | `@deepseek-ai/dsh-client-ui-sidebar-browser` | no | Sandboxed Web browser tabs for the right Sidebar |
 | `@deepseek-ai/dsh-client-ui-sidebar-documentpreview` | yes | Extensible Sidebar previews for Office documents, spreadsheets, Markdown, code, images, PDF, HTML, and plain text |
 | `@deepseek-ai/dsh-client-ui-sidebar-files` | no | Workspace file tree tab type for the right Sidebar: lazy directory listing over the workspaceFiles Remote namespace, opening files into the Sidebar |
@@ -121,12 +120,12 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-client-ui-trajectory` | no | Trajectory event ledger with an interactive timing overview: pure-consumer plugin registering into the conversation ViewMap (no service) |
 | `@deepseek-ai/dsh-client-ui-usage-accounting` | no | Sidebar daily usage summary and current-month usage calendar |
 | `@deepseek-ai/dsh-client-ui-user-questions` | no | Web ask_user_question composer takeover and plan-review presentation UI |
-| `@deepseek-ai/dsh-client-ui-weixin-channel` | no | Katcat settings page for the local Weixin iLink channel |
+| `@deepseek-ai/dsh-client-ui-weixin-channel` | no | Katcats settings page for the local Weixin iLink channel |
 | `@deepseek-ai/dsh-client-ui-workflow-run` | no | Durable workflow-run Conversation Node and nested member disclosure for dsh web |
 | `@deepseek-ai/dsh-client-ui-workspace` | no | Workspace picker plugin: one WorkspacePicker registered into the sidebar and empty-state workspace slots |
-| `@deepseek-ai/dsh-client-ui-xiaojing-browser-control` | no | Katcat settings for controlling existing Chrome and Edge tabs |
-| `@deepseek-ai/dsh-client-ui-xiaojing-finance-clients` | no | Katcat Finance client management and immutable session-context surfaces |
-| `@deepseek-ai/dsh-client-xiaojing-product` | no | Katcat product branding, onboarding, theme, and default persona |
+| `@deepseek-ai/dsh-client-ui-xiaojing-browser-control` | no | Katcats settings for controlling existing Chrome and Edge tabs |
+| `@deepseek-ai/dsh-client-ui-xiaojing-finance-clients` | no | Katcats Finance client management and immutable session-context surfaces |
+| `@deepseek-ai/dsh-client-xiaojing-product` | no | Katcats product branding, onboarding, theme, and default persona |
 
 ## compaction
 
@@ -525,12 +524,11 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 
 | Package | Config | Description |
 |---|---|---|
-| `@deepseek-ai/dsh-xiaojing-browser-control` | yes | Katcat semantic browser automation over Microsoft Edge |
-| `@deepseek-ai/dsh-xiaojing-computer-control` | yes | Katcat semantic Windows computer control through the built-in UI Automation API |
-| `@deepseek-ai/dsh-xiaojing-desktop-companion` | no | Sanitized task-state aggregation for the Katcat Windows desktop companion |
-| `@deepseek-ai/dsh-xiaojing-finance-calculations` | no | Versioned deterministic trial calculations for Katcat Finance mode |
-| `@deepseek-ai/dsh-xiaojing-finance-documents` | yes | Shared deterministic local document normalization for Katcat sessions |
-| `@deepseek-ai/dsh-xiaojing-finance-domain` | yes | Local finance client records and immutable per-session client context for Katcat |
-| `@deepseek-ai/dsh-xiaojing-finance-evidence` | yes | Official-source finance and tax evidence retrieval for Katcat Finance mode |
-| `@deepseek-ai/dsh-xiaojing-visualize` | yes | Katcat isolated visualization cards with the original dsh-visualize palette. |
-| `@deepseek-ai/dsh-xiaojing-weixin-channel` | yes | Katcat Weixin iLink channel, durable Agent session bridge, and encrypted image/document transfer |
+| `@deepseek-ai/dsh-xiaojing-browser-control` | yes | Katcats semantic browser automation over Microsoft Edge |
+| `@deepseek-ai/dsh-xiaojing-computer-control` | yes | Katcats semantic Windows computer control through the built-in UI Automation API |
+| `@deepseek-ai/dsh-xiaojing-finance-calculations` | no | Versioned deterministic trial calculations for Katcats Finance mode |
+| `@deepseek-ai/dsh-xiaojing-finance-documents` | yes | Shared deterministic local document normalization for Katcats sessions |
+| `@deepseek-ai/dsh-xiaojing-finance-domain` | yes | Local finance client records and immutable per-session client context for Katcats |
+| `@deepseek-ai/dsh-xiaojing-finance-evidence` | yes | Official-source finance and tax evidence retrieval for Katcats Finance mode |
+| `@deepseek-ai/dsh-xiaojing-visualize` | yes | Katcats isolated visualization cards with the original dsh-visualize palette. |
+| `@deepseek-ai/dsh-xiaojing-weixin-channel` | yes | Katcats Weixin iLink channel, durable Agent session bridge, and encrypted image/document transfer |

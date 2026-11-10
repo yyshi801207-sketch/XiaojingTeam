@@ -41,44 +41,16 @@ describe('group member appearance', () => {
     expect(screen.queryByRole('img')).toBeNull()
   })
 
-  it('keeps all seven selected heads and bright colors available to the shared hover behavior', () => {
+  it('keeps all ten selected silhouettes and bright colors available to the shared hover behavior', () => {
     const view = render(<>{CAT_HEADS.map(head => <CatAvatar key={head.id} appearance={{ shape: head.id, color: '#9253FF' }} />)}</>)
-    expect([...view.container.querySelectorAll('svg')].map(svg => ({ head: svg.getAttribute('data-head'),
-      color: svg.style.getPropertyValue('--katcats-avatar-color') }))).toMatchInlineSnapshot(`
-      [
-        {
-          "color": "#9253FF",
-          "head": "classic",
-        },
-        {
-          "color": "#9253FF",
-          "head": "round",
-        },
-        {
-          "color": "#9253FF",
-          "head": "point",
-        },
-        {
-          "color": "#9253FF",
-          "head": "fold",
-        },
-        {
-          "color": "#9253FF",
-          "head": "tilt",
-        },
-        {
-          "color": "#9253FF",
-          "head": "fluffy",
-        },
-        {
-          "color": "#9253FF",
-          "head": "slim",
-        },
-      ]
-    `)
+    expect([...view.container.querySelectorAll('svg')].map(svg => svg.getAttribute('data-head'))).toEqual([
+      'classic', 'round', 'point', 'tilt', 'slim', 'fold', 'fluffy', 'wave', 'layered', 'ponytail',
+    ])
+    expect([...view.container.querySelectorAll('svg')].map(svg => svg.style.getPropertyValue('--katcats-avatar-color')))
+      .toEqual(Array.from({ length: 10 }, () => '#9253FF'))
   })
 
-  it('reuses the existing seven Katcat hover transforms with hover-capable and reduced-motion rules', () => {
+  it('reuses seven hover transforms across ten silhouettes with reduced-motion rules', () => {
     const inherited = readFileSync(resolve(import.meta.dirname,
       '../../../client/ui-workspace/src/client/session-avatar/SessionAvatar.module.css'), 'utf8')
     const current = readFileSync(resolve(import.meta.dirname, '../src/client/avatar-motion.module.css'), 'utf8')
@@ -86,6 +58,7 @@ describe('group member appearance', () => {
       .filter(match => match[1] !== 'cat-breathe').map(match => [match[1], match[2]])
     expect(frames(current)).toEqual(frames(inherited))
     expect(frames(current)).toHaveLength(7)
+    for (const head of CAT_HEADS) expect(current).toContain(`[data-head='${head.id}']`)
     expect(current).toContain('@media (hover: hover)')
     expect(current).toContain('animation-duration: 600ms')
     expect(current).toContain('cubic-bezier(0.22, 1, 0.36, 1)')

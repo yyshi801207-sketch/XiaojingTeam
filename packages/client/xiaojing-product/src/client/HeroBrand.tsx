@@ -20,20 +20,20 @@ export type HeroBrandMarkProps =
 export type HeroBrandContentProps =
   PropsRuntime<'conversation.hero.brand.content'> & InjectFace<HeroBrandInjected>
 
-/** Fit the supplied finance robots and their shadows within the existing product hero frame. */
+/** Center the supplied finance team artwork within the existing product hero frame. */
 export function HeroBrandMark({ className, t }: HeroBrandMarkProps): ReactNode {
   const frameHeight = 1024
-  const displayHeight = 'min(220px, 35vh, 55vw)'
+  const displayHeight = 'min(280px, 40vh, 55vw)'
   return (
     <svg
       className={[css.logo, className].filter(Boolean).join(' ')}
       style={{ width: `calc(${displayHeight} * 1536 / ${frameHeight})`, height: displayHeight, overflow: 'hidden' }}
-      viewBox="0 17 1240 1195"
+      viewBox="0 0 330 220"
       preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label={t('teamArtworkAlt')}
     >
-      <image href={artwork} width="1254" height="1254" preserveAspectRatio="xMidYMid meet" />
+      <image href={artwork} x="0" y="0" width="330" height="220" preserveAspectRatio="xMidYMid meet" />
     </svg>
   )
 }

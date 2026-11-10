@@ -28,11 +28,11 @@ describe('plugin artwork', () => {
     expect(svg?.classList.contains('deco')).toBe(true)
   })
 
-  it('cuts the cat silhouette out of the search lens without embedded HTML', () => {
+  it('leaves the search lens transparent and shows results inside it', () => {
     const { container } = render(<PluginArtworkSearch />)
     expect(container.querySelector('svg')?.getAttribute('fill')).toBe('none')
-    expect(container.querySelector('circle')?.getAttribute('mask')).toMatch(/^url\(#.+\)$/)
-    expect(container.querySelector('mask path')?.getAttribute('fill')).toBe('black')
+    expect(container.querySelector('svg')?.getAttribute('stroke')).toBe('currentColor')
+    expect(container.querySelector('mask')).toBeNull()
     expect(container.querySelector('foreignObject')).toBeNull()
   })
 
@@ -48,17 +48,18 @@ describe('plugin artwork', () => {
     },
   )
 
-  it('renders the dispatch cat without a circular backing', () => {
+  it('centers an active step between the dispatch arrows', () => {
     const { container } = render(<PluginArtworkLoop />)
-    expect(container.querySelector('circle')).toBeNull()
+    expect(container.querySelectorAll('circle')).toHaveLength(2)
     expect(container.querySelector('mask')).toBeNull()
-    expect(container.querySelector('path[fill="currentColor"]')).not.toBeNull()
+    expect(container.querySelector('circle[fill="currentColor"]')).not.toBeNull()
   })
 
-  it('cuts the terminal prompt through the window instead of painting a background color', () => {
+  it('draws a terminal prompt on an open window', () => {
     const { container } = render(<PluginArtworkTerminal />)
-    expect(container.querySelector('mask path[stroke="black"]')).not.toBeNull()
-    expect(container.querySelector('rect[mask]')?.getAttribute('fill')).toBe('currentColor')
+    expect(container.querySelector('mask')).toBeNull()
+    expect(container.querySelector('rect')?.getAttribute('fill')).toBeNull()
+    expect(container.querySelector('path[stroke-width="2.3"]')).not.toBeNull()
   })
 
   it.each(Object.entries(artworks))('%s renders at 36 by default and repeats without document-global ids', (_name, Artwork) => {

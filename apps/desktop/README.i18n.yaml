@@ -2,45 +2,45 @@
 # section, a hash of its English and Chinese blocks outside code blocks and generated regions.
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop/README.md
-/windows-desktop:
-  en: b9a267b609fa381f
-  zh: 931f8a388c458f72
-/windows-desktop/permanent-installer-identity:
-  en: 3f613c3e7d5bca0c
-  zh: 2d025322c0771419
-/windows-desktop/permanent-user-data-paths:
+/bot-windows-desktop:
+  en: 9ab45de6e4b85112
+  zh: 546603cf087f8bca
+/bot-windows-desktop/permanent-installer-identity:
+  en: a24ad65a757fa017
+  zh: e92701f689ff6c8e
+/bot-windows-desktop/permanent-user-data-paths:
   en: cb7b2e5e907f8307
   zh: 1faac1113896ce0a
-/windows-desktop/development-preview-isolation:
+/bot-windows-desktop/development-preview-isolation:
   en: 6935c204831d9332
   zh: 5e02efeb8cc05182
-/windows-desktop/system-tray-lifecycle:
+/bot-windows-desktop/system-tray-lifecycle:
   en: 8a445f2f11abc045
   zh: 4ada05ff2ae24808
-/windows-desktop/built-in-automation-runtimes:
+/bot-windows-desktop/built-in-automation-runtimes:
   en: 2885e30bfccb918a
   zh: bd0484e70979d715
-/windows-desktop/independent-integration-patches:
+/bot-windows-desktop/independent-integration-patches:
   en: f2a0c5dee966bd55
   zh: 48c3d8bd6fba7a15
-/windows-desktop/release-checks:
+/bot-windows-desktop/release-checks:
   en: c1b4b8bddbec1cda
   zh: 37eb5a345a93ef90
-/windows-desktop/shell-settings-and-packaging:
-  en: e47d0ea80409c99f
-  zh: 490122572d9c1d15
-/windows-desktop/known-limitations:
+/bot-windows-desktop/shell-settings-and-packaging:
+  en: e059d990a9ab95a1
+  zh: e747fea746d70496
+/bot-windows-desktop/known-limitations:
   en: 8fae0392a30cd5e8
   zh: 02a3a57c9c98b02f
-/windows-desktop/known-limitations/bundled-workspace-dependencies:
+/bot-windows-desktop/known-limitations/bundled-workspace-dependencies:
   en: d5101810c85009c3
   zh: f3489cb52cac4330
-/windows-desktop/known-limitations/release-versions:
+/bot-windows-desktop/known-limitations/release-versions:
   en: 7668dbd1761b9769
   zh: b0f55c3bcbeb5550
-/windows-desktop/known-limitations/upload-updates:
+/bot-windows-desktop/known-limitations/upload-updates:
   en: fec25d6cee9df624
   zh: f61f86cd3e8cc169
-/windows-desktop/known-limitations/windows-ev-signing:
+/bot-windows-desktop/known-limitations/windows-ev-signing:
   en: 8b7d344022b07dd7
   zh: 4af5f7d58ea70439

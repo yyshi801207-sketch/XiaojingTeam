@@ -1,7 +1,7 @@
 [
   {
     "role": "hide",
-    "label": "Hide 小兢会计团队版"
+    "label": "Hide 小兢Bot"
   },
   {
     "role": "hideOthers",
@@ -13,6 +13,6 @@
   },
   {
     "role": "quit",
-    "label": "Quit 小兢会计团队版"
+    "label": "Quit 小兢Bot"
   }
 ]

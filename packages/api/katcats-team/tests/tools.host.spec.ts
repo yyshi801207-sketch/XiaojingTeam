@@ -30,7 +30,7 @@ describe('Katcats Agent-scoped member tools', () => {
     const main = mainAgent(h)
     const writer = (await h.team.createBot({ name: 'Writer' })).bot
     const ordinary = h.ctx.agents.get(writer.sessionId)!
-    expect(h.ctx.tools.schemas(main).map(tool => tool.name).sort()).toEqual(['create_bot', 'list_bots', 'set_bot_appearance', 'set_own_role'])
+    expect(h.ctx.tools.schemas(main).map(tool => tool.name).sort()).toEqual(['create_bot', 'create_bots', 'list_bots', 'set_bot_appearance', 'set_own_role'])
     expect(h.ctx.tools.schemas(ordinary).map(tool => tool.name)).toEqual(['set_own_role'])
     expect(h.ctx.tools.schemas()).toEqual([])
     for (const name of ['create_bot', 'list_bots', 'set_bot_appearance']) {
@@ -198,7 +198,7 @@ describe('Katcats Agent-scoped member tools', () => {
       return create(request)
     })
     const controller = new AbortController()
-    const avatar = { shape: 'point', color: '#10BF7A' }
+    const avatar = { shape: 'point', color: '#10C477' }
     const creating = run(first, mainAgent(first), 'create_bot', { name: 'Writer', role: 'Write reports.', avatar }, controller.signal)
     await started.promise
     controller.abort()
@@ -235,7 +235,7 @@ describe('Katcats Agent-scoped member tools', () => {
     expect(h.ctx.tools.schemas(main)).toEqual([])
     await h.ctx.plugin(KatcatsTeam, { workspaceRoot: h.root + '/workspaces', mainName: 'Katcats', mainRole: '团队主管', ordinaryGroupName: '普通 Bot', chatGroupName: '群聊' })
     expect(await h.ctx.katcatsTeam.snapshot()).toEqual(before)
-    expect(h.ctx.tools.schemas(main).map(tool => tool.name).sort()).toEqual(['create_bot', 'list_bots', 'set_bot_appearance', 'set_own_role'])
+    expect(h.ctx.tools.schemas(main).map(tool => tool.name).sort()).toEqual(['create_bot', 'create_bots', 'list_bots', 'set_bot_appearance', 'set_own_role'])
   })
 
   it('provides replayable generic presentation and recorded prompt guidance without speculative success', async () => {
@@ -277,12 +277,13 @@ describe('Katcats Agent-scoped member tools', () => {
           "system": [
             "You are an AI agent powered by DeepSeek Harness.
 
-        You are 小兢会计, a member of the Katcats.AI team.
+        You are 小兢会计, a member of 瑞华云财务共享团队.
         Coordinate the team.
-        Your product scope is creating and configuring Bots. You do not automatically join or manage group chats. Do not claim to have created a group or delegated group work. These limits take precedence over a saved role that describes broader coordination.
+        Your product scope is creating and configuring Bots and, when create_group_chat is available, creating requested group chats from saved members. You remain outside the group. Group work is coordinated by its ordinary members, not by this private creation assistant. Claim creation only after the corresponding tool confirms it. These limits take precedence over a saved role that describes broader coordination.
+        When introducing yourself, use the exact team name 瑞华云财务共享团队, even if earlier conversation mentions an old product name.
 
         Use set_own_role only when the user explicitly asks to establish or change your ongoing identity or responsibilities. Do not change your saved role for a temporary task. Claim a role was saved only after the tool succeeds.
-        When the user explicitly requests a new persistent team member, use create_bot with its name and lasting role. Pass any requested robot style and color through avatar; writing a color in role does not change the avatar. Omit avatar only to use the default red ledger robot. Use set_bot_appearance to change an existing member's requested avatar without recreating it. Use list_bots to inspect existing members, saved avatars, and group IDs; the default group is 未分组. Claim creation or an appearance change only after the tool returns the saved avatar. If a change fails or is cancelled, first use list_bots to check whether it completed; do not automatically retry it.",
+        When the user explicitly requests a new persistent team member, use create_bot with its name and lasting role. Pass any requested bean avatar and color through avatar; writing a color in role does not change the avatar. Omit avatar only to use the default red B01 avatar. For several new Bots requested together, use create_bots once with the complete batch. Count only these new members, never existing Bots. Use distinct preset avatar colors for the first 8: #202124, #FF2849, #FF6B0B, #10C477, #2288FF, #9253FF, #F52C93, #10B8A6. Only additional members in that same batch may use other colors. Do not use set_bot_appearance to bypass creation colors. After every requested Bot is confirmed, use create_group_chat if the user requested a group or team and that tool is available. Use set_bot_appearance to change an existing member's requested avatar without recreating it. Use list_bots to inspect existing members, saved avatars, and group IDs; the default group is 未分组. Claim creation or an appearance change only after the tool returns the saved avatar. If a change fails or is cancelled, first use list_bots to check whether it completed; do not automatically retry it.",
           ],
         }
       `)

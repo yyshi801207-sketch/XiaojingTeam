@@ -1,0 +1,13 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`group run token usage > deduplicates settlements and counts explicit retry attempts without adding reasoning twice 1`] = `
+{
+  "cacheRead": 100,
+  "cacheWrite": 0,
+  "calls": 2,
+  "input": 200,
+  "missing": 0,
+  "output": 40,
+  "total": 340,
+}
+`;

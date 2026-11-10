@@ -1,0 +1,25 @@
+function furnish(k, R, D) {
+  var group = host.headquartersPayload.groups.find(function (g) { return g.slot === k; });
+  var count = group ? group.members.filter(function (m) { return !m.manager; }).length : 0;
+  var rows = Math.max(2, Math.ceil(count / 3));
+  var scale = Math.min(1, (R.hd * 2 - 2.4) / (rows * 1.8));
+  var scr = mix3(D.col, [0.55, 0.85, 1.0], 0.55);
+  col(mix3(D.col, [0.91, 0.87, 0.8], 0.8)); flat(-R.hw, -R.hd, R.hw, R.hd, 0.006, MCARPET);
+  R.hqSeats = [];
+  for (var i = 0; i < Math.max(6, count); i++) {
+    var u = ((i % 3) - 1) * 1.6 * scale;
+    var v = -R.hd + 2.3 + (Math.floor(i / 3) + 0.5) * 1.8 * scale;
+    var T = TR(0, u, v + 0.55 * scale);
+    T.m = T.m.map(function (value) { return value * scale; });
+    desk(T, 1.25, 0.7, '#efe8dc', scr, { plant: i % 6 === 2 });
+    var CT = TR(0, u, v); CT.m = CT.m.map(function (value) { return value * scale; });
+    chair(CT, '#3d4552', false);
+    R.hqSeats.push({ u: u, v: v, scale: scale });
+  }
+  var hu = 0, hv = -R.hd + 0.65;
+  R.head = [hu, hv];
+  desk(TR(0, hu, hv + 0.6), 1.7, 0.78, '#d9bb92', scr, { dual: true, mx: -0.3, lamp: true });
+  chair(TR(0, hu, hv), '#2b2f36', true);
+  plant(R.hw - 0.5, -R.hd + 0.5, 1.1, 0);
+  board3(-R.hw + 0.35, -1.5, 1.2, D.c, 0);
+}

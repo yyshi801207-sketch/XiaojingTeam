@@ -6,7 +6,8 @@ import z from '@deepseek-ai/schemastery'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import { randomUUID } from '@deepseek-ai/dsh-util-crypto'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { MessageId } from '@deepseek-ai/dsh-llm'
+import { HarnessError, type MessageId } from '@deepseek-ai/dsh-llm'
+import type { ToolRunContext } from '@deepseek-ai/dsh-tools'
 import type { SessionCancelRequest, SessionCancelValue, SessionPromptRequest, SessionPromptValue } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { Domain } from '@deepseek-ai/dsh-storage-domain'
@@ -17,9 +18,11 @@ import { chatGroupId, mainBotId } from './storage.ts'
 import { chatsDomainSpec, type ChatsState } from './chats-storage.ts'
 import { openChatsDomain } from './chats-migration.ts'
 import { ChatsRuntime } from './chats-runtime.ts'
+import { registerGroupCreationTools } from './group-creation-tools.ts'
 import { archiveOwnedSessions, requireInactiveSessions } from './group-organization.ts'
 import { admitGroupPrompt, groupRequestDigest } from './group-input.ts'
 import { maskFileReferences, replaceMemberMentions } from './member-mentions.ts'
+import { recordGroupTicket, ticketForInput, ticketOwnerInput } from './group-tickets.ts'
 import type { AcceptChatDelivery, ChatRuntimeActions, ChatRuntimeExpected, ChatRuntimeSnapshot } from './chats-runtime-types.ts'
 import type { BotId, GroupId, TeamBot, TeamGroup } from './types.ts'
 import type {
@@ -39,14 +42,26 @@ declare module '@deepseek-ai/cordis' {
 export interface ChatsConfig {
   readonly workspaceRoot: string
   readonly relayLimit: number
+  /** Recent public messages supplied when an executor has no recorded group context. */
+  readonly initialHistoryMessages: number
+  /** Maximum public messages returned by one history query. */
+  readonly historyPageSize: number
+  /** Maximum text characters returned by one history query. */
+  readonly historyPageMaxChars: number
+  /** Maximum cumulative bytes in candidate text and files during independent review. */
+  readonly reviewCandidateMaxBytes: number
 }
 
 /** Persistent groups and owner controls; model execution belongs to the composed group runtime. */
 export class KatcatsChats extends TypertRemoteService {
-  static inject = ['katcatsTeam', 'storageDomain', 'sessionController', 'sessionTitle', 'sessionPersistence', 'agents', 'sessions', 'systemPrompt', 'workspaceRegistry', 'tools', 'llm', 'attachments', 'fileUploads']
+  static inject = ['katcatsTeam', 'storageDomain', 'sessionController', 'sessionTitle', 'sessionPersistence', 'agents', 'sessions', 'systemPrompt', 'workspaceRegistry', 'tools', 'llm', 'attachments', 'fileUploads', 'fs']
   static Config: z<ChatsConfig> = z.object({
     workspaceRoot: z.string().required(),
     relayLimit: z.number().min(1).step(1).default(16),
+    initialHistoryMessages: z.number().min(1).step(1).default(20),
+    historyPageSize: z.number().min(1).step(1).default(20),
+    historyPageMaxChars: z.number().min(1).step(1).default(16000),
+    reviewCandidateMaxBytes: z.number().min(1).step(1).default(8388608),
   })
 
   private readonly ready: Promise<void>
@@ -55,6 +70,7 @@ export class KatcatsChats extends TypertRemoteService {
   private domain: Domain<typeof chatsDomainSpec> | undefined
   private tail: Promise<void> = Promise.resolve()
   private readonly followers = new Set<() => void>()
+  private readonly creationAgents = new Set<Agent>()
   private readonly controls = new Map<ChatId, { readonly kind: 'pause' | 'resume' | 'stop'; settled: boolean }>()
   private readonly controlSettlements = new Set<Promise<undefined>>()
   private readonly promptAdmissions = new Map<ChatId, Promise<void>>()
@@ -65,7 +81,7 @@ export class KatcatsChats extends TypertRemoteService {
     super(ctx, 'katcatsChats')
     if (!isAbsolute(config.workspaceRoot)) throw new Error('katcats-chats workspaceRoot must be absolute')
     this.workspaceRoot = resolve(config.workspaceRoot)
-    this.runtime = new ChatsRuntime(ctx, this.runtimeActions())
+    this.runtime = new ChatsRuntime(ctx, this.runtimeActions(), this.config)
     ctx.on('agent/created', ({ agent }) => { this.installAgent(agent) })
     ctx.on('agent/status', ({ agent }) => {
       if (this.binding(agent.id) !== undefined) this.notify()
@@ -255,6 +271,23 @@ export class KatcatsChats extends TypertRemoteService {
   private installAgent(agent: Agent): void {
     const binding = this.binding(agent.id)
     if (binding !== undefined) this.runtime.install(agent, binding)
+    if (this.ctx.katcatsTeam.memberForSession(agent.id)?.kind !== 'main' || this.creationAgents.has(agent)) return
+    this.ctx.effect(function* (this: KatcatsChats) {
+      yield agent.ctx.on('agent/disposed', () => { this.creationAgents.delete(agent) })
+      const authorize = (exec: ToolRunContext) => () => {
+        this.requireOwner()
+        if (exec.agent !== agent || this.ctx.agents.get(agent.id) !== agent
+          || this.ctx.katcatsTeam.memberForSession(agent.id)?.kind !== 'main') {
+          throw new HarnessError('Only the main Bot can create group conversations.', 'KATCATS_TOOL_DENIED')
+        }
+      }
+      yield registerGroupCreationTools(agent, {
+        create: async (request, exec) => (await this.createValue(request, exec.signal, authorize(exec), true)).chat,
+        list: exec => this.readValue(exec.signal, authorize(exec)),
+      })
+      yield () => { this.creationAgents.delete(agent) }
+    }.bind(this), 'katcats-chats.groupCreation()')
+    this.creationAgents.add(agent)
   }
 
   private async validateMembers(ids: readonly BotId[], retainLegacyMain = false): Promise<readonly BotId[]> {
@@ -348,7 +381,7 @@ export class KatcatsChats extends TypertRemoteService {
     }
     await this.commit({
       ...this.state,
-      chats: previous === undefined ? [...this.state.chats, completed]
+      chats: previous === undefined ? [completed, ...this.state.chats]
         : this.state.chats.map(chat => chat.id === completed.id ? completed : chat),
       pendingChat: null,
     })
@@ -418,13 +451,12 @@ export class KatcatsChats extends TypertRemoteService {
       selected.add(target.id)
     }
     const addressing = selected.size > 0 || hasBareMention ? 'explicit' : 'broadcast'
-    const recipients = ordinary.filter(bot => addressing === 'broadcast' || selected.has(bot.id)).map(bot => bot.id)
-    if (recipients.length === 0) throw new RemoteError('gateway/bad-request', 'This group has no ordinary member available to reply', {})
-    if (chat.managerId !== null && recipients.includes(chat.managerId)) {
-      recipients.splice(recipients.indexOf(chat.managerId), 1)
-      recipients.unshift(chat.managerId)
-    }
-    return { recipients, addressing }
+    const recipients = chat.memberIds.filter(id => ordinary.some(bot => bot.id === id)
+      && (addressing === 'broadcast' || selected.has(id)))
+    const first = recipients[0]
+    if (first === undefined) throw new RemoteError('gateway/bad-request', 'This group has no ordinary member available to reply', {})
+    const responsible = chat.managerId !== null && recipients.includes(chat.managerId) ? chat.managerId : first
+    return { recipients: addressing === 'broadcast' ? [responsible] : recipients, addressing }
   }
 
   private startRun(chat: TeamChat): TeamChat {
@@ -452,8 +484,9 @@ export class KatcatsChats extends TypertRemoteService {
     const superseded: ChatFailure = { code: 'superseded',
       message: 'A new owner message started another run before this task was dispatched.' }
     const deliveries = this.state.deliveries.map<ChatDelivery>(delivery => delivery.chatId === chat.id
-      && delivery.runId === chat.run?.id && delivery.generation === chat.generation && delivery.state === 'accepted'
-      ? { ...delivery, state: 'failed', error: superseded } : delivery)
+      && delivery.runId === chat.run?.id && delivery.generation === chat.generation
+      ? { ...delivery, ...(delivery.state === 'accepted' ? { state: 'failed' as const, error: superseded } : {}),
+        ...(delivery.takeover?.state === 'pending' ? { takeover: { ...delivery.takeover, state: 'stopped' as const } } : {}) } : delivery)
     for (const input of this.runInputs(chat)) {
       if (queuedIds.has(input.userMessage.id)) continue
       for (const botId of input.recipients) {
@@ -556,7 +589,7 @@ export class KatcatsChats extends TypertRemoteService {
               const reset = this.ownerRun(previous, [])
               if (reset.chat.run === null) throw new Error('Accepted group steering has no run')
               const inbound: ChatInbound = { requestId: request.requestId, requestDigest: digest, chatId: captured.id,
-                runId: reset.chat.run.id, generation: reset.chat.generation, userMessage, ...targets, state: 'accepted' }
+                runId: reset.chat.run.id, generation: reset.chat.generation, userMessage, ...targets, collaborationVersion: 1, coordinationVersion: 1, state: 'accepted' }
               await this.commit({ ...this.state, chats: this.state.chats.map(chat => chat.id === captured.id ? reset.chat : chat),
                 inbounds: [...reset.inbounds, inbound], deliveries: reset.deliveries }, commitFiles)
             }))
@@ -587,7 +620,7 @@ export class KatcatsChats extends TypertRemoteService {
             ? { ...previous, status: 'active', pauseReason: null, error: null } : previous)
           if (next.run === null) throw new Error('Accepted group message has no run')
           const inbound: ChatInbound = { requestId: request.requestId, requestDigest: digest, chatId: next.id,
-            runId: next.run.id, generation: next.generation, userMessage, ...targets, state: 'accepted' }
+            runId: next.run.id, generation: next.generation, userMessage, ...targets, collaborationVersion: 1, coordinationVersion: 1, state: 'accepted' }
           await this.commit({ ...this.state, chats: this.state.chats.map(chat => chat.id === next.id ? next : chat),
             inbounds: [...this.state.inbounds, inbound] }, commitFiles)
           return next.id
@@ -644,6 +677,7 @@ export class KatcatsChats extends TypertRemoteService {
 
   /**
    * Create an isolated group and one persistent execution Session per selected ordinary member.
+   * Newly created groups precede existing groups in the durable directory.
    * @param request - name, ordinary members, and optional positive dispatch limit.
    * @returns the fully committed group and replacement directory.
    */
@@ -653,7 +687,9 @@ export class KatcatsChats extends TypertRemoteService {
     return this.createValue(request)
   }
 
-  private async createValue(request: CreateChatRequest, signal?: AbortSignal, authorize?: () => void): Promise<ChatMutationValue> {
+  private async createValue(
+    request: CreateChatRequest, signal?: AbortSignal, authorize?: () => void, reuseExisting = false,
+  ): Promise<ChatMutationValue> {
     await this.ready
     return this.ctx.katcatsTeam.organization.run(() => this.serialize(async () => {
       this.requireOwner()
@@ -668,6 +704,11 @@ export class KatcatsChats extends TypertRemoteService {
         && pending.chat.memberIds.length === memberIds.length && memberIds.every(id => pending.chat.memberIds.includes(id))
       const recovered = await this.finishPending()
       if (retry && recovered !== undefined) return { chat: recovered, snapshot: this.snapshotValue() }
+      if (reuseExisting) {
+        const existing = this.state.chats.find(chat => chat.name === name && chat.managerId === managerId
+          && chat.memberIds.length === memberIds.length && memberIds.every(id => chat.memberIds.includes(id)))
+        if (existing !== undefined) return { chat: existing, snapshot: this.snapshotValue() }
+      }
       const id = brandString<ChatId>(`chat-${randomUUID()}`)
       const chat: TeamChat = {
         id, name, groupId: chatGroupId, rootSessionId: brandString<SessionId>(`session-${randomUUID()}`),
@@ -910,7 +951,7 @@ export class KatcatsChats extends TypertRemoteService {
     const committed = this.state.chats.find(chat => chat.id === id)
     const chat = committed ?? (pending?.kind === 'create' && pending.chat.id === id ? pending.chat : this.chat(id))
     const team = await this.ctx.katcatsTeam.snapshot()
-    return { chat, bots: team.bots.filter(bot => chat.memberIds.includes(bot.id)).map(bot => ({ ...bot,
+    return { chat, bots: chat.memberIds.flatMap(id => team.bots.filter(bot => bot.id === id)).map(bot => ({ ...bot,
       role: chat.memberRoles.find(member => member.botId === bot.id)?.role ?? bot.role,
     })),
     inbounds: this.state.inbounds.filter(input => input.chatId === id),
@@ -950,6 +991,20 @@ export class KatcatsChats extends TypertRemoteService {
 
   private runtimeActions(): ChatRuntimeActions {
     return {
+      recordTicket: (id, request, admit) => this.serialize(async () => {
+        admit()
+        const delivery = this.delivery(id)
+        const chat = this.chat(delivery.chatId)
+        this.expected(chat, { runId: delivery.runId, generation: delivery.generation })
+        if (this.closing || this.controls.has(chat.id) || chat.status !== 'active' || delivery.state !== 'running') {
+          throw new HarnessError('This task is no longer executing.', 'KATCATS_CHAT_TASK_DENIED')
+        }
+        const input = ticketOwnerInput(this.state.inbounds, this.state.deliveries, delivery)
+        if (input === undefined) throw new HarnessError('This execution has no owner request to classify.', 'KATCATS_CHAT_TASK_DENIED')
+        const next = recordGroupTicket(chat, input, delivery, request)
+        await this.replaceChat(next.chat)
+        return next.ticket
+      }),
       read: id => this.runtimeRead(id),
       updateRoles: (id, request, expected, admit) => this.updateRoles(id, request, expected, admit),
       beginRun: id => this.serialize(async () => {
@@ -969,7 +1024,7 @@ export class KatcatsChats extends TypertRemoteService {
         if (first === undefined || inputs.length < 2) return false
         const deliveries = this.state.deliveries.filter(delivery => delivery.chatId === id
           && delivery.runId === chat.run?.id && delivery.generation === chat.generation)
-        if (deliveries.some(delivery => delivery.state === 'unknown')
+        if (deliveries.some(delivery => delivery.state === 'unknown' || delivery.takeover?.state === 'pending')
           || deliveries.some(delivery => delivery.state === 'running' || delivery.state === 'accepted')
           || !deliveries.some(delivery => (delivery.state === 'completed' || delivery.state === 'passed')
             && this.ownerMessage(delivery) === first.userMessage.id)) return false
@@ -987,15 +1042,17 @@ export class KatcatsChats extends TypertRemoteService {
         const stopped: ChatFailure = { code: 'stopped', message: 'The owner stopped this run before the task was dispatched.' }
         await this.commit({ ...this.state,
           chats: this.state.chats.map(item => item.id === id ? { ...chat, status: 'stopped', pauseReason: 'owner', generation: chat.generation + 1, run: null } : item),
-          deliveries: this.state.deliveries.map(delivery => delivery.chatId === id && delivery.generation === chat.generation && delivery.state === 'accepted'
-            ? { ...delivery, state: 'failed', error: stopped } : delivery),
+          deliveries: this.state.deliveries.map(delivery => delivery.chatId === id && delivery.generation === chat.generation
+            ? { ...delivery, ...(delivery.state === 'accepted' ? { state: 'failed' as const, error: stopped } : {}),
+              ...(delivery.takeover?.state === 'pending' ? { takeover: { ...delivery.takeover, state: 'stopped' as const } } : {}) } : delivery),
         })
       }),
       finishRun: (id, runId, generation) => this.serialize(async () => {
         const chat = this.chat(id)
         if (chat.status === 'active' && chat.run?.id === runId && chat.generation === generation
           && !this.state.deliveries.some(delivery => delivery.chatId === id && delivery.runId === runId
-            && (delivery.state === 'accepted' || delivery.state === 'running' || delivery.state === 'unknown'))
+            && (delivery.state === 'accepted' || delivery.state === 'running' || delivery.state === 'unknown'
+              || delivery.takeover?.state === 'pending'))
           && this.state.inbounds.filter(input => input.chatId === id && input.runId === runId && input.generation === generation)
             .every(input => input.state === 'published' && input.recipients.every(botId => !chat.memberIds.includes(botId)
               || this.state.deliveries.some(delivery => delivery.chatId === id && delivery.botId === botId
@@ -1048,6 +1105,14 @@ export class KatcatsChats extends TypertRemoteService {
         throw new RemoteError('gateway/bad-request', 'This group cannot accept the selected member task', {})
       }
       const source = input.source
+      const recovery = input.recoveryOf === undefined ? undefined : this.state.deliveries.find(item => item.id === input.recoveryOf)
+      if (input.recoveryOf !== undefined && (recovery === undefined || recovery.chatId !== chat.id
+        || recovery.runId !== input.runId || recovery.generation !== input.generation || recovery.state !== 'failed'
+        || recovery.takeover?.state !== 'pending' || recovery.takeover.botId !== input.botId
+        || recovery.recoveryOf !== undefined || source.kind !== 'owner-message'
+        || this.ownerMessage(recovery) !== source.messageId)) {
+        throw new HarnessError('The confirmed blocker no longer permits this follow-up.', 'KATCATS_CHAT_TASK_DENIED')
+      }
       if (source.kind === 'tool') {
         const parent = this.state.deliveries.find(value => value.id === source.parentDeliveryId)
         if (parent === undefined || parent.chatId !== chat.id || parent.runId !== input.runId || parent.generation !== input.generation
@@ -1057,7 +1122,7 @@ export class KatcatsChats extends TypertRemoteService {
       } else if (input.sourceSessionId !== chat.rootSessionId
         || (source.kind === 'owner-message' && !this.state.inbounds.some(value => value.chatId === chat.id
           && value.runId === input.runId && value.generation === input.generation && value.state === 'published'
-          && value.userMessage.id === source.messageId && value.recipients.includes(input.botId)))
+          && value.userMessage.id === source.messageId && (value.recipients.includes(input.botId) || recovery !== undefined)))
         || (source.kind === 'member-reply' && !this.state.deliveries.some(value => value.chatId === chat.id
           && value.runId === input.runId && value.generation === input.generation && value.state === 'completed'
           && value.relayMessageId === source.messageId))) {
@@ -1065,7 +1130,8 @@ export class KatcatsChats extends TypertRemoteService {
       }
       const duplicate = this.state.deliveries.find(delivery => delivery.chatId === input.chatId && delivery.runId === input.runId
         && delivery.generation === input.generation && delivery.sourceSessionId === input.sourceSessionId
-        && JSON.stringify(delivery.source) === JSON.stringify(source) && (source.kind === 'tool' || delivery.botId === input.botId))
+        && JSON.stringify(delivery.source) === JSON.stringify(source) && delivery.recoveryOf === input.recoveryOf
+        && (source.kind === 'tool' || delivery.botId === input.botId))
       if (duplicate !== undefined) {
         if (duplicate.botId !== input.botId || duplicate.message !== input.message) throw new RemoteError('gateway/bad-request', 'A recorded task cannot be changed during retry', {})
         await this.publishTaskStates([duplicate])
@@ -1118,7 +1184,8 @@ export class KatcatsChats extends TypertRemoteService {
       }
       if (delivery.state !== 'running' && delivery.state !== 'unknown') throw new Error('Group task has no dispatched result to complete')
       const completed: ChatDelivery = { ...delivery, state: 'completed', receipt, error: null }
-      await this.commit({ ...this.state, deliveries: this.state.deliveries.map(item => item.id === id ? completed : item) })
+      await this.commit({ ...this.state, deliveries: this.handledTakeovers(delivery)
+        .map(item => item.id === id ? completed : item) })
       return completed
     })
   }
@@ -1143,11 +1210,37 @@ export class KatcatsChats extends TypertRemoteService {
       if (delivery.state === 'completed' || delivery.state === 'passed') return
       const chat = this.chat(delivery.chatId)
       const current = chat.run?.id === delivery.runId && chat.generation === delivery.generation && chat.status !== 'stopped'
+      const ownerId = this.ownerMessage(delivery)
+      const modern = this.state.inbounds.some(input => input.chatId === chat.id
+        && input.userMessage.id === ownerId && input.collaborationVersion === 1)
+      const reportable = modern && !unknown && error.code !== 'KATCATS_CHAT_DURABILITY_UNCONFIRMED'
+        && (delivery.source.kind === 'tool' || error.code === 'KATCATS_CHAT_TASK_BLOCKED')
+      const input = ticketOwnerInput(this.state.inbounds, this.state.deliveries, delivery)
+      const ticket = ticketForInput(chat, input)
+      const responsible = [ticket?.ownerId === delivery.botId ? undefined : ticket?.ownerId, chat.managerId, ...chat.memberIds]
+        .find(member => member !== undefined && member !== null && member !== mainBotId && chat.memberIds.includes(member))
+      const takeover = current && input?.coordinationVersion === 1 && reportable && delivery.recoveryOf === undefined
+        && responsible !== undefined && responsible !== null && responsible !== delivery.botId
+        ? { version: 1 as const, botId: responsible, state: 'pending' as const } : delivery.takeover
+      const nextChat = ticket === undefined ? chat : { ...chat, tickets: (chat.tickets ?? []).map(task => task.id === ticket.id
+        ? { ...task, state: 'blocked' as const, blocker: error.message, revision: task.revision + 1 } : task) }
+      const records = !unknown && error.code === 'KATCATS_CHAT_TASK_BLOCKED' ? this.handledTakeovers(delivery) : this.state.deliveries
       await this.commit({ ...this.state,
-        deliveries: this.state.deliveries.map(item => item.id === id ? { ...delivery, state: unknown ? 'unknown' : 'failed', error } : item),
-        chats: this.state.chats.map(item => current && item.id === chat.id ? { ...chat, status: 'paused', pauseReason: unknown ? 'unknown-result' : 'member-failed', error } : item),
+        deliveries: records.map(item => item.id === id ? { ...delivery, state: unknown ? 'unknown' : 'failed', error,
+          ...(takeover === undefined ? {} : { takeover }) } : item),
+        chats: this.state.chats.map(item => item.id !== chat.id ? item : current && (!reportable
+          || delivery.recoveryOf !== undefined && error.code !== 'KATCATS_CHAT_TASK_BLOCKED')
+          ? { ...nextChat, status: 'paused', pauseReason: unknown ? 'unknown-result' : 'member-failed', error } : nextChat),
       })
     })
+  }
+
+  private handledTakeovers(delivery: ChatDelivery): readonly ChatDelivery[] {
+    const owner = this.ownerMessage(delivery)
+    return this.state.deliveries.map(item => item.chatId === delivery.chatId && item.runId === delivery.runId
+      && item.takeover?.state === 'pending' && item.takeover.botId === delivery.botId
+      && (item.id === delivery.recoveryOf || owner !== undefined && this.ownerMessage(item) === owner)
+      ? { ...item, takeover: { ...item.takeover, state: 'handled' } } : item)
   }
 }
 

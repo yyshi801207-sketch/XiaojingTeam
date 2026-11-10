@@ -284,10 +284,10 @@ describe('provider-routed retry policy', () => {
     })
   })
 
-  it('leaves partial failed chunks on their step without committing a message or tool side effect', async () => {
+  it.each(['TRANSPORT', 'MALFORMED_RESPONSE'])('leaves partial %s chunks on their step without committing a message or tool side effect', async (code) => {
     vi.useFakeTimers()
     const adapter = new ScriptedAdapter([
-      partialToolFailure(new LlmError('stream interrupted', 'TRANSPORT')),
+      partialToolFailure(new LlmError('stream interrupted', code)),
       textResponse('recovered'),
     ])
     ;({ ctx: context } = await harness(adapter))
@@ -305,7 +305,9 @@ describe('provider-routed retry policy', () => {
     const scheduled = waitForRetry(context, agent, 1)
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
-    await scheduled
+    await Promise.race([scheduled, agent.whenIdle().then(() => {
+      throw new Error('Failed model request ended without scheduling a retry')
+    })])
     const idle = waitForIdle(context, agent)
     await vi.advanceTimersByTimeAsync(500)
     await idle

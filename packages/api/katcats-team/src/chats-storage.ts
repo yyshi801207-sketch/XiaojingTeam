@@ -10,12 +10,14 @@ import { defineDomain } from '@deepseek-ai/dsh-storage-domain'
 import { avatarSchema, chatGroupId, mainBotId } from './storage.ts'
 import type { BotId, GroupId } from './types.ts'
 import type { ChatDelivery, ChatDeliveryId, ChatId, ChatInbound, ChatRunId, TeamChat } from './chats-types.ts'
+import { ticketOwnerInput, type GroupTicketId } from './group-tickets.ts'
 
 const botId = z.string().regex(/^[a-z0-9-]+$/).transform(value => brandString<BotId>(value))
 const chatId = z.string().regex(/^[a-z0-9-]+$/).transform(value => brandString<ChatId>(value))
 const sessionId = z.string().min(1).transform(value => brandString<SessionId>(value))
 const messageId = z.string().min(1).transform(value => brandString<MessageId>(value))
 const callId = z.string().min(1).transform(value => brandString<ToolCallId>(value))
+const deliveryId = z.string().min(1).transform(value => brandString<ChatDeliveryId>(value))
 const requestId = z.string().min(1).transform(value => brandString<SessionRequestId>(value))
 const runId = z.string().min(1).transform(value => brandString<ChatRunId>(value))
 const failure = z.object({ code: z.string().min(1), message: z.string().min(1) })
@@ -43,6 +45,13 @@ const contentSchema = z.discriminatedUnion('type', [
 
 /** Durable group parsing preserves fixed Session identities and assigned group directories. */
 export const chatSchema: z.ZodType<TeamChat> = z.object({
+  tickets: z.array(z.object({
+    version: z.literal(1), id: z.string().min(1).transform(value => brandString<GroupTicketId>(value)),
+    ownerId: botId, goal: z.string().trim().min(1), acceptance: z.array(z.string().trim().min(1)),
+    stage: z.string().trim().min(1), nextStep: z.string().trim().min(1),
+    state: z.enum(['open', 'blocked']), blocker: z.string().nullable(),
+    artifacts: z.array(z.string().trim().min(1)), messageIds: z.array(messageId).min(1), revision: z.number().int().positive(),
+  })).optional(),
   id: chatId,
   name: z.string().trim().min(1),
   groupId: z.string().regex(/^[a-z0-9-]+$/).transform(value => brandString<GroupId>(value)),
@@ -59,7 +68,8 @@ export const chatSchema: z.ZodType<TeamChat> = z.object({
   pauseReason: z.string().nullable(),
   run: z.object({ id: runId, generation: z.number().int().positive(), relayCount: z.number().int().nonnegative() }).nullable(),
   error: failure.nullable(),
-}).transform(({ showHandoffRecords, ...chat }) => ({ ...chat,
+}).transform(({ showHandoffRecords, tickets, ...chat }) => ({ ...chat,
+  ...(tickets === undefined ? {} : { tickets }),
   ...(showHandoffRecords === undefined ? {} : { showHandoffRecords }),
   managerId: chat.managerId === undefined ? (chat.memberIds.includes(mainBotId) ? mainBotId : null) : chat.managerId,
 })).superRefine((chat, issue) => {
@@ -75,6 +85,12 @@ export const chatSchema: z.ZodType<TeamChat> = z.object({
   if (new Set(sessions).size !== sessions.length) fail('group Sessions must be distinct')
   if (chat.run !== null && chat.run.generation !== chat.generation) fail('run generation does not match its group')
   if (chat.status === 'stopped' && chat.run !== null) fail('stopped group retains an active run')
+  if (chat.tickets !== undefined) {
+    if (new Set(chat.tickets.map(task => task.id)).size !== chat.tickets.length) fail('duplicate business task identity')
+    const messages = chat.tickets.flatMap(task => task.messageIds)
+    if (new Set(messages).size !== messages.length) fail('one owner message cannot belong to multiple business tasks')
+    if (chat.tickets.some(task => !chat.executors.some(executor => executor.botId === task.ownerId))) fail('business task owner has no group execution identity')
+  }
 })
 
 const userMessageSchema: z.ZodType<UserMessage> = z.object({
@@ -92,10 +108,16 @@ const inboundSchema: z.ZodType<ChatInbound> = z.object({
   userMessage: userMessageSchema,
   recipients: z.array(botId).min(1),
   addressing: z.enum(['explicit', 'broadcast']),
+  collaborationVersion: z.literal(1).optional(),
+  coordinationVersion: z.literal(1).optional(),
   state: z.enum(['accepted', 'published']),
-}).loose()
+}).loose().transform(({ collaborationVersion, coordinationVersion, ...input }) => ({ ...input,
+  ...(coordinationVersion === undefined ? {} : { coordinationVersion }),
+  ...(collaborationVersion === undefined ? {} : { collaborationVersion }) }))
 
 const deliveryBase = z.object({
+  recoveryOf: deliveryId.optional(),
+  takeover: z.object({ version: z.literal(1), botId, state: z.enum(['pending', 'handled', 'stopped']) }).optional(),
   id: z.string().min(1).transform(value => brandString<ChatDeliveryId>(value)),
   chatId, runId,
   generation: z.number().int().positive(),
@@ -138,16 +160,19 @@ const legacyDeliverySchema = deliveryBase.extend({
   ...delivery, source: { kind: 'tool' as const, turn, step, callId: legacyCallId },
 }))
 
-const deliverySchema: z.ZodType<ChatDelivery> = z.union([currentDeliverySchema, legacyDeliverySchema]).superRefine((delivery, issue) => {
-  if ((delivery.state === 'completed') !== (delivery.receipt !== null)) {
-    issue.addIssue({ code: 'custom', message: 'completed delegation requires exactly one receipt' })
-  }
-  if ((delivery.state === 'passed') !== (delivery.pass !== null)) {
-    issue.addIssue({ code: 'custom', message: 'passed delegation requires exactly one pass result' })
-  }
-  if (delivery.relayed && delivery.receipt === null) issue.addIssue({ code: 'custom', message: 'uncompleted delegation cannot be relayed' })
-  if (delivery.receipt !== null && delivery.receipt.sender.botId !== delivery.botId) issue.addIssue({ code: 'custom', message: 'receipt sender does not match its delegation' })
-})
+const deliverySchema: z.ZodType<ChatDelivery> = z.union([currentDeliverySchema, legacyDeliverySchema])
+  .transform(({ recoveryOf, takeover, ...delivery }) => ({ ...delivery,
+    ...(recoveryOf === undefined ? {} : { recoveryOf }), ...(takeover === undefined ? {} : { takeover }) }))
+  .superRefine((delivery, issue) => {
+    if ((delivery.state === 'completed') !== (delivery.receipt !== null)) {
+      issue.addIssue({ code: 'custom', message: 'completed delegation requires exactly one receipt' })
+    }
+    if ((delivery.state === 'passed') !== (delivery.pass !== null)) {
+      issue.addIssue({ code: 'custom', message: 'passed delegation requires exactly one pass result' })
+    }
+    if (delivery.relayed && delivery.receipt === null) issue.addIssue({ code: 'custom', message: 'uncompleted delegation cannot be relayed' })
+    if (delivery.receipt !== null && delivery.receipt.sender.botId !== delivery.botId) issue.addIssue({ code: 'custom', message: 'receipt sender does not match its delegation' })
+  })
 
 /** A complete create/settings target remains pending until Workspace and Session titles are durable. */
 export interface PendingChat {
@@ -192,6 +217,12 @@ export const chatsStateSchema: z.ZodType<ChatsState> = z.object({
   if (new Set(messageIds).size !== messageIds.length) fail('duplicate delegation message identity')
   const requests = state.inbounds.map(inbound => JSON.stringify([inbound.chatId, inbound.requestId]))
   if (new Set(requests).size !== requests.length) fail('duplicate group request identity')
+  for (const chat of state.chats) {
+    if (chat.tickets?.some(task => task.messageIds.some(id => !state.inbounds
+      .some(input => input.chatId === chat.id && input.userMessage.id === id)))) {
+      fail('business task requires its own group owner messages')
+    }
+  }
   for (const inbound of state.inbounds) {
     const chat = state.chats.find(chat => chat.id === inbound.chatId)
     if (chat === undefined || inbound.generation > chat.generation
@@ -203,10 +234,23 @@ export const chatsStateSchema: z.ZodType<ChatsState> = z.object({
     if (source.kind === 'user' && 'rpcId' in source && source.rpcId !== inbound.requestId) fail('group input request does not match its message')
   }
   const deliveries = state.deliveries.map(delivery => JSON.stringify([
-    delivery.chatId, delivery.runId, delivery.generation, delivery.sourceSessionId, delivery.botId, delivery.source,
+    delivery.chatId, delivery.runId, delivery.generation, delivery.sourceSessionId,
+    delivery.botId, delivery.source, delivery.recoveryOf ?? null,
   ]))
   if (new Set(deliveries).size !== deliveries.length) fail('duplicate member delivery source')
   for (const delivery of state.deliveries) {
+    const recovery = delivery.recoveryOf === undefined ? undefined : state.deliveries.find(item => item.id === delivery.recoveryOf)
+    if (delivery.recoveryOf !== undefined && (recovery === undefined || recovery.chatId !== delivery.chatId
+      || recovery.runId !== delivery.runId || recovery.generation !== delivery.generation || recovery.state !== 'failed'
+      || recovery.takeover?.botId !== delivery.botId || delivery.source.kind !== 'owner-message'
+      || recovery.recoveryOf !== undefined)) fail('responsible-member follow-up requires a confirmed failed task in the same run')
+    if (recovery !== undefined && delivery.source.kind === 'owner-message'
+      && ticketOwnerInput(state.inbounds, state.deliveries, recovery)?.userMessage.id !== delivery.source.messageId) {
+      fail('responsible-member follow-up must preserve its original owner message')
+    }
+    if (delivery.takeover !== undefined && (delivery.state !== 'failed' || delivery.recoveryOf !== undefined)) {
+      fail('only confirmed ordinary failures can request takeover')
+    }
     const chat = state.chats.find(chat => chat.id === delivery.chatId)
     if (chat === undefined || (chat.rootSessionId !== delivery.sourceSessionId
       && (delivery.source.kind !== 'tool' || !chat.executors.some(executor => executor.sessionId === delivery.sourceSessionId)))
@@ -217,7 +261,7 @@ export const chatsStateSchema: z.ZodType<ChatsState> = z.object({
       const source = delivery.source
       if (!state.inbounds.some(inbound => inbound.chatId === delivery.chatId && inbound.runId === delivery.runId
         && inbound.generation === delivery.generation && inbound.userMessage.id === source.messageId
-        && inbound.recipients.includes(delivery.botId))) fail('member delivery requires its accepted group input')
+        && (inbound.recipients.includes(delivery.botId) || recovery !== undefined))) fail('member delivery requires its accepted group input')
     } else if (delivery.source.kind === 'member-reply') {
       const source = delivery.source
       if (!state.deliveries.some(parent => parent.id !== delivery.id && parent.chatId === delivery.chatId
@@ -251,9 +295,17 @@ export const legacyChatsDomainSpec = defineDomain({
   tables: {},
 })
 
-/** Adjacent product generation supports shared custom groups without overwriting the v1 source. */
-export const chatsDomainSpec = defineDomain({
+/** Read-only predecessor with custom group assignments; import never writes this generation. */
+export const previousChatsDomainSpec = defineDomain({
   name: 'katcats_chats_v2', version: 2,
+  global: { schema: chatsStateSchema,
+    initial: { revision: 0, chats: [], inbounds: [], deliveries: [], pendingChat: null } satisfies ChatsState },
+  tables: {},
+})
+
+/** Business tasks and durable failure follow-ups are written separately from earlier generations. */
+export const chatsDomainSpec = defineDomain({
+  name: 'katcats_chats_v3', version: 3,
   global: { schema: chatsStateSchema,
     initial: { revision: 0, chats: [], inbounds: [], deliveries: [], pendingChat: null } satisfies ChatsState },
   tables: {},

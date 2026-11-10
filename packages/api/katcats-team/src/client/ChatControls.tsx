@@ -7,12 +7,17 @@ import type { ChatControlRequest } from '../chats-types.ts'
 import type { ChatView } from './chat-model.ts'
 import type { TeamView } from './model.ts'
 import type { TeamKey } from './locales.ts'
+import type { GroupQuestion } from './chat-questions.ts'
 import { GroupWorkerStatus, type GroupWorkerStatusItem } from './GroupWorkerStatus.tsx'
 import css from './team.module.css'
 
 /** Commands bind to the group and run captured by the clicked control. */
 export interface ChatControlsInjected {
-  readonly hooks: { readonly chats: ObservableSnapshot<ChatView>; readonly directory: ObservableSnapshot<TeamView> }
+  readonly hooks: {
+    readonly chats: ObservableSnapshot<ChatView>
+    readonly directory: ObservableSnapshot<TeamView>
+    readonly groupQuestions: ObservableSnapshot<readonly GroupQuestion[]>
+  }
   readonly control: (action: 'pause' | 'resume' | 'stop', request: ChatControlRequest) => Promise<void>
 }
 
@@ -35,6 +40,9 @@ function failureKey(code: string): TeamKey {
     case 'KATCATS_CHAT_OUTCOME_UNKNOWN': return 'chat.pauseUnknown'
     case 'KATCATS_CHAT_NO_REPLY': return 'chat.errorNoReply'
     case 'KATCATS_CHAT_DURABILITY_UNCONFIRMED': return 'chat.errorDurability'
+    case 'KATCATS_CHAT_REVIEW_INCOMPLETE': return 'chat.errorReviewIncomplete'
+    case 'KATCATS_CHAT_REVIEW_UNCONFIRMED': return 'chat.errorReviewUnconfirmed'
+    case 'KATCATS_CHAT_FOLLOWUP_INCOMPLETE': return 'chat.errorFollowupIncomplete'
     case 'member-removed': return 'chat.errorRemoved'
     case 'stopped': return 'chat.errorStopped'
     default: return 'chat.errorGeneric'
@@ -63,11 +71,12 @@ function pauseKey(reason: string | null, errorCode: string | undefined): TeamKey
  * @param props - Scoped root Session, live group state and narrow commands.
  * @returns Group-root controls with each explanation once and original diagnostics; nothing for private conversations.
  */
-export function ChatControls({ sessionId, useChats, useDirectory, useSessionStatus, control, t }: ChatControlsProps) {
+export function ChatControls({ sessionId, useChats, useDirectory, useSessionStatus, useGroupQuestions, control, t }: ChatControlsProps) {
   const view = useChats(value => value)
   const chat = view.snapshot?.chats.find(item => item.rootSessionId === sessionId)
   const bots = useDirectory(value => value.phase === 'ready' ? value.snapshot?.bots : undefined)
   const statuses = useSessionStatus(value => value)
+  const questions = useGroupQuestions(value => value)
   const [pending, setPending] = useState<{
     readonly action: 'pause' | 'resume' | 'stop'
     readonly sequence: number
@@ -82,11 +91,13 @@ export function ChatControls({ sessionId, useChats, useDirectory, useSessionStat
       const executor = chat.executors.find(member => member.botId === id)
       if (bot === undefined || executor === undefined) return []
       const pending = statuses.get(executor.sessionId)?.pendingInteraction
-      const phase: GroupWorkerStatusItem['phase'] = pending?.kind === 'approval' && pending.answerable ? 'approval' : 'working'
+      const phase: GroupWorkerStatusItem['phase'] = pending?.kind === 'approval' && pending.answerable ? 'approval'
+        : questions.some(item => item.pending.sessionId === executor.sessionId && item.waiting) ? 'question' : 'working'
       return [{ bot, phase }]
     })
-  }, [view.phase, chat, bots, activity?.runningBotIds, statuses])
+  }, [view.phase, chat, bots, activity?.runningBotIds, statuses, questions])
   if (chat === undefined) return null
+  const malformedRun = chat.status === 'paused' && chat.error?.code === 'KATCATS_CHAT_MEMBER_MALFORMED_RESPONSE'
   const pauseMessageKey = pauseKey(chat.pauseReason, chat.error?.code)
   const specificUnknown = pauseMessageKey === 'chat.pauseUnknown'
     && chat.error !== null && memberFailureKeys.has(chat.error.code)
@@ -116,13 +127,18 @@ export function ChatControls({ sessionId, useChats, useDirectory, useSessionStat
         </>}
     </div>
     <div className={css.chatControlActions}>
-      {chat.status === 'active'
-        ? <Button size="sm" variant="outline" disabled={disabled} onClick={() => { invoke('pause') }}>{t('chat.pause')}</Button>
-        : <Button size="sm" variant="outline" disabled={disabled} onClick={() => { invoke('resume') }}>
-          {t(chat.status === 'stopped' ? 'chat.newRun' : 'chat.resume')}</Button>}
-      <Button size="sm" variant="outline" disabled={stopDisabled}
-        onClick={() => { invoke('stop') }}>{t('chat.stop')}</Button>
+      {malformedRun
+        ? <Button size="sm" variant="outline" disabled={stopDisabled} onClick={() => { invoke('stop') }}>{t('chat.endFailedRun')}</Button>
+        : <>
+          {chat.status === 'active'
+            ? <Button size="sm" variant="outline" disabled={disabled} onClick={() => { invoke('pause') }}>{t('chat.pause')}</Button>
+            : <Button size="sm" variant="outline" disabled={disabled} onClick={() => { invoke('resume') }}>
+              {t(chat.status === 'stopped' ? 'chat.newRun' : 'chat.resume')}</Button>}
+          <Button size="sm" variant="outline" disabled={stopDisabled}
+            onClick={() => { invoke('stop') }}>{t('chat.stop')}</Button>
+        </>}
     </div>
+    {chat.status === 'stopped' && <p className={css.hint}>{t('chat.stoppedHint')}</p>}
     {chat.status === 'paused' && !specificUnknown && (chat.error === null || pauseMessageKey !== failureKey(chat.error.code))
       && <p className={css.hint}>{t(pauseMessageKey)}</p>}
     {view.phase === 'failed' && <p className={css.hint} role="alert">{t('chat.loadFailed')}</p>}

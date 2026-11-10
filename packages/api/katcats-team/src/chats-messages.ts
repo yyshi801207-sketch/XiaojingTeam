@@ -3,6 +3,14 @@ import type { MessageId } from '@deepseek-ai/dsh-llm'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ChatDeliveryId, ChatId, ChatRunId, ChatSender } from './chats-types.ts'
 
+/** Public history included in one member input; archived entries remain available through history lookup. */
+export interface GroupContextManifest {
+  readonly schemaVersion: 1
+  readonly rootSessionId: SessionId
+  readonly deliveredIds: readonly string[]
+  readonly archivedIds: readonly string[]
+}
+
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
     /** One actual member's persisted public assistant text; a segment does not imply task completion. */
@@ -28,6 +36,23 @@ declare module '@deepseek-ai/dsh-llm' {
       readonly generation: number
       readonly deliveryId: ChatDeliveryId
       readonly target: ChatSender
+      /** Absent on historical full-context inputs; present entries describe only this input's history selection. */
+      readonly context?: GroupContextManifest
+      /** Present when this delivery uses the current selective collaboration policy. */
+      readonly collaborationVersion?: 1
+      /** Review target and the exact candidate supplied by the responsible member, when this is an independent review. */
+      readonly reviewRequest?: {
+        readonly parentDeliveryId: ChatDeliveryId
+        readonly candidate: import('./group-review-types.ts').GroupReviewCandidate
+      }
+    }
+    /** One correction requested before the responsible member can claim a reviewed delivery. */
+    'katcats-group-review-notice': {
+      readonly kind: 'katcats-group-review-notice'
+      readonly form: 'notice'
+      readonly summary: string
+      readonly chatId: ChatId
+      readonly deliveryId: ChatDeliveryId
     }
     /** Explicit owner continuation; queuing a receipt alone never wakes the driver. */
     'katcats-group-control': {

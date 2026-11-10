@@ -1,12 +1,11 @@
 /**
- * Plugin artwork on a 36×36 canvas. Configuration glyphs use adaptive gray
- * Katcat silhouettes and transparent counters; the default retains its gradient.
+ * Plugin artwork on a 36×36 canvas. Configuration glyphs use adaptive gray;
+ * the default retains its gradient.
  */
 import { useId } from 'react'
 import type { IconProps } from './icons/props.ts'
 
 const ARTWORK_INK = 'light-dark(#62666f,#b9bdc6)'
-const CAT_HEAD_PATH = 'M10 28C9 22 9 13 12 10C14 9 21 13 24 16C29 14 35 14 40 16C44 13 51 9 53 10C56 13 55 22 54 28C59 35 59 42 55 48C50 56 40 59 32 59C22 59 13 56 8 49C3 42 4 34 10 28Z'
 
 /**
  * A per-instance SVG def id prefix: the artwork repeats across cards and rows,
@@ -14,79 +13,46 @@ const CAT_HEAD_PATH = 'M10 28C9 22 9 13 12 10C14 9 21 13 24 16C29 14 35 14 40 16
  */
 const useArtworkId = (): string => `dsh_plugin_art_${useId().replaceAll(':', '')}`
 
-/** Terminal window with a transparent cat and prompt, also used in sidebar guide entries. */
-export const PluginArtworkTerminal = ({ size = 36, className }: IconProps) => {
-  const uid = useArtworkId()
-  return (
-    <svg width={size} height={size} className={className} color={ARTWORK_INK} aria-hidden="true" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <mask id={`${uid}mask`} maskUnits="userSpaceOnUse" x="0" y="0" width="36" height="36">
-          <rect width="36" height="36" fill="white" />
-          <g transform="translate(8.4 12.3) scale(0.21666666666666665) translate(-4 -10)">
-            <path d={CAT_HEAD_PATH} fill="black" />
-          </g>
-          <path d="M23 13.8L26.1 17L23 20.2M26.8 22H28.2" stroke="black" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-        </mask>
-      </defs>
-      <rect x="4.8" y="8.2" width="26.4" height="20" rx="5.2" fill="currentColor" mask={`url(#${uid}mask)`} />
-    </svg>
-  )
-}
+/** Terminal window and prompt, also used in sidebar guide entries. */
+export const PluginArtworkTerminal = ({ size = 36, className }: IconProps) => (
+  <svg width={size} height={size} className={className} color={ARTWORK_INK} aria-hidden="true" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="5.2" y="7.7" width="25.6" height="20.6" rx="4.2" strokeWidth="2.2" />
+    <path d="M5.8 13.4H30.2" strokeWidth="2" />
+    <circle cx="10" cy="10.6" r="1" fill="currentColor" stroke="none" />
+    <path d="M10.7 18.1L14.5 21.7L10.7 25.3M18 25.3H24" strokeWidth="2.3" />
+  </svg>
+)
 
-/** Two dispatch arrows surround a standalone cat silhouette without a circular backing. */
+/** Two dispatch arrows surround the active step in the agent loop. */
 export const PluginArtworkLoop = ({ size = 36, className }: IconProps) => (
   <svg width={size} height={size} className={className} color={ARTWORK_INK} aria-hidden="true" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" strokeLinecap="round" strokeLinejoin="round">
     <g stroke="currentColor" strokeWidth="2.4">
       <path d="M7.2 13.7A11.3 11.3 0 0 1 28 11.3M23.8 11.3H28V7.1" />
       <path d="M28.8 22.3A11.3 11.3 0 0 1 8 24.7M12.2 24.7H8V28.9" />
     </g>
-    <g transform="translate(12.75 13.2) scale(0.19444444444444445) translate(-4 -10)">
-      <path d={CAT_HEAD_PATH} fill="currentColor" />
-    </g>
+    <circle cx="18" cy="18" r="4.8" stroke="currentColor" strokeWidth="2.1" />
+    <circle cx="18" cy="18" r="1.7" fill="currentColor" />
   </svg>
 )
 
-/** A cat parent delegates to two task nodes; also supplies missing bundle-row artwork. */
-export const PluginArtworkSubagent = ({ size = 36, className }: IconProps) => {
-  const uid = useArtworkId()
-  return (
-    <svg width={size} height={size} className={className} color={ARTWORK_INK} aria-hidden="true" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <mask id={`${uid}mask`} maskUnits="userSpaceOnUse" x="0" y="0" width="36" height="36">
-          <rect width="36" height="36" fill="white" />
-          <g transform="translate(14 6.9) scale(0.14814814814814814) translate(-4 -10)">
-            <path d={CAT_HEAD_PATH} fill="black" />
-          </g>
-        </mask>
-      </defs>
-      <g mask={`url(#${uid}mask)`}>
-        <path d="M18 16.1V20M10.4 24.1V20H25.6V24.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        <rect x="6.2" y="24" width="8.4" height="6.4" rx="2.1" fill="currentColor" />
-        <rect x="21.4" y="24" width="8.4" height="6.4" rx="2.1" fill="currentColor" />
-        <rect x="12" y="4.7" width="12" height="11.6" rx="3.6" fill="currentColor" />
-      </g>
-    </svg>
-  )
-}
+/** A parent agent delegates to two task nodes; also supplies missing bundle-row artwork. */
+export const PluginArtworkSubagent = ({ size = 36, className }: IconProps) => (
+  <svg width={size} height={size} className={className} color={ARTWORK_INK} aria-hidden="true" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M18 14.1V19.7M10.7 23.6V19.7H25.3V23.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <rect x="13.2" y="5.6" width="9.6" height="8.5" rx="2.8" fill="currentColor" />
+    <rect x="6" y="23.6" width="9.4" height="7" rx="2.4" fill="currentColor" />
+    <rect x="20.6" y="23.6" width="9.4" height="7" rx="2.4" fill="currentColor" />
+  </svg>
+)
 
-/** A search lens with a transparent cat silhouette. */
-export const PluginArtworkSearch = ({ size = 36, className }: IconProps) => {
-  const uid = useArtworkId()
-  return (
-    <svg width={size} height={size} className={className} color={ARTWORK_INK} aria-hidden="true" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <mask id={`${uid}mask`} maskUnits="userSpaceOnUse" x="0" y="0" width="36" height="36">
-          <rect width="36" height="36" fill="white" />
-          <g transform="translate(9.7 9.7) scale(0.21851851851851853) translate(-4 -10)">
-            <path d={CAT_HEAD_PATH} fill="black" />
-          </g>
-        </mask>
-      </defs>
-      <circle cx="15.6" cy="15.4" r="9.4" fill="currentColor" mask={`url(#${uid}mask)`} />
-      <path d="M22.8 22.6L29 28.8" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" />
-    </svg>
-  )
-}
+/** Search lens over two result lines. */
+export const PluginArtworkSearch = ({ size = 36, className }: IconProps) => (
+  <svg width={size} height={size} className={className} color={ARTWORK_INK} aria-hidden="true" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeLinecap="round">
+    <circle cx="15.5" cy="15.3" r="9.5" strokeWidth="2.7" />
+    <path d="M11.4 13.5H19M11.4 17.4H16.8" strokeWidth="1.8" />
+    <path d="M22.6 22.4L29 28.8" strokeWidth="3.2" />
+  </svg>
+)
 
 /** Default plugin artwork for plugins without one of their own (connector blocks and a node). */
 export const PluginArtworkDefault = ({ size = 36, className }: IconProps) => {

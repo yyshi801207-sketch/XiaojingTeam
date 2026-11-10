@@ -29,6 +29,8 @@ The Web GUI lets users switch the model and reasoning effort for an existing ses
 
 DeepSeek account and API-key routes appear as separate provider groups, each exposing the same configured model catalog.
 
+`controlsEnabled` defaults to `true`. Set it to `false` to keep the shared `modelDirectories` service available while omitting both the `/model` command and composer selector. The Host publishes this option before browser plugins activate. Katcats uses this setting because its Bot controls own model selection.
+
 When no model is selected or the saved selection is absent from the catalog, the composer shows “Select model” in regular weight and hides the reasoning effort caption. Clicking it opens the model list directly; Escape and Shift+Tab close it. An empty catalog displays “No models available.”
 
 Mount this plugin alongside `ui-conversation` and the commands package; the composer then shows the model seat next to the pending indicator, and `/model` opens the same directory as a popup. While the seat's menu is open, `↑`/`↓` move focus through root and effort rows, or move the model-list highlight without leaving search. Enter and Tab settle the highlighted model or focused row; Escape and `Shift+Tab` leave a drilled pane first and otherwise close back to the trigger. Drilling focuses model search when shown, otherwise the current model or effort row, and going back lands on the cell that opened the pane left. The composer shows the catalog name while the selected model is available. Removing a model or provider, including account sign-out, preserves the stored provider, model, and reasoning effort without displaying their IDs. Restoring the catalog entry restores its name and effort caption.
@@ -67,6 +69,8 @@ When another writer owns the Session, model-selection failures tell the user to 
 ## Understand the implementation
 
 Menus use the shared `MenuSurface` material, including the macOS backing for background blur; custom content follows the [menu rules](../../../docs/web-styling.md#component-rules).
+
+The service also exposes `catalogState`, `loadCatalog()` and `refreshCatalog()` for credential-free choices without opening a Session. These readers share the selectors' catalog and invalidation lifecycle; they do not select models or save application defaults. Disposal prevents pending responses from publishing.
 
 <details>
 <summary>Implementation internals — click to expand</summary>

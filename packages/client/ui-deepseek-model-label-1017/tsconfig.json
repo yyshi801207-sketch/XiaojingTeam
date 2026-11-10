@@ -15,7 +15,7 @@
       "path": "../locale/tsconfig.client.json"
     },
     {
-      "path": "../ui-model-selection"
+      "path": "../ui-model-selection/tsconfig.client.json"
     },
     {
       "path": "../ui-renderer"

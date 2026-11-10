@@ -5,12 +5,14 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { PendingApproval } from '../../../client/ui-approval/src/client/contract/slots.ts'
+import { createWaterfallRequest, PendingQuestion } from '../../../client/ui-user-questions/src/client/contract/slots.ts'
 import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { BotId, TeamBot } from '../src/types.ts'
 import type { TeamView } from '../src/client/model.ts'
 import { GroupWorkerStatus, type GroupWorkerStatusItem } from '../src/client/GroupWorkerStatus.tsx'
 import { ChatControls, type ChatControlsProps } from '../src/client/ChatControls.tsx'
+import { createGroupQuestions } from '../src/client/chat-questions.ts'
 import { en, zh } from '../src/client/locales.ts'
 import { presentationDirectory } from './group-presentation-fixture.client.ts'
 
@@ -31,6 +33,47 @@ afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstub
 const visible = (container: HTMLElement) => container.querySelector('[data-katcats-working-member]')?.getAttribute('data-katcats-working-member')
 
 describe('compact live group status', () => {
+  it.each([zh, en])('shows the original executor waiting for an answer and clears the wait after settlement', async (dictionary) => {
+    const executor = 'editorial-writer' as SessionId
+    const group = presentationDirectory({ managerId: writer.id, executors: [{ botId: writer.id, sessionId: executor }] })
+    const saved = group.source.getSnapshot().snapshot!
+    group.source.set({ phase: 'ready', snapshot: { ...saved,
+      activities: [{ chatId: group.chat.id, runningBotIds: [writer.id], processing: true, pendingControl: null }] } })
+    const directory = createSnapshotStore<TeamView>({ phase: 'ready', catalog: null, snapshot: {
+      revision: 1, mainBotId: 'main' as BotId, bots: [writer], groups: [], modelCapabilities: { override: true, followGlobal: false },
+    } })
+    const question = new PendingQuestion(executor, [{ id: 'site', question: 'What kind of website?' }])
+    const request = createWaterfallRequest(undefined, undefined, (channel) => { question.detachWaterfall(channel) })
+    question.attachWaterfall(request.channel)
+    const statuses = createSnapshotStore<SessionStatusSnapshot>(new Map())
+    const questions = createGroupQuestions(statuses, group.source, createSnapshotStore('connected' as const), () => {})
+    const props = { sessionId: group.chat.rootSessionId, useChats: group.useGroupDirectory,
+      useDirectory: bindSnapshotSelector(directory), useSessionStatus: bindSnapshotSelector(statuses),
+      useGroupQuestions: bindSnapshotSelector(questions.source),
+      control: vi.fn(async () => {}), t: makeTranslate(dictionary) } as ChatControlsProps
+    const view = render(<ChatControls {...props} />)
+    expect(view.container.textContent).not.toContain(dictionary['chat.phaseQuestion'])
+    act(() => { statuses.set(new Map([[executor, {
+      running: true, pendingInteraction: question, completionUnread: false,
+    }]])) })
+    expect(screen.getByRole('group').getAttribute('aria-label')).toBe(props.t('chat.memberStatus', {
+      name: writer.name, phase: dictionary['chat.phaseQuestion'],
+    }))
+    expect(view.container.textContent).not.toContain(dictionary['chat.phaseWorking'])
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: dictionary['chat.stop'] }).disabled).toBe(false)
+    act(() => { statuses.set(new Map()) })
+    expect(view.container.textContent).toContain(dictionary['chat.phaseQuestion'])
+    await act(async () => {
+      await question.answer({ answers: [{ id: 'site', selected: [], custom: 'Company website' }] })
+      await request.result
+    })
+    expect(screen.getByRole('group').getAttribute('aria-label')).toBe(props.t('chat.memberStatus', {
+      name: writer.name, phase: dictionary['chat.phaseWorking'],
+    }))
+    question.close()
+    questions.dispose()
+  })
+
   it('rotates actual members at four seconds while a single member remains fixed and never uses a live announcement', () => {
     vi.useFakeTimers()
     const view = render(<GroupWorkerStatus members={members} managerId={writer.id} t={t} />)
@@ -147,6 +190,7 @@ describe('compact live group status', () => {
     }]]))
     const props = { sessionId: group.chat.rootSessionId, useChats: group.useGroupDirectory,
       useDirectory: bindSnapshotSelector(directory), useSessionStatus: bindSnapshotSelector(statuses),
+      useGroupQuestions: bindSnapshotSelector(createSnapshotStore([])),
       control: vi.fn(async () => {}), t } as ChatControlsProps
     const view = render(<ChatControls {...props} />)
     expect(screen.queryByText(zh['chat.active'])).toBeNull()

@@ -14,6 +14,11 @@ import { textResponse, toolCallResponse } from '../../../core/agent-loop/tests/m
 const publicText = 'I will inspect the draft first, then prepare the final document.'
 const privateReasoning = 'PRIVATE_REASONING_SENTINEL'
 
+function routinePlan(id = 'plan-document-review'): StreamChunk[] {
+  return toolCallResponse(id, 'plan_group_work', { own_task: 'Inspect the synthetic draft without changing data.',
+    assignments: [], review: { reason: 'none' } })
+}
+
 function response(callId = 'review-one', text = publicText): StreamChunk[] {
   const chunks = toolCallResponse(callId, 'progress_review', { document: 'draft.md' }, text)
   return [
@@ -78,7 +83,7 @@ async function fixture(script: Parameters<typeof memoryFixture>[0]) {
 
 describe('Public member speech before real tool approval', () => {
   it('shows the actual public text while permission approval is still unanswered, then keeps a separate final reply', async () => {
-    const h = await fixture([response(), textResponse('The reviewed final document is ready.')])
+    const h = await fixture([routinePlan(), response(), textResponse('The reviewed final document is ready.')])
     try {
       await send(h.ctx, h.chat)
       await h.shown.promise
@@ -124,7 +129,7 @@ describe('Public member speech before real tool approval', () => {
   })
 
   it('keeps already spoken text after rejection and cold replay without re-executing or duplicating the final reply', async () => {
-    const h = await fixture([response(), textResponse('The owner declined the review; no document was changed.')])
+    const h = await fixture([routinePlan(), response(), textResponse('The owner declined the review; no document was changed.')])
     await send(h.ctx, h.chat)
     await h.shown.promise
     expect(await messages(h.ctx, h.chat)).toHaveLength(1)
@@ -140,7 +145,7 @@ describe('Public member speech before real tool approval', () => {
   })
 
   it('retains the public reply after Stop during approval, with no fabricated final result or cold redispatch', async () => {
-    const h = await fixture([response()])
+    const h = await fixture([routinePlan(), response()])
     try {
       await send(h.ctx, h.chat)
       await h.shown.promise
@@ -159,7 +164,7 @@ describe('Public member speech before real tool approval', () => {
   })
 
   it('recovers only exact group tool-bearing messages and excludes private, reasoning-only, and final output', async () => {
-    const h = await fixture([response(), textResponse('Final public result.')])
+    const h = await fixture([routinePlan(), response(), textResponse('Final public result.')])
     await send(h.ctx, h.chat)
     await h.shown.promise
     h.answer.resolve('allowed-once')
@@ -179,7 +184,7 @@ describe('Public member speech before real tool approval', () => {
   })
 
   it('does not dispatch a tool when the early public reply cannot reach a confirmed group flush', async () => {
-    const h = await fixture([response(), textResponse('The review was not started because its public update could not be saved.')])
+    const h = await fixture([routinePlan(), response(), textResponse('The review was not started because its public update could not be saved.')])
     const remove = h.ctx.on('session/flush', (session) => {
       if (session.id === h.chat.rootSessionId && session.snapshotEvents().some(event =>
         event.type === 'user/message' && event.data.source.kind === 'katcats-group-relay')) {
@@ -207,7 +212,7 @@ describe('Public member speech before real tool approval', () => {
     const second = toolCallResponse('review-two', 'progress_review', { document: 'second.md' })
       .filter(chunk => chunk.type !== 'usage' && chunk.type !== 'finish')
       .map(chunk => 'index' in chunk ? { ...chunk, index: chunk.index + 3 } : chunk)
-    const h = await fixture([[...chunks.filter(chunk => chunk.type !== 'finish'), ...second,
+    const h = await fixture([routinePlan(), [...chunks.filter(chunk => chunk.type !== 'finish'), ...second,
       { type: 'finish', reason: { kind: 'tool-calls' } }], textResponse('Both selected drafts were reviewed.')])
     try {
       await send(h.ctx, h.chat)
@@ -244,7 +249,8 @@ describe('Public member speech before real tool approval', () => {
 
   it('keeps successive task identities separate instead of replaying an earlier acknowledgement', async () => {
     const secondText = 'I will compare the revised draft with the first result.'
-    const h = await fixture([response(), textResponse('First result.'), response('second-task', secondText), textResponse('Second result.')])
+    const h = await fixture([routinePlan(), response(), textResponse('First result.'),
+      routinePlan('plan-second-review'), response('second-task', secondText), textResponse('Second result.')])
     await send(h.ctx, h.chat)
     await h.shown.promise
     h.answer.resolve('allowed-once')
@@ -262,7 +268,7 @@ describe('Public member speech before real tool approval', () => {
   })
 
   it('does not invent an acknowledgement when the model emits no public text before approval', async () => {
-    const h = await fixture([toolCallResponse('silent-tool', 'progress_review', { document: 'draft.md' }), textResponse('The actual final result.')])
+    const h = await fixture([routinePlan(), toolCallResponse('silent-tool', 'progress_review', { document: 'draft.md' }), textResponse('The actual final result.')])
     try {
       await send(h.ctx, h.chat)
       await h.shown.promise

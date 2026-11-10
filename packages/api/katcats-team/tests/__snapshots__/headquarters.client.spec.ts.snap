@@ -1,0 +1,131 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`global headquarters > binds the central office by main identity, preserving independent shared-member states 1`] = `
+{
+  "groups": [
+    {
+      "chat": {
+        "error": null,
+        "executors": [
+          {
+            "botId": "shared",
+            "sessionId": "executor-first",
+          },
+        ],
+        "generation": 1,
+        "groupId": "groups",
+        "id": "first",
+        "managerId": "shared",
+        "memberIds": [
+          "shared",
+        ],
+        "memberRoles": [],
+        "name": "first",
+        "pauseReason": null,
+        "relayLimit": 6,
+        "rootSessionId": "root-first",
+        "run": null,
+        "status": "active",
+        "workDir": "/synthetic/group",
+      },
+      "progress": {
+        "completed": 0,
+        "percent": null,
+        "queued": 0,
+        "running": 0,
+        "total": 0,
+        "unresolved": 0,
+      },
+      "projection": {
+        "members": [
+          {
+            "avatar": {
+              "color": "#10B8A6",
+              "shape": "classic",
+            },
+            "current": true,
+            "id": "shared",
+            "name": "小兢会计",
+            "phase": "started",
+            "role": "Synthetic role",
+          },
+        ],
+        "replies": [],
+        "tasks": [],
+        "timeline": [],
+        "transitions": [],
+      },
+    },
+    {
+      "chat": {
+        "error": null,
+        "executors": [
+          {
+            "botId": "shared",
+            "sessionId": "executor-second",
+          },
+        ],
+        "generation": 1,
+        "groupId": "groups",
+        "id": "second",
+        "managerId": null,
+        "memberIds": [
+          "shared",
+        ],
+        "memberRoles": [],
+        "name": "second",
+        "pauseReason": null,
+        "relayLimit": 6,
+        "rootSessionId": "root-second",
+        "run": null,
+        "status": "active",
+        "workDir": "/synthetic/group",
+      },
+      "progress": {
+        "completed": 0,
+        "percent": null,
+        "queued": 0,
+        "running": 0,
+        "total": 0,
+        "unresolved": 0,
+      },
+      "projection": {
+        "members": [
+          {
+            "avatar": {
+              "color": "#10B8A6",
+              "shape": "classic",
+            },
+            "current": true,
+            "id": "shared",
+            "name": "小兢会计",
+            "phase": "idle",
+            "role": "Synthetic role",
+          },
+        ],
+        "replies": [],
+        "tasks": [],
+        "timeline": [],
+        "transitions": [],
+      },
+    },
+  ],
+  "independent": [],
+  "main": {
+    "avatar": {
+      "color": "#10B8A6",
+      "shape": "classic",
+    },
+    "groupId": null,
+    "id": "main",
+    "kind": "main",
+    "model": {
+      "kind": "follow-global",
+    },
+    "name": "Renamed main",
+    "role": "Synthetic role",
+    "sessionId": "private-main",
+    "workDir": "/synthetic",
+  },
+}
+`;

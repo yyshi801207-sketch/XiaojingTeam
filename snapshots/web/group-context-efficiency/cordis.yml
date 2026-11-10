@@ -1,0 +1,52 @@
+# The shipped Web profile owns startup and public group RPCs. This scenario
+# replaces network providers with recorded model output and confines all state.
+- id: llm-deepseek
+  disabled: true
+- id: llm-deepseek-account
+  disabled: true
+- id: plugin-package-inventory-deepseek
+  disabled: true
+- id: session-title-llm
+  disabled: true
+- id: session-log-deepseek
+  disabled: true
+- id: agent-instructions
+  disabled: true
+- id: agent-default-model
+  config:
+    provider: deepseek-official
+    model: deepseek-flash
+- id: session-persistence-jsonl
+  config:
+    root: !!js dshHomePath('sessions')
+    compression: none
+- id: katcats-team
+  disabled: false
+  config:
+    workspaceRoot: !!js process.env.XIAOJING_OFFICE_WORKSPACE_ROOT
+- id: katcats-chats
+  disabled: false
+  config:
+    workspaceRoot: !!js process.env.XIAOJING_OFFICE_WORKSPACE_ROOT
+    initialHistoryMessages: 20
+- id: katcats-memory
+  disabled: false
+# No business tools are required by this history-only protocol scenario.
+# Root-registered group tools still execute through the normal Agent loop.
+- id: preset-standard
+  config:
+    id: standard
+    order: 1
+    plugins: []
+- insert:
+    - id: llm-replay
+      name: '@deepseek-ai/dsh-llm-replay'
+      config:
+        file: !!js process.env.DSH_SNAPSHOT_FILE
+        providers:
+          - id: deepseek-official
+            name: Recorded group scenario
+            models:
+              - id: deepseek-flash
+                contextWindow: 128000
+                systemPromptUpdate: in-history

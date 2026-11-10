@@ -5,9 +5,9 @@
   "nsisGuid": "c8462347-245f-49dd-8195-e1174bb7e3ef",
   "installDirectoryName": "XiaojingAccountingTeam-desktop",
   "executableName": "XiaojingAccountingTeam",
-  "productName": "小兢会计团队版",
+  "productName": "小兢Bot",
   "installScope": "currentUser",
-  "shortcutName": "小兢会计团队版",
+  "shortcutName": "小兢Bot",
   "userDataSegments": [
     "XiaojingAccountingTeam-desktop"
   ]

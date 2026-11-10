@@ -17,8 +17,9 @@ import {
 import { ModelsSection } from '../src/client/ModelsSection.tsx'
 import { DeepSeekOnboardingDialog } from '../src/client/DeepSeekOnboardingDialog.tsx'
 import { WelcomeNotice } from '../src/client/WelcomeNotice.tsx'
+import { ChatGptAccount } from '../src/client/ChatGptAccount.tsx'
 import type { IndexInjection } from '@deepseek-ai/dsh-host-webserver'
-import * as hostPlugin from '../src/index.ts'
+import * as hostPlugin from '../src/onboarding-bootstrap.ts'
 import { ONBOARDING_CONFIG_GLOBAL } from '../src/onboarding-config.ts'
 
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs() })
@@ -40,6 +41,8 @@ async function bench(mock = RemoteMock.create().load(remoteDefaultResponses), se
       set: vi.fn(),
       unset: vi.fn(),
     },
+    authorization: {},
+    modelVerification: {},
     llm: {
       listProviders: vi.fn(() => Promise.resolve({ ok: true, value: [] })),
       listConfigurableProviders: vi.fn(() => Promise.resolve({ ok: true, value: [] })),
@@ -47,7 +50,12 @@ async function bench(mock = RemoteMock.create().load(remoteDefaultResponses), se
       ...services,
     },
     settings: mock.remote.settings,
-    session: { initializeDefaultModel: vi.fn(async () => ({ ok: true, value: undefined })) },
+    session: {
+      initializeDefaultModel: vi.fn(async () => ({ ok: true, value: undefined })),
+      modelCatalog: vi.fn(async () => ({ ok: true, value: {
+        default: { provider: 'deepseek-official', model: 'deepseek-chat' }, routableProviders: [], groups: [], failures: [],
+      } })),
+    },
   })
   await ctx.plugin({ inject: [...settingsInject], apply: settingsApply }).await()
   return { ctx, slots: ctx.get('slots') as SlotRegistry, locale, remote }
@@ -160,6 +168,7 @@ describe('ui-settings-models apply', () => {
   it('declares the services it uses', () => {
     expect(inject).toEqual([
       'slots', 'locale', 'remote', 'remote.credentials', 'remote.llm', 'remote.settings', 'remote.session',
+      'remote.authorization', 'remote.modelVerification',
       'configForms', 'settingsSchema',
     ])
   })
@@ -174,6 +183,9 @@ describe('ui-settings-models apply', () => {
     // The section claims its two extension seats in the same registration.
     expect(before.slots.spec('settings.models.provider-card')).toMatchObject({ kind: 'keyed', scope: 'root' })
     expect(before.slots.spec('settings.models.footer')).toMatchObject({ kind: 'list', scope: 'root' })
+    expect(before.slots.spec('settings.models.account-editor')).toMatchObject({ kind: 'single', scope: 'root' })
+    expect(before.slots.entries('settings.models.account-editor').map(entry => entry.component)).toEqual([ChatGptAccount])
+    expect(before.slots.entries('settings.models.footer')).toEqual([])
     // The nav label is a locale-following thunk; owners resolve at read time.
     expect(resolveSlotLabel(entry.options.label)).toBe('模型')
     const injected = (entry.inject as unknown as () => import('../src/client/ModelsSection.tsx').ModelsSectionInjected)()

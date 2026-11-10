@@ -26,6 +26,9 @@ import { WelcomeNoticeStore } from './welcome-store.ts'
 import { ModelsSettingsStore } from './store.ts'
 import { createModelsOperations } from './operations.ts'
 import { createSettingsSchemaOperations } from './schema-operations.ts'
+import { ChatGptAccount } from './ChatGptAccount.tsx'
+import type { ChatGptAccountInjected } from './ChatGptAccount.tsx'
+import { ChatGptAccountController, createChatGptAccountOperations } from './chatgpt-account.ts'
 import { en, zh, type ModelsKey } from './locales.ts'
 import { WELCOME_NOTICE_SETTINGS_NAMESPACE } from '../onboarding-copy.ts'
 import { Config, ONBOARDING_CONFIG_GLOBAL } from '../onboarding-config.ts'
@@ -67,6 +70,7 @@ export function refreshIfLoaded(controller: ModelsSettingsStore): void {
  */
 export const inject = [
   'slots', 'locale', 'remote', 'remote.credentials', 'remote.llm', 'remote.settings', 'remote.session',
+  'remote.authorization', 'remote.modelVerification',
   'configForms', 'settingsSchema',
 ]
 
@@ -90,9 +94,11 @@ export function apply(ctx: ClientContext): void {
   // own `inject`; the cards receive callbacks and never a context.
   const operations = createModelsOperations(ctx)
   const controller = new ModelsSettingsStore(ctx, schema, ctx.configForms.describe())
+  const chatGpt = new ChatGptAccountController(createChatGptAccountOperations(ctx, controller, operations, schema))
   // Registration-time text (the nav label thunk) and the inject faces share
   // one bound translate; copy freshness rides the locale revision.
   const t = ctx.locale.bind(NS) as ModelsSectionInjected['t']
+  const chatGptInjected = (): ChatGptAccountInjected => ({ controller: chatGpt, hooks: { account: chatGpt.store }, t })
   const injected = (): ModelsSectionInjected => ({
     controller,
     hooks: { snapshot: controller.store },
@@ -126,7 +132,10 @@ export function apply(ctx: ClientContext): void {
   // mirror refresh before this store joins that refresh. The welcome notice
   // follows its settings scope, so it needs no subscription here.
   ctx.effect(() => {
-    const refreshModels = (): void => { refreshIfLoaded(controller) }
+    const refreshModels = (): void => {
+      refreshIfLoaded(controller)
+      if (chatGpt.store.getSnapshot().phase !== 'idle') void chatGpt.load()
+    }
     const disposers = [
       ctx.remote.$on('settings/document-updated', () => { refreshModels() }),
       ctx.remote.$on('credentials/record-updated', refreshModels),
@@ -136,6 +145,7 @@ export function apply(ctx: ClientContext): void {
     ]
     return () => {
       welcomeController.dispose()
+      chatGpt.dispose()
       for (const dispose of disposers) dispose()
     }
   }, 'ui-settings-models: pushed invalidations')
@@ -149,8 +159,12 @@ export function apply(ctx: ClientContext): void {
     children: {
       'settings.models.provider-card': { kind: 'keyed', scope: 'root' },
       'settings.models.footer': { kind: 'list', scope: 'root' },
+      'settings.models.account-editor': { kind: 'single', scope: 'root' },
     },
   }, ModelsSection))
+  ctx.slots.inject('settings.models.account-editor', () => ctx.slots.register({
+    name: 'settings.models.account-editor', inject: chatGptInjected,
+  }, ChatGptAccount))
   if (!('dshDesktop' in globalThis) || process.env.DSH_CLIENT_BUILD_PROFILE === 'xiaojing') ctx.slots.inject('settings.onboarding', () => ctx.slots.register({
     name: 'settings.onboarding',
     id: 'welcome-notice',

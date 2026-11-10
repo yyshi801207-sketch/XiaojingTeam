@@ -29,9 +29,11 @@ import type { ModelSelectInjected } from './slots.ts'
 import { ModelSelect } from './ModelSelect.tsx'
 import { en, zh } from './locales.ts'
 import { orderModelProviders } from './provider-order.ts'
+import { Config, MODEL_SELECTION_CONFIG_GLOBAL } from '../controls-config.ts'
 
 export { ModelDirectory } from './directory.ts'
 export type { ModelDirectoryState } from './directory.ts'
+export type { ModelCatalogState } from './catalog.ts'
 export { ModelDirectoryResolver } from './service.ts'
 export type { ModelLabelOwner, ModelSelectInjected } from './slots.ts'
 import type { ModelKey } from './locales.ts'
@@ -104,23 +106,27 @@ function selectionOf(state: ModelDirectoryState, id: string): ModelSelection | u
 /** Dictionary namespace owned by this plugin. */
 const NS = 'model'
 
-/** Required services: the contribution registry, the seat's slot registry, locale, and the service's own faces. */
-export const inject = ['commandUi', 'locale', 'sessions', 'slots', 'remote', 'remote.session']
+/** Required model-directory services; enabled controls separately await their UI services. */
+export const inject = ['sessions', 'remote', 'remote.session']
 
 /**
- * Client plugin body: mount ModelDirectoryResolver, register the `model` dictionaries,
- * then register the /model popup contribution and the composer model seat
- * over the service.
+ * Mount the shared model directory and optionally register its native controls.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
+  const page = globalThis as Partial<Record<typeof MODEL_SELECTION_CONFIG_GLOBAL, unknown>>
+  const payload = page[MODEL_SELECTION_CONFIG_GLOBAL]
+  const config = Config(payload === undefined ? {} : payload)
+  ctx.plugin(ModelDirectoryResolver)
+  if (config.controlsEnabled) ctx.inject(['commandUi', 'locale', 'slots'], mountControls)
+}
+
+function mountControls(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-model-selection: dictionaries')
 
   // Non-slot faces (the command description, the popup option builder) read
   // through the bound translate; the seat component reads the standard seat.
   const t = ctx.locale.bind(NS)
-
-  ctx.plugin(ModelDirectoryResolver)
 
   // Entry 1: the /model popupSelect over the shared directory.
   ctx.inject(['commandUi', 'modelDirectories'], (scope: ClientContext) => {

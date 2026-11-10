@@ -512,7 +512,7 @@ export interface Config {
 export interface Config {
   /** Absolute root containing the team's default Bot working directories. */
   readonly workspaceRoot: string
-  /** Display name assigned to the main Bot when the team is first created. */
+  /** Initial main Bot name; the current product default also replaces the previous default at startup. */
   readonly mainName: string
   /** Initial saved responsibility of the main Bot. */
   readonly mainRole: string

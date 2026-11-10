@@ -4,6 +4,7 @@ import { brandString } from '@deepseek-ai/dsh-brand'
 import type { Context } from '@deepseek-ai/cordis'
 import type { SessionPromptRequest, SessionRequestId } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { TeamChat } from '../src/chats-types.ts'
+import { chatsDomainSpec, chatsStateSchema } from '../src/chats-storage.ts'
 import { textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import { memoryFixture } from './memory-fixture.ts'
 
@@ -26,17 +27,27 @@ function prompt(chat: TeamChat, id: string, mode: SessionPromptRequest['mode'] =
     content: [{ type: 'text', text: `Hello everyone. ${id}` }] }
 }
 
-describe('pass then owner pause and subsequent controls', () => {
-  it.each(['resume', 'stop-and-steer'] as const)('allows %s after the responsible member passes and the next member is queued', async (action) => {
+describe('legacy pass then owner pause and subsequent controls', () => {
+  it.each(['resume', 'stop-and-steer'] as const)('allows %s after an already accepted legacy member passes and the next member is queued', async (action) => {
     let passes = 0
     const h = await memoryFixture(Array.from({ length: 8 }, () => request => request.sessionId === workerA
-      ? toolCallResponse(`pass-${++passes}`, 'pass_group_turn', {})
+      ? ++passes === 1 ? toolCallResponse('legacy-pass', 'pass_group_turn', {})
+        : textResponse('A actually answers the new group greeting.')
       : textResponse('B actually answers the current group greeting.')))
     const a = (await h.ctx.katcatsTeam.createBot({ name: 'A' })).bot
     const b = (await h.ctx.katcatsTeam.createBot({ name: 'B' })).bot
     const chat = (await h.ctx.katcatsChats.createChat({ name: 'Pause and pass', memberIds: [a.id, b.id], managerId: a.id })).chat
     const workerA = chat.executors.find(executor => executor.botId === a.id)!.sessionId
     const workerB = chat.executors.find(executor => executor.botId === b.id)!.sessionId
+    await h.ctx.katcatsChats.pause(control(chat))
+    await h.ctx.katcatsChats.sendMessage(prompt(chat, 'first-greeting', 'queue'), new AbortController().signal)
+    await settled(h.ctx, chat)
+    const domain = h.ctx.storageDomain.get(chatsDomainSpec.name)!
+    const saved = chatsStateSchema.parse(domain.global.get())
+    // Resume a pre-upgrade accepted broadcast with its original fixed recipient list.
+    await domain.global.set({ ...saved, inbounds: saved.inbounds.map(({ collaborationVersion: _version, ...input }) => ({
+      ...input, recipients: [a.id, b.id],
+    })) })
     let paused = false
     let pause: Promise<unknown> | undefined
     const remove = h.ctx.on('session/event', (session, event) => {
@@ -46,7 +57,7 @@ describe('pass then owner pause and subsequent controls', () => {
       pause = h.ctx.katcatsChats.pause({ id: chat.id, expectedRunId: event.data.runId, expectedGeneration: event.data.generation })
     })
     try {
-      await h.ctx.katcatsChats.sendMessage(prompt(chat, 'first-greeting'), new AbortController().signal)
+      await h.ctx.katcatsChats.resume(control((await h.ctx.katcatsChats.snapshot()).chats[0]!))
       await settled(h.ctx, chat)
       await pause
       const held = await h.ctx.katcatsChats.snapshot()
@@ -67,10 +78,11 @@ describe('pass then owner pause and subsequent controls', () => {
       const done = await h.ctx.katcatsChats.snapshot()
       expect(done.chats[0]).toMatchObject({ status: 'active', pauseReason: null, run: null })
       expect(done.activities[0]).toMatchObject({ processing: false, pendingControl: null })
-      expect(done.deliveries.at(-1)).toMatchObject({ botId: b.id, state: 'completed', relayed: true,
-        receipt: { text: 'B actually answers the current group greeting.' } })
+      expect(done.deliveries.at(-1)).toMatchObject(action === 'resume'
+        ? { botId: b.id, state: 'completed', relayed: true, receipt: { text: 'B actually answers the current group greeting.' } }
+        : { botId: a.id, state: 'completed', relayed: true, receipt: { text: 'A actually answers the new group greeting.' } })
       expect(h.adapter.requests.map(request => request.sessionId)).toEqual(action === 'resume'
-        ? [workerA, workerB] : [workerA, workerA, workerB])
+        ? [workerA, workerB] : [workerA, workerA])
       const history = await h.ctx.sessionController.inspect(chat.rootSessionId)
       expect(history.events.filter(event => event.type === 'user/message'
         && event.data.source.kind === 'katcats-group-relay')).toHaveLength(1)

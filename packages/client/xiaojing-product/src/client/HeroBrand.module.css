@@ -4,46 +4,35 @@
 }
 
 .title {
-  grid-column: 2;
+  min-width: 0;
   color: var(--dsw-alias-label-primary);
-  font-size: 32px;
+  font-size: 30px;
   font-weight: 500;
-  line-height: 42px;
+  line-height: 40px;
   text-align: center;
   white-space: pre-line;
 }
 
 .titleGroup {
-  display: grid;
+  display: flex;
   flex-basis: 100%;
-  grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
-  container-type: inline-size;
-  align-items: center;
-  gap: 4px 7px;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 7px;
   min-width: 0;
 }
 
 .badge {
-  grid-column: 3;
-  justify-self: start;
-  align-self: start;
+  flex: none;
   margin-top: 2px;
   padding: 1px 7px 0;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid #000;
   border-radius: 3px;
-  background: var(--dsw-alias-bg-layer-2);
-  color: var(--dsw-alias-label-secondary);
+  background: #000;
+  color: #fff;
   font-family: var(--ds-font-family-code);
   font-size: 12px;
   font-weight: 500;
   line-height: 18px;
   white-space: nowrap;
-}
-
-@container (max-width: 680px) {
-  .title,
-  .badge {
-    grid-column: 1 / -1;
-    justify-self: center;
-  }
 }

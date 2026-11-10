@@ -60,7 +60,7 @@ export interface ModelsSectionInjected {
 type AddMode = 'catalog' | 'custom'
 
 /** The child slots this section declares and dispatches (see ./slot-contract.ts). */
-type ModelsChildSlots = 'settings.models.provider-card' | 'settings.models.footer'
+type ModelsChildSlots = 'settings.models.provider-card' | 'settings.models.footer' | 'settings.models.account-editor'
 
 /** The child-slot dispatch function the renderer binds for the section. */
 type ModelsRenderSlot = PropsRenderSlots<ModelsChildSlots>['renderSlot']
@@ -345,8 +345,8 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
   if (!hasReadySnapshot && state.status !== 'ready') {
     return (
       <div className={styles['section']}>
-        <h2 className={styles['title']}>{t('title')}</h2>
-        <p className={styles['intro']}>{t('intro')}</p>
+        <h2 className={styles['title']}>{t('primaryTitle')}</h2>
+        <p className={styles['intro']}>{t('primaryIntro')}</p>
       </div>
     )
   }
@@ -365,9 +365,10 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
   // One fact decides both first-run postures on this page and the onboarding
   // step: whether the user already has a provider to talk to.
   const anyUsable = state.rows.some(providerUsable)
-  const configured = state.rows.filter(row => row.configured)
-  const configurable = state.rows.filter(row => state.namespaces.has(row.entry.settingsNs))
-  const addable: AddableRow[] = state.rows.flatMap((row) => {
+  const providerRows = state.rows.filter(row => row.entry.provider !== 'chatgpt' || row.configured)
+  const configured = providerRows.filter(row => row.configured)
+  const configurable = providerRows.filter(row => state.namespaces.has(row.entry.settingsNs))
+  const addable: AddableRow[] = providerRows.flatMap((row) => {
     const namespace = state.namespaces.get(row.entry.settingsNs)
     return namespace === undefined || row.configured ? [] : [{ row, namespace }]
   })
@@ -410,10 +411,165 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
     ? undefined
     : state.rows.find(row => row.entry.provider === draft.target.provider)
 
+  const renderRow = (row: ProviderRow): ReactNode => {
+    const target = targetOf(row)
+    const namespace = state.namespaces.get(target.settingsNs)
+    /* v8 ignore next -- the join marks a row configured only when its namespace resolved */
+    if (namespace === undefined) return null
+    const error = row.entry.error === undefined
+      ? null
+      : <p role="alert" className={styles['error']}>{row.entry.error}</p>
+    if (needsSetup(row, anyUsable) && !dismissedSetup.has(row.entry.provider)) {
+      // First-run posture: the provider exists but has no key — the
+      // setup card IS its presence on the page, until the user closes it.
+      return (
+        <li key={row.entry.provider} className={styles['setupCard']}>
+          {error}
+          {renderProviderEditor({
+            target,
+            row,
+            namespace,
+            schema,
+            operations,
+            t,
+            readOnly: !state.writable,
+            onClose: (changed) => { closeSetup(changed, target) },
+          })}
+          {renderSlot(
+            'settings.models.provider-card',
+            { provider: row.entry, configured: row.configured, keyConfigured: keyConfiguredOf(row) },
+            { entryKey: row.entry.settingsNs },
+          )}
+        </li>
+      )
+    }
+    const open = !addOpen && editing?.provider === row.entry.provider
+    const credentialConfigured = row.credential?.configured === true
+    const connected = row.entry.provider === 'chatgpt' ? row.accountAvailable === true : credentialConfigured
+    const connectionLabel = t(row.entry.provider === 'chatgpt' ? 'chatGptConfigured' : 'credentialConfigured')
+    const credentialMissing = !credentialConfigured
+      && row.apiKeyEnv !== undefined
+      && row.credential?.configured === false
+    return (
+      <li key={row.entry.provider} className={styles['rowCard']}>
+        <div className={styles['rowHead']}>
+          <span className={styles['rowIdentity']}>
+            <span className={styles['rowName']}>{row.entry.provider === 'chatgpt' ? t('chatGptTitle') : row.entry.displayName}</span>
+            {row.entry.provider === 'openai-codex'
+              ? <span className={styles['rowTag']}>{t('codexLegacyTag')}</span>
+              : null}
+            {/* Only the adapter can tell a hand-declared route from a
+                shipped one it also has a stored profile for, so the tag
+                follows its answer and stays off when it gives none. */}
+            {row.entry.declared === true
+              ? <span className={styles['rowTag']}>{t('customTag')}</span>
+              : null}
+            {/* The store keeps the account row only while the account lists models. */}
+            {row.entry.provider === 'deepseek-account'
+              ? (
+                <span className={styles['accountStatus']}>
+                  <span className={`${styles['credentialDot']} ${styles['credentialDotConfigured']}`} aria-hidden="true" />
+                  {t('accountSignedIn')}
+                </span>
+              )
+              : null}
+            {connected
+              ? (
+                <span
+                  className={`${styles['credentialDot']} ${styles['credentialDotConfigured']}`}
+                  role="img"
+                  aria-label={connectionLabel}
+                  title={connectionLabel}
+                />
+              )
+              : credentialMissing
+                ? (
+                  <span
+                    className={`${styles['credentialDot']} ${styles['credentialDotMissing']}`}
+                    role="img"
+                    aria-label={t('credentialMissing')}
+                    title={t('credentialMissing')}
+                  />
+                )
+                : null}
+          </span>
+          <span className={styles['rowActions']}>
+            {/* The account catalog comes from the account listing; its model overrides live in cordis.patch.yml. */}
+            {row.entry.provider === 'deepseek-account'
+              ? null
+              : (
+                <button
+                  type="button"
+                  className={styles['secondaryButton']}
+                  aria-label={row.entry.provider === 'openai-codex'
+                    ? t('chatGptConfigureSubscription') : providerCopy(t('editProvider'), target)}
+                  disabled={!open && state.status !== 'ready'}
+                  onClick={() => {
+                    if (!open && controller.store.getSnapshot().status !== 'ready') return
+                    setSavedTarget(undefined)
+                    // One card at a time: the add card closes with whatever
+                    // it held, since closing either card would otherwise
+                    // discard the other's draft.
+                    setAddOpen(false)
+                    setEditing(open ? undefined : target)
+                  }}
+                >
+                  {t(row.entry.provider === 'openai-codex' ? 'chatGptConfigureSubscription' : 'edit')}
+                </button>
+              )}
+            {row.removable
+              ? (
+                <button
+                  type="button"
+                  className={styles['dangerButton']}
+                  aria-label={providerCopy(t('removeProvider'), target)}
+                  disabled={!state.writable || state.status !== 'ready'}
+                  onClick={() => {
+                    if (controller.store.getSnapshot().status !== 'ready') return
+                    setSavedTarget(undefined)
+                    setDeleteFailure(undefined)
+                    setDeleteTarget(target)
+                  }}
+                >
+                  {t('remove')}
+                </button>
+              )
+              : null}
+          </span>
+        </div>
+        {error}
+        {row.entry.provider === 'openai-codex'
+          ? <p className={styles['notice']}>{t('codexLegacyHint')}</p>
+          : row.entry.provider === 'chatgpt'
+            ? <p className={styles['notice']}>{t('chatGptSelectionHint')}</p>
+            : null}
+        {renderSlot(
+          'settings.models.provider-card',
+          { provider: row.entry, configured: row.configured, keyConfigured: keyConfiguredOf(row) },
+          { entryKey: row.entry.settingsNs },
+        )}
+        {open
+          ? row.entry.provider === 'openai-codex' || row.entry.provider === 'chatgpt'
+            ? renderSlot('settings.models.account-editor', { onClose: closeAdd })
+            : renderProviderEditor({
+              target,
+              row,
+              namespace,
+              schema,
+              operations,
+              t,
+              readOnly: !state.writable,
+              onClose: (changed) => { closeEditor(changed, target) },
+            })
+          : null}
+      </li>
+    )
+  }
+
   return (
     <div className={styles['section']}>
-      <h2 className={styles['title']}>{t('title')}</h2>
-      <p className={styles['intro']}>{t('intro')}</p>
+      <h2 className={styles['title']}>{t('primaryTitle')}</h2>
+      <p className={styles['intro']}>{t('primaryIntro')}</p>
       {!state.writable && state.status === 'ready' ? <p className={styles['notice']}>{t('readOnly')}</p> : null}
       {savedIdentity === undefined
         ? null
@@ -422,148 +578,14 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
             {providerCopy(t('savedProvider'), savedIdentity)}
           </p>
         )}
-      <ul className={styles['rows']}>
-        {configured.map((row) => {
-          const target = targetOf(row)
-          const namespace = state.namespaces.get(target.settingsNs)
-          /* v8 ignore next -- the join marks a row configured only when its namespace resolved */
-          if (namespace === undefined) return null
-          const error = row.entry.error === undefined
-            ? null
-            : <p role="alert" className={styles['error']}>{row.entry.error}</p>
-          if (needsSetup(row, anyUsable) && !dismissedSetup.has(row.entry.provider)) {
-            // First-run posture: the provider exists but has no key — the
-            // setup card IS its presence on the page, until the user closes it.
-            return (
-              <li key={row.entry.provider} className={styles['setupCard']}>
-                {error}
-                {renderProviderEditor({
-                  target,
-                  row,
-                  namespace,
-                  schema,
-                  operations,
-                  t,
-                  readOnly: !state.writable,
-                  onClose: (changed) => { closeSetup(changed, target) },
-                })}
-                {renderSlot(
-                  'settings.models.provider-card',
-                  { provider: row.entry, configured: row.configured, keyConfigured: keyConfiguredOf(row) },
-                  { entryKey: row.entry.settingsNs },
-                )}
-              </li>
-            )
-          }
-          const open = !addOpen && editing?.provider === row.entry.provider
-          const credentialConfigured = row.credential?.configured === true
-          const credentialMissing = !credentialConfigured
-            && row.apiKeyEnv !== undefined
-            && row.credential?.configured === false
-          return (
-            <li key={row.entry.provider} className={styles['rowCard']}>
-              <div className={styles['rowHead']}>
-                <span className={styles['rowIdentity']}>
-                  <span className={styles['rowName']}>{row.entry.displayName}</span>
-                  {/* Only the adapter can tell a hand-declared route from a
-                      shipped one it also has a stored profile for, so the tag
-                      follows its answer and stays off when it gives none. */}
-                  {row.entry.declared === true
-                    ? <span className={styles['rowTag']}>{t('customTag')}</span>
-                    : null}
-                  {/* The store keeps the account row only while the account lists models. */}
-                  {row.entry.provider === 'deepseek-account'
-                    ? (
-                      <span className={styles['accountStatus']}>
-                        <span className={`${styles['credentialDot']} ${styles['credentialDotConfigured']}`} aria-hidden="true" />
-                        {t('accountSignedIn')}
-                      </span>
-                    )
-                    : null}
-                  {credentialConfigured
-                    ? (
-                      <span
-                        className={`${styles['credentialDot']} ${styles['credentialDotConfigured']}`}
-                        role="img"
-                        aria-label={t('credentialConfigured')}
-                        title={t('credentialConfigured')}
-                      />
-                    )
-                    : credentialMissing
-                      ? (
-                        <span
-                          className={`${styles['credentialDot']} ${styles['credentialDotMissing']}`}
-                          role="img"
-                          aria-label={t('credentialMissing')}
-                          title={t('credentialMissing')}
-                        />
-                      )
-                      : null}
-                </span>
-                <span className={styles['rowActions']}>
-                  {/* The account catalog comes from the account listing; its model overrides live in cordis.patch.yml. */}
-                  {row.entry.provider === 'deepseek-account'
-                    ? null
-                    : (
-                      <button
-                        type="button"
-                        className={styles['secondaryButton']}
-                        aria-label={providerCopy(t('editProvider'), target)}
-                        disabled={!open && state.status !== 'ready'}
-                        onClick={() => {
-                          if (!open && controller.store.getSnapshot().status !== 'ready') return
-                          setSavedTarget(undefined)
-                          // One card at a time: the add card closes with whatever
-                          // it held, since closing either card would otherwise
-                          // discard the other's draft.
-                          setAddOpen(false)
-                          setEditing(open ? undefined : target)
-                        }}
-                      >
-                        {t('edit')}
-                      </button>
-                    )}
-                  {row.removable
-                    ? (
-                      <button
-                        type="button"
-                        className={styles['dangerButton']}
-                        aria-label={providerCopy(t('removeProvider'), target)}
-                        disabled={!state.writable || state.status !== 'ready'}
-                        onClick={() => {
-                          if (controller.store.getSnapshot().status !== 'ready') return
-                          setSavedTarget(undefined)
-                          setDeleteFailure(undefined)
-                          setDeleteTarget(target)
-                        }}
-                      >
-                        {t('remove')}
-                      </button>
-                    )
-                    : null}
-                </span>
-              </div>
-              {error}
-              {renderSlot(
-                'settings.models.provider-card',
-                { provider: row.entry, configured: row.configured, keyConfigured: keyConfiguredOf(row) },
-                { entryKey: row.entry.settingsNs },
-              )}
-              {open
-                ? renderProviderEditor({
-                  target,
-                  row,
-                  namespace,
-                  schema,
-                  operations,
-                  t,
-                  readOnly: !state.writable,
-                  onClose: (changed) => { closeEditor(changed, target) },
-                })
-                : null}
-            </li>
-          )
-        })}
+      <ul className={styles['rows']} aria-label={t('primaryTitle')}>
+        {configured.filter(row => row.entry.provider === state.primaryProvider).map(renderRow)}
+      </ul>
+      <hr className={styles['groupDivider']} />
+      <h2 className={styles['title']}>{t('candidateTitle')}</h2>
+      <p className={styles['intro']}>{t('intro')}</p>
+      <ul className={styles['rows']} aria-label={t('candidateTitle')}>
+        {configured.filter(row => row.entry.provider !== state.primaryProvider).map(renderRow)}
       </ul>
       <div className={styles['addBlock']}>
         {addOpen
@@ -631,28 +653,32 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
                         }}
                       >
                         {addable.map(({ row }) => (
-                          <option key={row.entry.provider} value={row.entry.provider}>{row.entry.displayName}</option>
+                          <option key={row.entry.provider} value={row.entry.provider}>
+                            {row.entry.provider === 'openai-codex' ? t('chatGptTitle') : row.entry.displayName}
+                          </option>
                         ))}
                       </select>
                     </div>
-                    <ProviderEditor
-                      key={draft.target.provider}
-                      provider={draft.target.provider}
-                      displayName={draft.target.displayName}
-                      hideTitle
-                      namespace={draft.namespace}
-                      schema={schema}
-                      settingsPath={draft.target.settingsPath}
-                      operations={operations}
-                      {...draft.target.defaultBaseURL === undefined ? {} : { defaultBaseURL: draft.target.defaultBaseURL }}
-                      {...draft.target.baseURLEnv === undefined ? {} : { baseURLEnv: draft.target.baseURLEnv }}
-                      {...draft.target.nativeAuth === undefined ? {} : { nativeAuth: draft.target.nativeAuth }}
-                      {...addRow?.credentialChecks === undefined ? {} : { credentialChecks: addRow.credentialChecks }}
-                      t={t}
-                      readOnly={!state.writable}
-                      onClose={(changed) => { closeEditor(changed, draft.target) }}
-                      onBusyChange={setCatalogBusy}
-                    />
+                    {draft.target.provider === 'openai-codex'
+                      ? renderSlot('settings.models.account-editor', { onClose: closeAdd })
+                      : <ProviderEditor
+                        key={draft.target.provider}
+                        provider={draft.target.provider}
+                        displayName={draft.target.displayName}
+                        hideTitle
+                        namespace={draft.namespace}
+                        schema={schema}
+                        settingsPath={draft.target.settingsPath}
+                        operations={operations}
+                        {...draft.target.defaultBaseURL === undefined ? {} : { defaultBaseURL: draft.target.defaultBaseURL }}
+                        {...draft.target.baseURLEnv === undefined ? {} : { baseURLEnv: draft.target.baseURLEnv }}
+                        {...draft.target.nativeAuth === undefined ? {} : { nativeAuth: draft.target.nativeAuth }}
+                        {...addRow?.credentialChecks === undefined ? {} : { credentialChecks: addRow.credentialChecks }}
+                        t={t}
+                        readOnly={!state.writable}
+                        onClose={(changed) => { closeEditor(changed, draft.target) }}
+                        onBusyChange={setCatalogBusy}
+                      />}
                     {addRow === undefined
                       ? null
                       : renderSlot(

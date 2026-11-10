@@ -9,7 +9,7 @@
  * Scope disposal drops the directory (HMR safety).
  */
 import { Context } from '@deepseek-ai/cordis'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createScope } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
@@ -20,6 +20,9 @@ import type { CommandContribution, PopupSelectSpec, SelectOption } from '@deepse
 import type { ModelSelectInjected } from '../src/client/slots.ts'
 import { apply, inject } from '../src/client/index.ts'
 import { zh } from '../src/client/locales.ts'
+import { Config, MODEL_SELECTION_CONFIG_GLOBAL } from '../src/controls-config.ts'
+
+afterEach(() => { vi.unstubAllGlobals() })
 
 const sid = (k: string): SessionId => k as SessionId
 
@@ -204,6 +207,69 @@ async function bench(locale: 'zh' | 'en' = 'zh') {
 const projection = (id: string) => ({ sessionId: sid(id) })
 
 describe('ui-model-selection dual entry', () => {
+  it('provides shared model choices without command, slot, or locale services when controls are disabled', async () => {
+    vi.stubGlobal(MODEL_SELECTION_CONFIG_GLOBAL, { controlsEnabled: false })
+    const ctx = new Context()
+    ctx.provide('sessions', {})
+    const modelCatalog = vi.fn(async () => ({
+      ok: true as const,
+      value: { default: null, routableProviders: [], groups: GROUPS, failures: [] },
+    }))
+    new TestRemote(ctx, { session: { modelCatalog } })
+    try {
+      await ctx.plugin({ inject: [...inject], apply }).await()
+      await ctx.plugin(function probe() {}).await()
+      expect(ctx.get('commandUi')).toBeUndefined()
+      expect(ctx.get('slots')).toBeUndefined()
+      expect(ctx.get('locale')).toBeUndefined()
+      await expect(ctx.modelDirectories.loadCatalog()).resolves.toMatchObject({ groups: GROUPS })
+      expect(modelCatalog).toHaveBeenCalledOnce()
+    } finally { await ctx.fiber.dispose() }
+  })
+
+  it('keeps shared model choices available when the bootstrap disables both native controls', async () => {
+    vi.stubGlobal(MODEL_SELECTION_CONFIG_GLOBAL, { controlsEnabled: false })
+    const b = await bench()
+    try {
+      expect(b.contribution()).toBeUndefined()
+      expect(b.seat()).toBeUndefined()
+      await expect(b.ctx.modelDirectories.loadCatalog()).resolves.toMatchObject({ groups: GROUPS })
+      expect(b.calls).toEqual({ models: 1, select: 0 })
+      b.setGroups([GROUPS[1]!])
+      b.remote.emit('llm/adapters-updated', [])
+      await vi.waitFor(() => {
+        expect(b.ctx.modelDirectories.catalogState.getSnapshot().value?.groups).toEqual([GROUPS[1]!])
+      })
+    } finally { await b.ctx.fiber.dispose() }
+  })
+
+  it('defaults to both controls and rejects malformed bootstrap options before mounting services', async () => {
+    expect(Config({})).toEqual({ controlsEnabled: true })
+    expect(Config['~standard'].validate({ controlsEnabled: 'false' })).toHaveProperty('issues')
+    const b = await bench()
+    try {
+      expect(b.contribution()).toBeDefined()
+      expect(b.seat()).toBeDefined()
+      vi.stubGlobal(MODEL_SELECTION_CONFIG_GLOBAL, { controlsEnabled: 'false' })
+      expect(() => { apply(b.ctx) }).toThrow()
+    } finally { await b.ctx.fiber.dispose() }
+  })
+
+  it('shares credential-free catalog choices without opening or selecting a Session', async () => {
+    const b = await bench()
+    try {
+      await b.ctx.modelDirectories.loadCatalog()
+      expect(b.ctx.modelDirectories.catalogState.getSnapshot()).toMatchObject({ status: 'ready', value: { groups: GROUPS } })
+      expect(b.calls).toEqual({ models: 1, select: 0 })
+      b.setGroups([GROUPS[1]!])
+      b.ctx.modelDirectories.refreshCatalog()
+      await vi.waitFor(() => {
+        expect(b.ctx.modelDirectories.catalogState.getSnapshot()).toMatchObject({ status: 'ready', value: { groups: [GROUPS[1]!] } })
+      })
+      expect(b.calls).toEqual({ models: 2, select: 0 })
+    } finally { await b.ctx.fiber.dispose() }
+  })
+
   it('carries writer contention to the model seat and localizes the command failure', async () => {
     const b = await bench()
     b.mint('owned')

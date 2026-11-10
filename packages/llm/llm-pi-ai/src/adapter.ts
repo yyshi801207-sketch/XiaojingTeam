@@ -62,6 +62,7 @@ import type { ResolvedPiAiProviderProfile } from './config.ts'
 import { requestImageTarget, toPiContext } from './context.ts'
 import { conversationUpdates, createModels, getSupportedThinkingLevels } from './models.ts'
 import { toStreamChunks } from './stream.ts'
+import { chatGPTAccessToken, chatGPTPayload } from './chatgpt.ts'
 
 /**
  * Initially active declaration added to an Anthropic request whose projected
@@ -227,6 +228,7 @@ function requestHeaders(headers: Readonly<Record<string, string>> | undefined): 
  * pi-ai-backed multi-provider adapter. Each operation reads the current
  * profiles, so a configuration change reaches the next request without a
  * restart; model descriptors come from the collection those profiles built.
+ * OAuth-only routes list no models without a stored grant; listing does not refresh it.
  */
 export class PiAiAdapter extends LlmAdapter {
   private snapshot: PiAiSnapshot | undefined
@@ -302,6 +304,9 @@ export class PiAiAdapter extends LlmAdapter {
         if (error instanceof LlmError && error.code === 'MISSING_CREDENTIAL') return []
         throw error
       }
+      const auth = profile.piProvider?.auth
+      if (auth?.oauth !== undefined && auth.apiKey === undefined
+        && await snapshot.models.checkAuth(provider) === undefined) return []
       return snapshot.models.getModels(provider).map(model => ({
         provider,
         id: model.id,
@@ -381,7 +386,10 @@ export class PiAiAdapter extends LlmAdapter {
       model,
       options.reasoningEffort ?? profile.reasoning,
     )
-    const apiKey = await this.config.resolveApiKey(options.provider, profile)
+    const configuredKey = await this.config.resolveApiKey(options.provider, profile)
+    const chatGPTToken = (options.provider === 'openai' || options.provider === 'chatgpt') && configuredKey === undefined
+      ? await chatGPTAccessToken(this.config.auth, profile, options.signal, options.provider === 'chatgpt') : undefined
+    const apiKey = configuredKey ?? chatGPTToken
 
     const consumer = new AbortController()
     const upstream = options.signal === undefined
@@ -415,6 +423,7 @@ export class PiAiAdapter extends LlmAdapter {
         }, onReplayDegrade)
       const events = snapshot.models.streamSimple(model, context, {
         ...profileOptions(profile, reasoning, apiKey),
+        ...chatGPTToken === undefined ? {} : { onPayload: chatGPTPayload },
         ...options.temperature === undefined ? {} : { temperature: options.temperature },
         ...options.maxTokens === undefined ? {} : { maxTokens: options.maxTokens },
         ...options.sessionId === undefined ? {} : { sessionId: String(options.sessionId) },

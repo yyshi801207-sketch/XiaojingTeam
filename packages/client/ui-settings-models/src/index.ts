@@ -1,8 +1,11 @@
 /** Host configuration and page bootstrap for Models credential onboarding. */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/dsh-host-webserver'
-import { type Config, ONBOARDING_CONFIG_GLOBAL } from './onboarding-config.ts'
+import type { Config } from './onboarding-config.ts'
+import { apply as bootstrapOnboarding } from './onboarding-bootstrap.ts'
+import { ModelVerificationService } from './model-verification.ts'
+
+export { ModelVerificationService } from './model-verification.ts'
 
 export { Config } from './onboarding-config.ts'
 
@@ -12,14 +15,6 @@ export { Config } from './onboarding-config.ts'
  * @param config - plugin options with schema defaults applied by the Loader.
  */
 export function apply(ctx: Context, config: Config): void {
-  ctx.on('webserver/index-inject', (table) => {
-    table.push({
-      kind: 'global',
-      name: ONBOARDING_CONFIG_GLOBAL,
-      value: {
-        credentialOnboarding: config.credentialOnboarding,
-        ...config.installationId === undefined ? {} : { installationId: config.installationId },
-      },
-    })
-  })
+  ctx.plugin(ModelVerificationService)
+  bootstrapOnboarding(ctx, config)
 }

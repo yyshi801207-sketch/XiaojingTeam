@@ -1,4 +1,4 @@
-/** Real member execution refuses group-wide business work until colleagues actually contribute. */
+/** Real member execution admits draft preparation and requires actual contributions before delivery. */
 import { readFile, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -7,7 +7,7 @@ import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { GroupWorkGate } from '../src/group-work.ts'
 import type { BotId } from '../src/types.ts'
-import type { TeamChat } from '../src/chats-types.ts'
+import type { ChatDeliveryId, TeamChat } from '../src/chats-types.ts'
 import { memoryFixture } from './memory-fixture.ts'
 import { textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 
@@ -45,7 +45,7 @@ function files(h: Awaited<ReturnType<typeof memoryFixture>>, chat: TeamChat) {
 }
 
 describe('group-wide work admission', () => {
-  it('blocks doing the whole task alone and requires every planned member result before writing', async () => {
+  it('requires a work decision, permits drafts, and holds final replies until every assigned member answers', async () => {
     let bId = '', cId = ''
     const h = await memoryFixture([
       (request) => {
@@ -57,21 +57,22 @@ describe('group-wide work admission', () => {
         return toolCallResponse('unassigned-write', 'produce_artifact', { file: 'unassigned.md', content: 'No colleagues participated.' })
       },
       (request) => {
-        expect(JSON.stringify(request.messages)).toContain('This is work for the group.')
+        expect(JSON.stringify(request.messages)).toContain('First record plan_group_work')
         return toolCallResponse('work-split', 'plan_group_work', { own_task: 'Integrate the reviewed content.', assignments: [
           { bot_id: bId, message: 'Verify the synthetic facts.' }, { bot_id: cId, message: 'Design the synthetic presentation.' },
-        ] })
+        ], review: { reason: 'none' } })
       },
       () => toolCallResponse('ask-b', 'request_group_member', { bot_id: bId, message: 'Verify the synthetic facts.' }),
       textResponse('B actually verified FACT_B_731.'),
       toolCallResponse('only-b-write', 'produce_artifact', { file: 'only-b.md', content: 'C has not answered.' }),
+      textResponse('The unfinished draft is the final result.'),
       (request) => {
-        expect(JSON.stringify(request.messages)).toContain('Request every member in your recorded work split')
+        expect(JSON.stringify(request.messages)).toContain('Obtain every assigned member result')
         return toolCallResponse('ask-c', 'request_group_member', { bot_id: cId, message: 'Design the synthetic presentation.' })
       },
       (request) => {
         const logged = JSON.stringify(request.messages)
-        expect(logged).toContain('Saved public handoff A to B')
+        expect(logged).toContain('FACT_B_731')
         expect(logged).toContain('Verify the synthetic facts.')
         return textResponse('C actually designed DESIGN_C_953.')
       },
@@ -95,9 +96,9 @@ describe('group-wide work admission', () => {
       events: h.ctx.agents.get(bot.sessionId)!.session.snapshotEvents() }))
     const written = files(h, chat)
     await send(h, chat, '帮我做一份关于合成产品介绍的演示文稿，你自己分配任务。')
-    expect(written).toEqual(['team-final.md'])
+    expect(written).toEqual(['only-b.md', 'team-final.md'])
     await expect(stat(join(chat.workDir, 'unassigned.md'))).rejects.toMatchObject({ code: 'ENOENT' })
-    await expect(stat(join(chat.workDir, 'only-b.md'))).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(await readFile(join(chat.workDir, 'only-b.md'), 'utf8')).toBe('C has not answered.')
     expect(await readFile(join(chat.workDir, 'team-final.md'), 'utf8')).toBe('FACT_B_731 + DESIGN_C_953')
     const snapshot = await h.ctx.katcatsChats.snapshot()
     expect(snapshot.deliveries.map(delivery => [delivery.botId, delivery.state])).toEqual([
@@ -206,6 +207,7 @@ describe('group-wide work admission', () => {
 
   it('lets an explicitly addressed individual use its tools without recruiting colleagues', async () => {
     const h = await memoryFixture([
+      toolCallResponse('individual-plan', 'plan_group_work', { own_task: 'Save one requested line.', assignments: [], review: { reason: 'none' } }),
       toolCallResponse('individual-write', 'produce_artifact', { file: 'team-final.md', content: 'An individual response.' }),
       textResponse('A saved the explicitly requested individual file.'),
     ])
@@ -220,6 +222,7 @@ describe('group-wide work admission', () => {
 
   it('lets a one-member group perform its task without an impossible assignment', async () => {
     const h = await memoryFixture([
+      toolCallResponse('single-member-plan', 'plan_group_work', { own_task: 'Save the requested file.', assignments: [], review: { reason: 'none' } }),
       toolCallResponse('single-member-write', 'produce_artifact', { file: 'team-final.md', content: 'Only A exists.' }),
       textResponse('A saved the file.'),
     ])
@@ -231,15 +234,65 @@ describe('group-wide work admission', () => {
   })
 
   it('keeps greetings as ordinary member replies without planning or manufactured assignments', async () => {
-    const h = await memoryFixture([textResponse('A says hello.'), textResponse('B says hello.')])
+    const h = await memoryFixture([textResponse('A says hello.')])
     const a = (await h.ctx.katcatsTeam.createBot({ name: 'A' })).bot
     const b = (await h.ctx.katcatsTeam.createBot({ name: 'B' })).bot
     const chat = (await h.ctx.katcatsChats.createChat({ name: 'Conversation', memberIds: [a.id, b.id] })).chat
     await send(h, chat, '大家好。')
-    expect(h.adapter.requests).toHaveLength(2)
+    expect(h.adapter.requests).toHaveLength(1)
     const snapshot = await h.ctx.katcatsChats.snapshot()
     expect(snapshot.deliveries.every(delivery => delivery.source.kind === 'owner-message')).toBe(true)
-    expect(snapshot.deliveries.map(delivery => delivery.receipt?.text)).toEqual(['A says hello.', 'B says hello.'])
+    expect(snapshot.deliveries.map(delivery => delivery.receipt?.text)).toEqual(['A says hello.'])
+  })
+
+  it('accepts a clarification before planning and records its answer for the next model request', async () => {
+    const h = await memoryFixture([
+      toolCallResponse('clarify-environment', 'ask_user_question', { question: 'Which test environment do you mean?' }),
+      (request) => {
+        expect(request.messages.filter(message => message.role === 'tool').map(message => message.content)).toMatchInlineSnapshot(`
+          [
+            [
+              {
+                "text": "{\"answer\":\"A test ledger in the production environment.\"}",
+                "type": "text",
+              },
+            ],
+          ]
+        `)
+        return textResponse('Understood: a test ledger in the production environment.')
+      },
+    ])
+    h.ctx.effect(() => h.ctx.tools.register(defineTool({
+      name: 'ask_user_question', description: 'Return a synthetic owner answer for group admission testing.',
+      parameters: { question: { type: 'string', required: true } },
+      output: { schema: { type: 'object', additionalProperties: false,
+        properties: { answer: { type: 'string', required: true } } },
+      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }] },
+      execute: async () => ({ answer: 'A test ledger in the production environment.' }),
+    })))
+    const a = (await h.ctx.katcatsTeam.createBot({ name: 'A' })).bot
+    const chat = (await h.ctx.katcatsChats.createChat({ name: 'Clarify before planning', memberIds: [a.id] })).chat
+    await send(h, chat, 'Use the test environment.')
+    expect(h.adapter.requests).toHaveLength(2)
+    const snapshot = await h.ctx.katcatsChats.snapshot()
+    expect(snapshot.deliveries[0]).toMatchObject({ state: 'completed',
+      receipt: { text: 'Understood: a test ledger in the production environment.' } })
+  })
+
+  it('allows modern clarification without unlocking business tools or review and retains legacy admission', () => {
+    const reviewer = brandString<BotId>('reviewer')
+    const gate = new GroupWorkGate(true, [reviewer], {
+      policy: 'review-v1', deliveryId: brandString<ChatDeliveryId>('clarification-task'),
+    })
+    expect(gate.denial('ask_user_question')).toBeUndefined()
+    expect(gate.completionDenial()).toBeUndefined()
+    expect(gate.denial('produce_artifact')).toContain('First record plan_group_work')
+    gate.decide({ ownTask: 'Prepare the financial conclusion.', assignments: [],
+      review: { reason: 'financial-conclusion', reviewerBotId: reviewer } })
+    expect(gate.denial('ask_user_question')).toBeUndefined()
+    expect(gate.denial('present')).toContain('actual approved review')
+    expect(gate.completionDenial()).toContain('actual approved review')
+    expect(new GroupWorkGate(true, [reviewer]).denial('ask_user_question')).toContain('First use plan_group_work')
   })
 
   it('rejects foreign and duplicate assignments without unlocking business execution', () => {

@@ -161,6 +161,13 @@ function requestB(state: ScriptState): StreamChunk[] {
   return toolCallResponse('request-b', 'request_group_member', { bot_id: state.b.id, message: 'Collect B data and return its exact token.' })
 }
 
+function routinePlan(): StreamChunk[] {
+  return toolCallResponse('routine-plan', 'plan_group_work', {
+    own_task: 'Copy the synthetic fixture tokens into a local test file after reading their real results.',
+    assignments: [], review: { reason: 'none' },
+  })
+}
+
 function memberSource(state: ScriptState, name: 'B' | 'C', options: GenerateOptions): StreamChunk[] {
   expect(options.sessionId).toBe(name === 'B' ? state.b.sessionId : state.c.sessionId)
   if (name === 'C') expect(state.steps).toContain('B:reply-published')
@@ -179,6 +186,7 @@ describe('completed group-member dependencies before file delivery', () => {
   it.each(['valid', 'blank-message', 'unknown-field'] as const)(
     'blocks the write-first batch before a %s member request, including parameter rejection before child admission', async (kind) => {
       const h = await fixture(state => [
+        routinePlan(),
         (options) => {
           expect(options.sessionId).toBe(state().a.sessionId)
           const args = { bot_id: state().b.id, message: kind === 'blank-message' ? '   ' : 'Collect B data and return its exact token.',
@@ -217,6 +225,7 @@ describe('completed group-member dependencies before file delivery', () => {
 
   it('awaits B then C, rejects the same-response early report and writes the next-step report from their real results', async () => {
     const h = await fixture(state => [
+      routinePlan(),
       (options) => { expect(options.sessionId).toBe(state().a.sessionId); return requestBoth(state()) },
       options => memberSource(state(), 'B', options), options => memberReply(state(), 'B', options),
       options => memberSource(state(), 'C', options), options => memberReply(state(), 'C', options),
@@ -238,7 +247,7 @@ describe('completed group-member dependencies before file delivery', () => {
     try {
       await send(h.ctx, h.chat)
       await h.shown.promise
-      expect(h.adapter.requests.map(request => request.sessionId)).toEqual([h.state.a.sessionId, h.state.b.sessionId])
+      expect(h.adapter.requests.map(request => request.sessionId)).toEqual([h.state.a.sessionId, h.state.a.sessionId, h.state.b.sessionId])
       expect(h.written).toEqual([])
       expect(await exists(join(h.chat.workDir, reportName))).toBe(false)
       const pendingB = await h.ctx.sessionController.inspect(h.state.b.sessionId)

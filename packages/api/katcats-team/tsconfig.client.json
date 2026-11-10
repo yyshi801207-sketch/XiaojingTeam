@@ -9,10 +9,12 @@
     "src/client/**/*.ts",
     "src/client/**/*.tsx",
     "src/types.ts",
+    "src/avatar-palette.ts",
     "src/chats-types.ts",
     "src/chats-task-events.ts",
     "src/memory-types.ts",
     "src/chats-messages.ts",
+    "src/group-review-types.ts",
     "src/group-file-claim.ts",
     "src/member-mentions.ts",
     "src/css-modules.d.ts"
@@ -29,6 +31,9 @@
     },
     {
       "path": "../../client/ui-permission-presets"
+    },
+    {
+      "path": "../../client/ui-model-selection/tsconfig.client.json"
     },
     {
       "path": "../../client/ui-input-trigger"

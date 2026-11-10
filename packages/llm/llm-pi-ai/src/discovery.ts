@@ -26,6 +26,7 @@ import { INVALID_CREDENTIAL_CODE, LlmError, normalizeApiKey } from '@deepseek-ai
 import type { LlmDiscoveredModel, LlmModelDiscoveryOperation } from '@deepseek-ai/dsh-llm'
 import { attributionHeaders } from '@deepseek-ai/dsh-llm'
 import { catalogModels } from './catalog.ts'
+import { CHATGPT_API_BASE_URL } from './chatgpt.ts'
 
 /**
  * Protocols whose model listing this module can read. OpenAI protocols use
@@ -71,6 +72,7 @@ interface ListingTopProvider {
 /** One entry of a supported `GET /models` reply. */
 interface ListingEntry {
   id?: unknown
+  slug?: unknown
   /** Common gateway extensions; absent from the official listings. */
   name?: unknown
   display_name?: unknown
@@ -178,7 +180,7 @@ async function readBounded(response: Response, url: string): Promise<string> {
  * a working endpoint's catalog. Missing names fall back to the adopted id so
  * the Web form receives a complete human-readable row.
  */
-function readListing(body: unknown): LlmDiscoveredModel[] {
+function readListing(body: unknown, subscriptionCatalog: boolean): LlmDiscoveredModel[] {
   const listing = body as { data?: unknown; models?: unknown } | null
   const data = listing?.data
   let listed: { readonly key?: string; readonly raw: unknown }[]
@@ -187,21 +189,24 @@ function readListing(body: unknown): LlmDiscoveredModel[] {
     listed = rows.map(raw => ({ raw }))
   } else {
     const models = listing?.models
-    if (models === null || typeof models !== 'object' || Array.isArray(models)) {
+    if (Array.isArray(models) && subscriptionCatalog) {
+      listed = models.map((raw: unknown) => ({ raw }))
+    } else if (models === null || typeof models !== 'object' || Array.isArray(models)) {
       throw new LlmError(
         'the endpoint\'s model listing has neither a "data" array nor a "models" object; '
         + 'enter this provider\'s models by hand',
         'DISCOVERY_FAILED',
       )
+    } else {
+      listed = Object.entries(models as Record<string, unknown>)
+        .filter(([, raw]) => raw !== null && typeof raw === 'object' && !Array.isArray(raw))
+        .map(([key, raw]) => ({ key, raw }))
     }
-    listed = Object.entries(models as Record<string, unknown>)
-      .filter(([, raw]) => raw !== null && typeof raw === 'object' && !Array.isArray(raw))
-      .map(([key, raw]) => ({ key, raw }))
   }
   const models: LlmDiscoveredModel[] = []
   for (const { key, raw } of listed) {
     const entry = raw as ListingEntry | null
-    const id = label(key, entry?.id)
+    const id = label(key, entry?.id, entry?.slug)
     if (id === undefined) continue
     const name = label(entry?.name, entry?.display_name, entry?.displayName) ?? id
     const contextWindow = capacity(
@@ -254,6 +259,8 @@ export interface StoredModelDiscoveryProfile {
   readonly headers: Readonly<Record<string, string>> | undefined
   /** Resolve the named route's credential only when the draft carries none. */
   readonly resolveApiKey: () => Promise<string | undefined>
+  /** Resolve the OpenAI subscription grant without exposing it through the discovery result. */
+  readonly resolveChatGPTAccessToken?: (signal?: AbortSignal) => Promise<string | undefined>
 }
 
 /**
@@ -262,6 +269,7 @@ export interface StoredModelDiscoveryProfile {
  * @param storedProfile - Host-owned headers and lazy credential resolution for
  *   the named route. It is read only on the path that reaches the network; the
  *   credential is resolved only when the draft carries none.
+ * @param subscriptionCatalog - Read the official ChatGPT account model-list format.
  * @returns the advertised models in endpoint order.
  * @throws LlmError when the protocol has no readable listing, the endpoint
  *   refuses or fails the request, or the reply is not a model listing.
@@ -269,7 +277,29 @@ export interface StoredModelDiscoveryProfile {
 export async function discoverModels(
   request: LlmModelDiscoveryOperation,
   storedProfile?: () => StoredModelDiscoveryProfile | undefined,
+  subscriptionCatalog = false,
 ): Promise<readonly LlmDiscoveredModel[]> {
+  if (request.provider === 'chatgpt' && request.apiKey !== undefined) {
+    throw new LlmError('ChatGPT model discovery requires its subscription sign-in, not an API key.', 'INVALID_CHATGPT_ROUTE')
+  }
+  const native = (request.provider === 'openai' || request.provider === 'chatgpt') && request.apiKey === undefined
+    ? storedProfile?.() : undefined
+  const chatGPTToken = await native?.resolveChatGPTAccessToken?.(request.signal)
+  if (request.provider === 'chatgpt' && chatGPTToken === undefined) {
+    throw new LlmError('Connect your ChatGPT subscription before fetching its models.', 'MISSING_CREDENTIAL')
+  }
+  if (chatGPTToken !== undefined) {
+    if ((request.baseURL !== undefined && request.baseURL.replace(/\/+$/, '') !== CHATGPT_API_BASE_URL)
+      || (request.api !== undefined && request.api !== 'openai-responses')) {
+      throw new LlmError('ChatGPT model discovery can only use the official OpenAI Responses endpoint.', 'INVALID_CHATGPT_ROUTE')
+    }
+    return discoverModels({
+      baseURL: CHATGPT_API_BASE_URL,
+      api: 'openai-responses',
+      apiKey: chatGPTToken,
+      ...request.signal === undefined ? {} : { signal: request.signal },
+    }, undefined, true)
+  }
   // A catalog route already has its answer, and a better one: the installed
   // entries carry context windows and output caps no listing endpoint reports.
   if (request.provider !== undefined) {
@@ -359,5 +389,5 @@ export async function discoverModels(
   } catch (error: unknown) {
     throw new LlmError(`${url} did not answer with JSON`, 'DISCOVERY_FAILED', { cause: error })
   }
-  return readListing(body)
+  return readListing(body, subscriptionCatalog)
 }

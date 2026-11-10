@@ -197,6 +197,19 @@ function catalogProviders(): Map<string, Provider> {
  *   or ships without a chat model.
  */
 export function catalogProvider(provider: string): Provider | undefined {
+  if (provider === 'chatgpt') {
+    const base = catalogProviders().get('openai')
+    if (base === undefined) return undefined
+    return {
+      ...base, id: 'chatgpt', name: 'ChatGPT',
+      auth: { apiKey: {
+        name: 'ChatGPT subscription',
+        resolve: ({ credential }) => Promise.resolve(credential?.key === undefined ? undefined : {
+          auth: { apiKey: credential.key }, source: 'ChatGPT subscription',
+        }),
+      } },
+    }
+  }
   return catalogProviders().get(provider)
 }
 
@@ -215,9 +228,10 @@ export function catalogProviderIds(): readonly string[] {
  * @returns catalog models by id; empty for a route {@link catalogProvider} does not return.
  */
 export function catalogModels(provider: string): Map<string, Model<Api>> {
-  if (!catalogProviders().has(provider)) return new Map()
-  const models = getBuiltinModels(provider as BuiltinProvider) as Model<Api>[]
-  return new Map(models.map(model => [model.id, model]))
+  const source = provider === 'chatgpt' ? 'openai' : provider
+  if (!catalogProviders().has(source)) return new Map()
+  const models = getBuiltinModels(source as BuiltinProvider) as Model<Api>[]
+  return new Map(models.map(model => [model.id, provider === source ? model : { ...model, provider }]))
 }
 
 /**

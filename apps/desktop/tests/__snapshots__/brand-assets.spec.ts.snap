@@ -1,36 +1,36 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`approved Team application and installation artwork > keeps both installer characters on white bitmaps with an uncut outer border 1`] = `
+exports[`approved Team application and installation artwork > keeps the finance team and SUDO footer on white bitmaps with an uncut outer border 1`] = `
 [
   {
-    "height": 400,
+    "height": 360,
     "name": "installer-product-logo.bmp",
-    "sha256": "413e8e35255c72c99e270428cdf68e3b832c7da89c0244e892446015d1fb2f79",
-    "width": 480,
+    "sha256": "db74bbfb019b37fe60444eb8b9e5c02f706d447a012379be7c611c8c412c88b0",
+    "width": 640,
   },
   {
     "height": 72,
     "name": "installer-product-logo-small.bmp",
-    "sha256": "6be697849bdbcbe642c6c0230b8115edee62040099671d81b60cf63f8a30b6b6",
+    "sha256": "f7a0fa8d6ec6edb5024deb0dfc1d1f3bd3dd142852b35dadfdde38f2b347901e",
     "width": 72,
   },
   {
     "height": 314,
     "name": "installer-sidebar.bmp",
-    "sha256": "f8543046d964c91d2048a8420140d0549bcd328e6b0e1bfb7ed8cae42cd9bfe7",
+    "sha256": "94ef894e675b5f85992f3885434f3e8345c86c519b11284ad90bffd2281c794d",
     "width": 164,
   },
   {
     "height": 57,
     "name": "installer-header.bmp",
-    "sha256": "d067fe009bd8d11b3cca3725d1299a263870b2d80604f18db4453918db00e627",
+    "sha256": "26ad08da6c6101cbefa4be19449b8ba8e46f61c60bf0e5643e890d323829ef62",
     "width": 150,
   },
   {
-    "height": 28,
+    "height": 58,
     "name": "installer-company-logo.bmp",
-    "sha256": "948061318644041bef15abadb6e2c8488d00c08fcd74f26eed8020dab7bcbba7",
-    "width": 110,
+    "sha256": "850c0556d1f60277aadd0d8c663aa1fee05aff9d5a2b6992be1989068f80f4ef",
+    "width": 180,
   },
 ]
 `;
@@ -42,29 +42,29 @@ exports[`approved Team application and installation artwork > provides the white
       255,
       255,
       255,
-      251,
+      252,
     ],
-    "sha256": "fd515e3dba5ace9ba51931bfe1c8f296711af365e5f198124a9d111b8cb73b18",
+    "sha256": "8da262e097d1ec9f9cb5a78884b93887c5e01d1536a721f8ed28e4a50aceae8e",
     "size": 16,
   },
   {
     "rgba": [
-      249,
-      249,
-      249,
+      255,
+      255,
+      255,
       253,
     ],
-    "sha256": "c6ca7b4af10a0917827e654b6596c1c35345ee6c79a62732390d446a86bfaef0",
+    "sha256": "cded84b277fec41672ebaa2cc896e2c4f6411314f0a3a0f786b270750520769c",
     "size": 24,
   },
   {
     "rgba": [
-      252,
-      252,
-      252,
+      249,
+      249,
+      249,
       254,
     ],
-    "sha256": "bba2e53cd5e681155521e05184fd9cbe098ed04ae5b2c1992c1d432b3d777a8e",
+    "sha256": "7d79b9da13eb96cf2ce95703b7169b9f09a4472a854e2e3c8ab571ba8032cfe4",
     "size": 32,
   },
   {
@@ -74,7 +74,7 @@ exports[`approved Team application and installation artwork > provides the white
       252,
       254,
     ],
-    "sha256": "a54eee4f99642eef3313eaec1992e9a17d63e5966899636f76ef4a9db51f922c",
+    "sha256": "c0509669e663be502310982731c098f02425159b0caae7c83665fbea776c704f",
     "size": 48,
   },
   {
@@ -84,27 +84,27 @@ exports[`approved Team application and installation artwork > provides the white
       252,
       254,
     ],
-    "sha256": "adc67e96b1f93e9a60d9da51697bc825162dade0282fac46ea97bce4f15beeb7",
+    "sha256": "621ad8538ed7d5192937d2a50a9b74d23cae95f9360809de81573380a2979fbd",
     "size": 64,
   },
   {
     "rgba": [
-      252,
+      253,
       252,
       252,
       254,
     ],
-    "sha256": "e8f3377c768e24acd3494bd66e64a5c2e62e0d8d54189a43dfc3c491f2a878d5",
+    "sha256": "27b4574fff0573f311842f94315e9156610084ba3f5004c3f84b5484e997ef33",
     "size": 128,
   },
   {
     "rgba": [
-      252,
+      253,
       252,
       252,
       254,
     ],
-    "sha256": "113c61ec8fdc2de8f433999388a863b72c182ad55426b456e37fb4bd12a570bb",
+    "sha256": "a0072558110fbad562fe13af19324200af5c2f8024dbcf555e5d3be4f85fb2b3",
     "size": 256,
   },
 ]
@@ -112,7 +112,7 @@ exports[`approved Team application and installation artwork > provides the white
 
 exports[`approved Team application and installation artwork > ships a complete macOS icon container 1`] = `
 {
-  "sha256": "ce96220aade8b10956d5825ffece5fb74678495bc8c05ebe74fce4cdfa74b552",
+  "sha256": "8a52edf637221b501eb6b5b6776d651a61ffe2c396f803a099648631712c58cd",
   "types": [
     "ic04",
     "ic05",

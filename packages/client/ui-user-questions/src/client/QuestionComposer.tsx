@@ -3,6 +3,7 @@ import {
   type ChangeEvent, type FocusEvent, type KeyboardEvent,
 } from 'react'
 import clsx from 'clsx'
+import type { PropsRenderFactories, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import {
   Button, IconCheckOutlineRegular, IconChevronDownOutlineRegular, IconChevronLeftOutlineRegular,
   IconChevronRightOutlineRegular, IconChevronUpOutlineRegular, IconCloseOutlineRegular,
@@ -13,6 +14,16 @@ import type { PendingQuestion } from './contract/slots.ts'
 import type { QuestionDraftAnswer, QuestionDraftProgress } from './draft-store.ts'
 import { PlanReviewPanel } from './PlanReviewPanel.tsx'
 import css from './QuestionComposer.module.css'
+
+/**
+ * Render the provider's question panel from the ordinary composer chain.
+ * @param props - Original selector-matched question and public Factory renderer.
+ * @returns The shared panel under the same Session.
+ */
+export function QuestionComposerEntry({ matched, renderFactorySlot }: PropsRuntime<'conversation.composer'>
+  & PropsRenderFactories & { matched: PendingQuestion }) {
+  return renderFactorySlot('question.panel', { matched })
+}
 
 /**
  * Displayed feedback: validation feedback is stored as a dictionary KEY and

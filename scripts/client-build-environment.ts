@@ -22,10 +22,10 @@ const OFFICIAL_CLIENT_BUILD_ENVIRONMENT = {
   DSH_CLIENT_TITLE: 'DeepSeek Harness',
 } as const
 
-/** Public client environment required by Xiaojing Accounting Team artifacts. */
+/** Public client environment required by 小兢Bot artifacts. */
 const XIAOJING_CLIENT_BUILD_ENVIRONMENT = {
   DSH_CLIENT_BUILD_PROFILE: 'xiaojing',
-  DSH_CLIENT_TITLE: '小兢会计团队版',
+  DSH_CLIENT_TITLE: '小兢Bot',
   DSH_CLIENT_BOOT_LOGO: './sudo-logo-gray.png',
   DSH_CLIENT_BOOT_LOGO_ALT: '数豆科技',
   DSH_CLIENT_FAVICON: './xiaojing-character-logo.png',

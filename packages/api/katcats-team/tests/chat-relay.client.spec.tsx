@@ -19,11 +19,12 @@ import type { BotId } from '../src/types.ts'
 import type { ChatDeliveryId, ChatId, ChatRunId } from '../src/chats-types.ts'
 import { chatRelayDefinition } from '../src/client/chat-relay.ts'
 import { ChatRelayMessage, type ChatRelayMessageProps } from '../src/client/ChatRelayMessage.tsx'
-import { zh } from '../src/client/locales.ts'
+import { en, zh } from '../src/client/locales.ts'
 import { presentationDirectory } from './group-presentation-fixture.client.ts'
 
-afterEach(cleanup)
+afterEach(() => { window.getSelection()?.removeAllRanges(); cleanup() })
 const { useGroupDirectory } = presentationDirectory()
+const relayActions = { copyRelayText: vi.fn(), openRelayMember: vi.fn() }
 const relay: UserMessage = {
   id: 'relay-message' as MessageId, role: 'user', content: [{ type: 'text', text: '**Actual member result**\n\n[Reference](https://example.com)' }],
   source: { kind: 'katcats-group-relay', form: 'relay', schemaVersion: 1, chatId: 'editorial' as ChatId, runId: 'run' as ChatRunId,
@@ -68,7 +69,7 @@ describe('member relay projection', () => {
     assembler.replaceWindow([consumed()], false)
     const directory = presentationDirectory({ managerId: 'writer' as BotId })
     const props = { node: relayNodes(assembler)[0]!, sessionId: directory.chat.rootSessionId,
-      useGroupDirectory: directory.useGroupDirectory, renderSlot: () => null, t: makeTranslate(zh) } as ChatRelayMessageProps
+      useGroupDirectory: directory.useGroupDirectory, ...relayActions, renderSlot: () => null, t: makeTranslate(zh) } as ChatRelayMessageProps
     const view = render(<ChatRelayMessage {...props} />)
     expect(screen.getByRole('img', { name: zh['chat.managerBadge'] })).toBeTruthy()
     expect(view.container.querySelector('[data-katcats-manager-avatar]')?.getAttribute('data-katcats-manager-avatar')).toBe('writer')
@@ -193,7 +194,7 @@ describe('member relay projection', () => {
     const message = { ...relay, content: [{ type: 'text' as const,
       text: '[Final delivery](./acceptance-final.md#L7-L9) and [Absolute delivery](E:/Projects/Katcats.AI/run/tmp/synthetic/acceptance-final.md)' }] }
     assembler.replaceWindow([consumed(1, message)], false)
-    const props = { node: relayNodes(assembler)[0]!, useGroupDirectory, renderSlot: () => null, t: makeTranslate(zh) } as ChatRelayMessageProps
+    const props = { node: relayNodes(assembler)[0]!, useGroupDirectory, ...relayActions, renderSlot: () => null, t: makeTranslate(zh) } as ChatRelayMessageProps
     const open = vi.fn<(path: string, options?: { line?: number }) => void>()
     const view = render(<MarkdownDelegateProvider openFile={open}><ChatRelayMessage {...props} /></MarkdownDelegateProvider>)
     fireEvent.click(screen.getByRole('button', { name: 'Final delivery' }))
@@ -212,7 +213,7 @@ describe('member relay projection', () => {
     const assembler = engine()
     assembler.replaceWindow([queued()], false)
     const node = relayNodes(assembler)[0]!
-    const props = { node, useGroupDirectory, renderSlot: () => null, t: makeTranslate(zh) } as ChatRelayMessageProps
+    const props = { node, useGroupDirectory, ...relayActions, renderSlot: () => null, t: makeTranslate(zh) } as ChatRelayMessageProps
     const view = render(<ChatRelayMessage {...props} />)
     expect(screen.getByRole('group', { name: 'Recorded Writer 的群消息' })).toBeTruthy()
     expect(screen.getByLabelText(/^发言时间：/)).toBeTruthy()
@@ -231,5 +232,93 @@ describe('member relay projection', () => {
     expect(screen.queryByRole('status')).toBeNull()
     expect(view.container.querySelector('time')?.getAttribute('datetime')).toBe(new Date(node.data.time).toISOString())
     expect(view.container.querySelectorAll('[data-katcats-relay]')).toHaveLength(1)
+  })
+})
+
+describe('member message context actions', () => {
+  function setup(text?: string) {
+    const assembler = engine()
+    assembler.replaceWindow([consumed(1, text === undefined ? relay
+      : { ...relay, content: [{ type: 'text', text }] })], false)
+    const directory = presentationDirectory()
+    const actions = { copyRelayText: vi.fn(), openRelayMember: vi.fn() }
+    const props = { node: relayNodes(assembler)[0]!, sessionId: directory.chat.rootSessionId,
+      useGroupDirectory: directory.useGroupDirectory, ...actions, renderSlot: () => null, t: makeTranslate(zh) } as ChatRelayMessageProps
+    const view = render(<ChatRelayMessage {...props} />)
+    const bubble = view.container.querySelector<HTMLElement>('[data-katcats-message-body]')!
+    return { ...view, bubble, directory, props, actions }
+  }
+
+  it('copies the original Markdown or exact message identity from a compact, localized menu', () => {
+    const b = setup()
+    fireEvent.contextMenu(b.bubble, { clientX: 120, clientY: 160 })
+    expect(screen.getAllByRole('menuitem').map(item => item.textContent)).toMatchInlineSnapshot(`
+      [
+        "复制消息",
+        "复制消息 ID",
+      ]
+    `)
+    fireEvent.click(screen.getByRole('menuitem', { name: zh['chat.copyMessage'] }))
+    expect(b.actions.copyRelayText).toHaveBeenCalledExactlyOnceWith(b.props.node.data.text)
+    expect(screen.queryByRole('menu')).toBeNull()
+    fireEvent.keyDown(b.bubble, { key: 'F10', shiftKey: true })
+    fireEvent.click(screen.getByRole('menuitem', { name: zh['chat.copyMessageId'] }))
+    expect(b.actions.copyRelayText).toHaveBeenLastCalledWith('relay-message')
+    b.rerender(<ChatRelayMessage {...b.props} t={makeTranslate(en)} />)
+    fireEvent.contextMenu(b.bubble)
+    expect(screen.getAllByRole('menuitem').map(item => item.textContent)).toEqual(['Copy message', 'Copy message ID'])
+  })
+
+  it('opens the current member from their name and copies the recorded name from their avatar', () => {
+    const b = setup()
+    fireEvent.contextMenu(screen.getByText('Recorded Writer'))
+    fireEvent.click(screen.getByRole('menuitem', { name: zh['chat.openMember'] }))
+    expect(b.actions.openRelayMember).toHaveBeenCalledExactlyOnceWith('writer')
+    const avatar = screen.getByLabelText('Recorded Writer')
+    fireEvent.keyDown(avatar, { key: 'ContextMenu' })
+    fireEvent.click(screen.getByRole('menuitem', { name: zh['chat.copyMemberName'] }))
+    expect(b.actions.copyRelayText).toHaveBeenCalledExactlyOnceWith('Recorded Writer')
+  })
+
+  it.each(['removed', 'loading', 'other-session'] as const)('keeps historical member identity copyable but disables opening while %s', reason => {
+    const b = setup()
+    if (reason === 'other-session') b.rerender(<ChatRelayMessage {...b.props} sessionId={'other-root' as SessionId} />)
+    else {
+      const saved = b.directory.source.getSnapshot().snapshot!
+      act(() => { b.directory.source.set(reason === 'loading' ? { phase: 'loading', snapshot: saved }
+        : { phase: 'ready', snapshot: { ...saved, chats: [{ ...b.directory.chat, memberIds: [] }] } }) })
+    }
+    fireEvent.contextMenu(screen.getByText('Recorded Writer'))
+    const open = screen.getByRole<HTMLButtonElement>('menuitem', { name: zh['chat.openMember'] })
+    expect(open.disabled).toBe(true)
+    fireEvent.click(open)
+    expect(b.actions.openRelayMember).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('menuitem', { name: zh['chat.copyMemberName'] }))
+    expect(b.actions.copyRelayText).toHaveBeenCalledExactlyOnceWith('Recorded Writer')
+  })
+
+  it('preserves the native menu for selected message text and links', () => {
+    const b = setup()
+    const selection = window.getSelection()!
+    selection.removeAllRanges()
+    const range = document.createRange()
+    range.selectNodeContents(b.bubble)
+    selection.addRange(range)
+    expect(fireEvent.contextMenu(b.bubble)).toBe(true)
+    expect(screen.queryByRole('menu')).toBeNull()
+    selection.removeAllRanges()
+    expect(fireEvent.contextMenu(screen.getByRole('link', { name: 'Reference' }))).toBe(true)
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  it('disables copying empty message content while leaving its durable ID available', () => {
+    const b = setup('')
+    fireEvent.contextMenu(b.bubble)
+    const copy = screen.getByRole<HTMLButtonElement>('menuitem', { name: zh['chat.copyMessage'] })
+    expect(copy.disabled).toBe(true)
+    fireEvent.click(copy)
+    expect(b.actions.copyRelayText).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('menuitem', { name: zh['chat.copyMessageId'] }))
+    expect(b.actions.copyRelayText).toHaveBeenCalledExactlyOnceWith('relay-message')
   })
 })

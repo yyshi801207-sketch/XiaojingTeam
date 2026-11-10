@@ -69,6 +69,8 @@ Web 客户端在聊天输入框旁显示 agent（智能体）的提问。用户�
 
 ### 重新打开面板
 
+`question.panel` 是提供方拥有的会话 Factory，接收原始 `PendingQuestion`。普通编辑器链和群聊提问区都在请求所属的已保留会话下渲染该 Factory，共用草稿存储、作答通道和卡片身份。只有该 Factory 声明 `conversation.plan-review.actions`。消费者不得为了复用面板而重新声明 `conversation.composer`。
+
 本包填充 `userQuestionPanels`——`dsh-client-ui-tool` 为其 `ask_user_question` 行声明的可选能力。`reveal(sessionId, callId)` 把该调用的卡片重新发布为同优先级中最后一个待处理交互，编辑器位置于是再次显示它；当本客户端没有该调用的卡片时返回 `false`——例如旧版未命名的请求、另一个浏览器的问题，或投影已关闭的卡片。问题是否仍可回答取自 `userQuestions` 会话投影，由该行直接读取，因此这项能力自身不携带状态。
 
 投影只列出仍可回答的调用，因此 `review(sessionId, callId, record)` 用该行从自己转录中解析出的问题与回答建卡。这张卡片没有回答通道也没有倒计时，投影清扫不会碰它，关闭它是移除而非留在注册表里。仍持有实时卡片的调用显示实时那张，过期副本不会替换正在进行的请求；同理，只读卡片渲染记录本身，只从实时卡片留下的草稿里取页码。

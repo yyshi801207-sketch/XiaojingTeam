@@ -5,10 +5,10 @@ import type { BotId, TeamBot } from '../types.ts'
 import { GroupMemberAvatar } from './GroupMemberAvatar.tsx'
 import css from './group-worker-status.module.css'
 
-/** The phase derives from this exact executor's original interaction, never another member's approval. */
+/** The phase derives from this exact executor's original pending interaction. */
 export interface GroupWorkerStatusItem {
   readonly bot: TeamBot
-  readonly phase: 'working' | 'approval'
+  readonly phase: 'working' | 'approval' | 'question'
 }
 
 /**
@@ -51,7 +51,8 @@ export function GroupWorkerStatus({ members, managerId, t }: {
   const selected = members.find(member => member.bot.id === current) ?? members[0]
   if (selected === undefined) return null
   const visible = reduced ? members : [selected]
-  const phase = (member: GroupWorkerStatusItem) => t(member.phase === 'approval' ? 'chat.phaseApproval' : 'chat.phaseWorking')
+  const phase = (member: GroupWorkerStatusItem) => t(member.phase === 'approval' ? 'chat.phaseApproval'
+    : member.phase === 'question' ? 'chat.phaseQuestion' : 'chat.phaseWorking')
   const label = members.map(member => t('chat.memberStatus', { name: member.bot.name, phase: phase(member) })).join('; ')
   return <div className={css.status} role="group" aria-label={label} aria-live="off"
     tabIndex={members.length > 1 && !reduced ? 0 : undefined} data-katcats-worker-status=""

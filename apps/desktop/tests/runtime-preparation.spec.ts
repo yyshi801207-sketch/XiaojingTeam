@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
   failure: undefined as 'electron' | 'primary' | 'cli' | undefined,
   preparePrimary: vi.fn(),
   commandLink: vi.fn(),
+  download: vi.fn(async () => 'electron.zip'),
 }))
 vi.mock('../scripts/desktop-build-paths.mjs', async importOriginal => ({
   ...await importOriginal<typeof import('../scripts/desktop-build-paths.mjs')>(),
@@ -21,7 +22,7 @@ vi.mock('../scripts/desktop-build-paths.mjs', async importOriginal => ({
     runtime: join(state.root, 'runtime'), electron: join(state.root, 'electron'), downloads: join(state.root, 'downloads'),
   }),
 }))
-vi.mock('@electron/get', () => ({ downloadArtifact: async () => 'electron.zip' }))
+vi.mock('@electron/get', () => ({ downloadArtifact: state.download }))
 vi.mock('extract-zip', () => ({ default: async () => {
   if (state.failure === 'electron') throw new Error('Electron extraction failed')
 } }))
@@ -81,6 +82,11 @@ it.each(['mac-arm64', 'mac-x64', 'win-x64'] as const)('prepares %s with one pnpm
   const runtime = join(state.root, 'runtime')
   mkdirSync(join(runtime, 'pnpm'), { recursive: true })
   await import('../scripts/prepare-runtime.ts')
+  expect(state.download).toHaveBeenCalledWith(expect.objectContaining({
+    checksums: expect.objectContaining({
+      'electron-v44.7.0-win32-x64.zip': expect.stringMatching(/^[a-f0-9]{64}$/u),
+    }),
+  }))
   expect(existsSync(join(runtime, 'pnpm'))).toBe(false)
   expect(existsSync(join(runtime, 'primary-runtime', 'dependencies', 'pnpm', 'bin', 'pnpm.mjs'))).toBe(true)
   expect(existsSync(join(runtime, 'bin', 'node'))).toBe(true)

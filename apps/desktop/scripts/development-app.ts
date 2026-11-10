@@ -36,8 +36,8 @@ export function prepareDevelopmentApp(options: DevelopmentAppOptions): string {
     const plist = join(bundle, 'Contents', 'Info.plist')
     const values = {
       CFBundleIdentifier: 'ai.xiaojing.accounting.team.development',
-      CFBundleName: '小兢会计团队版 Dev',
-      CFBundleDisplayName: '小兢会计团队版 Dev',
+      CFBundleName: '小兢Bot Dev',
+      CFBundleDisplayName: '小兢Bot Dev',
       CFBundleExecutable: 'XiaojingAccountingTeamDev',
       CFBundleURLTypes: [],
     }

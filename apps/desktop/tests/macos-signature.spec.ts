@@ -48,7 +48,7 @@ describe('desktop macOS release signature', () => {
   it('loads release identifiers from the environment and requires code signing', async () => {
     const { createElectronBuilderConfig } = await import('../electron-builder.config.mjs')
     const config = createElectronBuilderConfig(RELEASE_ENVIRONMENT, 'darwin', 'arm64')
-    expect(config.protocols).toEqual([{ name: '小兢会计团队版', schemes: ['xiaojing-accounting-team'] }])
+    expect(config.protocols).toEqual([{ name: '小兢Bot', schemes: ['xiaojing-accounting-team'] }])
     expect(portablePath(config.directories.output)).toContain('/.desktop-build/targets/mac-arm64/artifacts')
     expect(config.mac.extendInfo.NSMicrophoneUsageDescription).toContain('麦克风')
     expect(config.mac.entitlementsInherit).toBe(config.mac.entitlements)

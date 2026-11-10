@@ -1,4 +1,4 @@
-/** Approved member cats combined into a compact group identity. */
+/** Saved member silhouettes combined into a compact group identity. */
 import type { BotAvatar } from '../types.ts'
 import { CatAvatar, DEFAULT_APPEARANCE } from './avatars.tsx'
 import css from './chat-avatar.module.css'

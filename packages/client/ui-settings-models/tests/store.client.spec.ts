@@ -1,6 +1,6 @@
 /** Page-store join: directory × namespaces × credentials, with last-good rows on failure. */
 import { describe, expect, it } from 'vitest'
-import type { RpcResponse } from '@deepseek-ai/dsh-api-remotes/client'
+import type { AuthorizationRemoteStatus, ModelCatalog, RpcResponse, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
 import { RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import { SettingsDescribeMirror } from '@deepseek-ai/dsh-client-ui-settings/src/client/settings-mirror.ts'
 import { settingsSchema } from './settings-schema.client.ts'
@@ -105,8 +105,10 @@ const NAMESPACES = [
 
 function api(overrides: {
   accountAvailable?: boolean
+  modelCatalog?: () => Promise<RemoteAnswer<ModelCatalog>>
+  authorizationStatus?: (key: string) => Promise<RemoteAnswer<AuthorizationRemoteStatus>>
   providers?: () => Promise<RpcResponse<{ providers: typeof DIRECTORY }>>
-  describeSettings?: () => Promise<RemoteAnswer<{ writable: boolean; hasDocument: boolean; namespaces: typeof NAMESPACES }>>
+  describeSettings?: () => Promise<RemoteAnswer<{ writable: boolean; hasDocument: boolean; namespaces: readonly SettingsNamespaceView[] }>>
   describeCredentials?: (refs: readonly string[]) => Promise<RemoteAnswer<Record<string, unknown>>>
 } = {}) {
   const seenRefs: string[][] = []
@@ -129,8 +131,15 @@ function api(overrides: {
       : remoteFail(response.result.error.message)
   }
   const face = {
-    session: { modelCatalog: async () => remoteOk({ groups: overrides.accountAvailable
-      ? [{ id: 'deepseek-account', models: [{ id: 'deepseek-flash' }] }] : [] }) },
+    authorization: {
+      status: overrides.authorizationStatus ?? (async () => remoteOk({ configured: false, writable: true, inFlight: false })),
+    },
+    session: { modelCatalog: overrides.modelCatalog ?? (async () => remoteOk({
+      default: { provider: 'deepseek-official', model: 'deepseek-chat' },
+      routableProviders: [], failures: [],
+      groups: overrides.accountAvailable
+        ? [{ id: 'deepseek-account', name: 'DeepSeek Account', models: [{ id: 'deepseek-flash', name: 'DeepSeek Flash' }] }] : [],
+    })) },
     llm: {
       listProviders: () => mapProviderBatch(rows => rows
         .filter(row => row.active)
@@ -162,6 +171,94 @@ function api(overrides: {
 }
 
 describe('ModelsSettingsStore', () => {
+  it('follows application default changes without using provider registration order', async () => {
+    let primaryProvider = 'openai'
+    const { ctx, mirror } = api({ modelCatalog: async () => remoteOk({
+      default: { provider: primaryProvider, model: 'fixture-model' }, routableProviders: [], groups: [], failures: [],
+    }) })
+    const store = new ModelsSettingsStore(ctx, settingsSchema, mirror)
+    await store.load()
+    expect(store.store.getSnapshot().rows[0]?.entry.provider).toBe('deepseek-official')
+    expect(store.store.getSnapshot().primaryProvider).toBe('openai')
+
+    primaryProvider = 'anthropic'
+    await store.load()
+    expect(store.store.getSnapshot().primaryProvider).toBe('anthropic')
+    expect(store.store.getSnapshot().rows[0]?.entry.provider).toBe('deepseek-official')
+  })
+
+  it('keeps an unknown or last confirmed default when the model catalog refuses a read', async () => {
+    let catalog: RemoteAnswer<ModelCatalog> = remoteFail('catalog unavailable')
+    const { ctx, mirror } = api({ modelCatalog: async () => catalog })
+    const store = new ModelsSettingsStore(ctx, settingsSchema, mirror)
+    await store.load()
+    expect(store.store.getSnapshot()).toMatchObject({ status: 'ready' })
+    expect(store.store.getSnapshot().primaryProvider).toBeUndefined()
+
+    catalog = remoteOk({ default: { provider: 'openai', model: 'fixture-model' }, routableProviders: [], groups: [], failures: [] })
+    await store.load()
+    expect(store.store.getSnapshot().primaryProvider).toBe('openai')
+
+    catalog = remoteFail('catalog unavailable')
+    await store.load()
+    expect(store.store.getSnapshot()).toMatchObject({ status: 'ready', primaryProvider: 'openai' })
+  })
+
+  it.each([
+    ['connected account with models', true, 'grant', 1, true, true],
+    ['account without a login', false, 'grant', 1, true, false],
+    ['API key without an account grant', true, 'api-key', 1, true, false],
+    ['account without models', true, 'grant', 0, true, false],
+    ['inactive account route', true, 'grant', 1, false, false],
+  ] as const)('reports ChatGPT availability for %s', async (_name, configured, kind, modelCount, active, available) => {
+    const { ctx, mirror } = api({
+      providers: async () => ok({ providers: [{
+        provider: 'chatgpt', displayName: 'ChatGPT', settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'chatgpt'], active,
+      }] }),
+      describeSettings: async () => remoteOk({ writable: true, hasDocument: false, namespaces: [{
+        ns: 'llm-pi-ai', schema: {},
+        value: { providers: { chatgpt: { models: Array.from({ length: modelCount }, () => ({ id: 'fixture-model' })) } } },
+        autoGenerate: true, applies: 'live', secrets: [], revision: 0,
+      }] }),
+      authorizationStatus: async (key) => {
+        expect(key).toBe('llm-pi-ai/chatgpt')
+        return remoteOk({ configured, kind, writable: true, inFlight: false })
+      },
+    })
+    const store = new ModelsSettingsStore(ctx, settingsSchema, mirror)
+    await store.load()
+    expect(store.store.getSnapshot().rows[0]?.accountAvailable).toBe(available)
+  })
+
+  it('withdraws ChatGPT availability after disconnection or a refused account read', async () => {
+    let status: RemoteAnswer<AuthorizationRemoteStatus> = remoteOk({ configured: true, kind: 'grant', writable: true, inFlight: false })
+    const { ctx, mirror } = api({
+      providers: async () => ok({ providers: [{
+        provider: 'chatgpt', displayName: 'ChatGPT', settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'chatgpt'], active: true,
+      }] }),
+      describeSettings: async () => remoteOk({ writable: true, hasDocument: false, namespaces: [{
+        ns: 'llm-pi-ai', schema: {}, value: { providers: { chatgpt: { models: [{ id: 'fixture-model' }] } } },
+        autoGenerate: true, applies: 'live', secrets: [], revision: 0,
+      }] }),
+      authorizationStatus: async () => status,
+    })
+    const store = new ModelsSettingsStore(ctx, settingsSchema, mirror)
+    await store.load()
+    expect(store.store.getSnapshot().rows[0]?.accountAvailable).toBe(true)
+
+    status = remoteOk({ configured: false, writable: true, inFlight: false })
+    await store.load()
+    expect(store.store.getSnapshot().rows[0]?.accountAvailable).toBe(false)
+
+    status = remoteOk({ configured: true, kind: 'grant', writable: true, inFlight: false })
+    await store.load()
+    expect(store.store.getSnapshot().rows[0]?.accountAvailable).toBe(true)
+
+    status = remoteFail('account unavailable')
+    await store.load()
+    expect(store.store.getSnapshot().rows[0]?.accountAvailable).toBe(false)
+  })
+
   it('describes native variables without exposing secret values and respects the 64-reference limit', async () => {
     const providers = Array.from({ length: 65 }, (_, index) => ({
       provider: `fixture-${index}`, displayName: 'fixture', settingsNs: 'llm-pi-ai', settingsPath: ['providers', `fixture-${index}`], active: false,

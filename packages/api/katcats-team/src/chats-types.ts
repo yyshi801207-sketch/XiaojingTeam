@@ -13,6 +13,36 @@ export type ChatRunId = Branded<'KatcatsChatRunId'>
 /** Stable accepted delegation identity. */
 export type ChatDeliveryId = Branded<'KatcatsChatDeliveryId'>
 
+/** Stable business task identity retained when later owner messages continue the same work. */
+export type GroupTicketId = Branded<'KatcatsGroupTicketId'>
+
+/** Versioned business task; a completed member turn does not close or accept this record. */
+export interface GroupTicket {
+  readonly version: 1
+  readonly id: GroupTicketId
+  readonly ownerId: BotId
+  readonly goal: string
+  /** Empty until the responsible member explicitly records acceptance criteria. */
+  readonly acceptance: readonly string[]
+  readonly stage: string
+  readonly nextStep: string
+  readonly state: 'open' | 'blocked'
+  readonly blocker: string | null
+  readonly artifacts: readonly string[]
+  readonly messageIds: readonly MessageId[]
+  readonly revision: number
+}
+
+/** Complete business description; omitted id creates work or updates this message's saved task. */
+export interface RecordGroupTicket {
+  readonly id?: GroupTicketId
+  readonly goal: string
+  readonly acceptance: readonly string[]
+  readonly stage: string
+  readonly nextStep: string
+  readonly artifacts: readonly string[]
+}
+
 /** One ordinary member's conversation within one group directory. */
 export interface ChatExecutor {
   readonly botId: BotId
@@ -40,6 +70,8 @@ export interface ChatMemberRole {
 
 /** Durable group settings with an optional responsible member and a separate transcript Session. */
 export interface TeamChat {
+  /** Saved business work; absent on groups that have not recorded a task yet. */
+  readonly tickets?: readonly GroupTicket[]
   readonly id: ChatId
   readonly name: string
   readonly groupId: GroupId
@@ -86,6 +118,10 @@ export interface ChatInbound {
   readonly userMessage: UserMessage
   readonly recipients: readonly BotId[]
   readonly addressing: 'explicit' | 'broadcast'
+  /** Version 1 enables responsible-member routing and delivery review; absent inputs retain legacy execution. */
+  readonly collaborationVersion?: 1
+  /** Version 1 enables durable task classification and one-shot confirmed-blocker follow-up. */
+  readonly coordinationVersion?: 1
   readonly state: 'accepted' | 'published'
 }
 
@@ -110,6 +146,14 @@ export interface ChatPass {
 
 /** Accepted delegation and its durable outcome, retained across pause and restart. */
 export interface ChatDelivery {
+  /** Confirmed failed delivery being explained by this one-shot responsible-member follow-up. */
+  readonly recoveryOf?: ChatDeliveryId
+  /** Durable obligation to explain a confirmed failure; never authorizes repeating the failed operation. */
+  readonly takeover?: {
+    readonly version: 1
+    readonly botId: BotId
+    readonly state: 'pending' | 'handled' | 'stopped'
+  }
   readonly id: ChatDeliveryId
   readonly chatId: ChatId
   readonly runId: ChatRunId

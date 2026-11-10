@@ -1,0 +1,295 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`group room projection > records a real handoff and waiting parent without synthesizing extra tasks 1`] = `
+{
+  "members": [
+    {
+      "avatar": {
+        "color": "#10B8A6",
+        "shape": "classic",
+      },
+      "current": true,
+      "id": "lead",
+      "name": "Lead",
+      "phase": "dependency",
+      "role": "Coordinate",
+    },
+    {
+      "avatar": {
+        "color": "#10B8A6",
+        "shape": "classic",
+      },
+      "current": true,
+      "id": "reviewer",
+      "name": "Reviewer",
+      "phase": "queued",
+      "role": "Coordinate",
+    },
+  ],
+  "replies": [],
+  "tasks": [
+    {
+      "botId": "lead",
+      "error": null,
+      "from": null,
+      "id": "parent",
+      "message": "Build the website",
+      "parentId": null,
+      "stages": [
+        {
+          "seq": 0,
+          "task": {
+            "actor": {
+              "kind": "owner",
+            },
+            "chatId": "group",
+            "deliveryId": "parent",
+            "error": null,
+            "eventId": "event-1",
+            "generation": 1,
+            "message": "Build the website",
+            "parentDeliveryId": null,
+            "recovered": false,
+            "rootSessionId": "group-root",
+            "runId": "run",
+            "schemaVersion": 1,
+            "status": "queued",
+            "target": {
+              "botId": "lead",
+              "kind": "member",
+              "sender": {
+                "avatar": {
+                  "color": "#10B8A6",
+                  "shape": "classic",
+                },
+                "botId": "lead",
+                "name": "Lead",
+                "role": "Coordinate",
+              },
+            },
+          },
+          "time": 1000,
+        },
+        {
+          "seq": 1,
+          "task": {
+            "actor": {
+              "kind": "owner",
+            },
+            "chatId": "group",
+            "deliveryId": "parent",
+            "error": null,
+            "eventId": "event-2",
+            "generation": 1,
+            "message": "Build the website",
+            "parentDeliveryId": null,
+            "recovered": false,
+            "rootSessionId": "group-root",
+            "runId": "run",
+            "schemaVersion": 1,
+            "status": "started",
+            "target": {
+              "botId": "lead",
+              "kind": "member",
+              "sender": {
+                "avatar": {
+                  "color": "#10B8A6",
+                  "shape": "classic",
+                },
+                "botId": "lead",
+                "name": "Lead",
+                "role": "Coordinate",
+              },
+            },
+          },
+          "time": 1000,
+        },
+      ],
+      "status": "started",
+    },
+    {
+      "botId": "reviewer",
+      "error": null,
+      "from": "lead",
+      "id": "child",
+      "message": "Check the implementation",
+      "parentId": "parent",
+      "stages": [
+        {
+          "seq": 2,
+          "task": {
+            "actor": {
+              "botId": "lead",
+              "kind": "member",
+              "sender": {
+                "avatar": {
+                  "color": "#10B8A6",
+                  "shape": "classic",
+                },
+                "botId": "lead",
+                "name": "Lead",
+                "role": "Coordinate",
+              },
+            },
+            "chatId": "group",
+            "deliveryId": "child",
+            "error": null,
+            "eventId": "event-3",
+            "generation": 1,
+            "message": "Check the implementation",
+            "parentDeliveryId": "parent",
+            "recovered": false,
+            "rootSessionId": "group-root",
+            "runId": "run",
+            "schemaVersion": 1,
+            "status": "queued",
+            "target": {
+              "botId": "reviewer",
+              "kind": "member",
+              "sender": {
+                "avatar": {
+                  "color": "#10B8A6",
+                  "shape": "classic",
+                },
+                "botId": "reviewer",
+                "name": "Reviewer",
+                "role": "Coordinate",
+              },
+            },
+          },
+          "time": 1000,
+        },
+      ],
+      "status": "queued",
+    },
+  ],
+  "timeline": [
+    {
+      "seq": 0,
+      "time": 1000,
+    },
+    {
+      "seq": 1,
+      "time": 1000,
+    },
+    {
+      "seq": 2,
+      "time": 1000,
+    },
+  ],
+  "transitions": [
+    {
+      "seq": 0,
+      "task": {
+        "actor": {
+          "kind": "owner",
+        },
+        "chatId": "group",
+        "deliveryId": "parent",
+        "error": null,
+        "eventId": "event-1",
+        "generation": 1,
+        "message": "Build the website",
+        "parentDeliveryId": null,
+        "recovered": false,
+        "rootSessionId": "group-root",
+        "runId": "run",
+        "schemaVersion": 1,
+        "status": "queued",
+        "target": {
+          "botId": "lead",
+          "kind": "member",
+          "sender": {
+            "avatar": {
+              "color": "#10B8A6",
+              "shape": "classic",
+            },
+            "botId": "lead",
+            "name": "Lead",
+            "role": "Coordinate",
+          },
+        },
+      },
+      "time": 1000,
+    },
+    {
+      "seq": 1,
+      "task": {
+        "actor": {
+          "kind": "owner",
+        },
+        "chatId": "group",
+        "deliveryId": "parent",
+        "error": null,
+        "eventId": "event-2",
+        "generation": 1,
+        "message": "Build the website",
+        "parentDeliveryId": null,
+        "recovered": false,
+        "rootSessionId": "group-root",
+        "runId": "run",
+        "schemaVersion": 1,
+        "status": "started",
+        "target": {
+          "botId": "lead",
+          "kind": "member",
+          "sender": {
+            "avatar": {
+              "color": "#10B8A6",
+              "shape": "classic",
+            },
+            "botId": "lead",
+            "name": "Lead",
+            "role": "Coordinate",
+          },
+        },
+      },
+      "time": 1000,
+    },
+    {
+      "seq": 2,
+      "task": {
+        "actor": {
+          "botId": "lead",
+          "kind": "member",
+          "sender": {
+            "avatar": {
+              "color": "#10B8A6",
+              "shape": "classic",
+            },
+            "botId": "lead",
+            "name": "Lead",
+            "role": "Coordinate",
+          },
+        },
+        "chatId": "group",
+        "deliveryId": "child",
+        "error": null,
+        "eventId": "event-3",
+        "generation": 1,
+        "message": "Check the implementation",
+        "parentDeliveryId": "parent",
+        "recovered": false,
+        "rootSessionId": "group-root",
+        "runId": "run",
+        "schemaVersion": 1,
+        "status": "queued",
+        "target": {
+          "botId": "reviewer",
+          "kind": "member",
+          "sender": {
+            "avatar": {
+              "color": "#10B8A6",
+              "shape": "classic",
+            },
+            "botId": "reviewer",
+            "name": "Reviewer",
+            "role": "Coordinate",
+          },
+        },
+      },
+      "time": 1000,
+    },
+  ],
+}
+`;

@@ -3,6 +3,10 @@
   display: inline-flex;
 }
 
+.contextRoot {
+  display: contents;
+}
+
 /* Compact translucent dropdown card shared by feature menus. */
 .list,
 .submenu {
@@ -158,6 +162,21 @@
   padding: 3px 6px;
   font-size: 10px;
   line-height: 15px;
+}
+
+.list.spaciousList,
+.submenu.spaciousList {
+  min-width: 196px;
+  padding: 6px;
+}
+
+.spaciousList .item {
+  gap: 10px;
+  padding-inline: 12px;
+}
+
+.spaciousList .separator {
+  margin: 6px 2px;
 }
 
 .item:disabled {

@@ -38,6 +38,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * Without a registrant the area renders nothing.
      */
     'settings.models.footer': { kind: 'list'; scope: 'root'; owner: ModelsFooterOwnerProps }
+    /** Subscription authorization and verified candidates inside the existing Codex provider editor. */
+    'settings.models.account-editor': { kind: 'single'; scope: 'root'; owner: { onClose: () => void } }
   }
 }
 

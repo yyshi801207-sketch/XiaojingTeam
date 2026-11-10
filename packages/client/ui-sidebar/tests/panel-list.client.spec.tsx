@@ -133,6 +133,26 @@ async function mountPanels(runtime: SlotTestRuntime, locale: LocaleRuntime, beta
 }
 
 describe('sidebar global panels', () => {
+  it.each([false, true])('shows panel entries after one footer expansion without a nested toggle, rail=%s', async (collapsed) => {
+    const { runtime, view } = await bench(collapsed, {
+      footerNavigation: { label: { en: 'Tools and settings' }, defaultExpanded: false },
+      footerActionsPlacement: 'after-panels',
+    })
+    await mountPanel(runtime, { id: ALPHA, heading: 'Plugin manager', label: 'Plugins' })
+    const sidebar = within(view.getByRole('complementary'))
+    const toggle = sidebar.getByRole('button', { name: 'Show Tools and settings' })
+    expect(sidebar.queryByRole('button', { name: 'Plugins' })).toBeNull()
+    fireEvent.click(toggle)
+    const plugins = sidebar.getByRole('button', { name: 'Plugins' })
+    expect(within(sidebar.getByRole('navigation', { name: 'Global panels' })).getAllByRole('button')).toEqual([plugins])
+    fireEvent.click(plugins)
+    expect(view.getByRole('heading', { name: 'Plugin manager' })).toBeTruthy()
+    fireEvent.click(toggle)
+    expect(sidebar.queryByRole('button', { name: 'Plugins' })).toBeNull()
+    fireEvent.click(toggle)
+    expect(sidebar.getByRole('button', { name: 'Plugins' })).toBe(plugins)
+  })
+
   it.each([false, true])('folds every footer action without unmounting settings or losing nested navigation, rail=%s', async (collapsed) => {
     const { runtime, locale, view } = await bench(collapsed, {
       footerNavigation: { label: { en: 'Tools and settings', zh: '工具与设置' }, defaultExpanded: false },

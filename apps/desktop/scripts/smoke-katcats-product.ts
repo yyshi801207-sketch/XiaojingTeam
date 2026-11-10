@@ -68,6 +68,49 @@ class NoCalls extends LlmAdapter {
 }
 export function apply(ctx) {
   ctx.effect(() => ctx.llm.registerAdapter(['packaged-ui-smoke'], new NoCalls()))
+  let questionState = null
+  const questionAbort = new AbortController()
+  ctx.effect(() => () => questionAbort.abort(), 'packaged smoke: pending question')
+  ctx.effect(() => ctx.webServer.register({ kind: 'exact', path: '/katcats-packaged-ui-question',
+    async handler(request, response) {
+      response.setHeader('content-type', 'application/json')
+      if (!['GET', 'POST'].includes(request.method)) {
+        response.statusCode = 405; response.end(JSON.stringify({ error: 'GET or POST required' })); return
+      }
+      for await (const chunk of request) if (chunk.length !== 0) {
+        response.statusCode = 400; response.end(JSON.stringify({ error: 'Empty body required' })); return
+      }
+      try {
+        if (request.method === 'POST') {
+          if (questionState !== null && questionState.status !== 'answered') throw new Error('Unexpected question sequence')
+          const team = await ctx.get('katcatsTeam').snapshot(), groups = await ctx.get('katcatsChats').snapshot()
+          const matches = groups.chats.filter(chat => chat.name === '打包验收协作群')
+          if (matches.length !== 1) throw new Error('The synthetic question group must exist exactly once')
+          const chat = matches[0], executor = chat.executors[0]
+          const bot = team.bots.find(item => item.id === executor?.botId)
+          if (executor === undefined || bot?.kind !== 'ordinary' || executor.sessionId === chat.rootSessionId
+            || team.bots.some(item => item.sessionId === executor.sessionId)) throw new Error('Missing isolated question executor')
+          const resolved = await ctx.sessionController.resolveAgent(executor.sessionId)
+          if ('error' in resolved) throw new Error('The question executor is unavailable')
+          const phase = questionState === null ? 'answer' : 'cancel'
+          const state = { phase, status: 'pending', sessionId: executor.sessionId, rootSessionId: chat.rootSessionId,
+            privateSessionId: bot.sessionId, member: bot.name, answer: null, error: null }
+          questionState = state
+          void ctx.userQuestions.ask({ agent: resolved.agent, signal: questionAbort.signal,
+            questions: [{ id: 'packaged-group-question', question: phase === 'answer'
+              ? '合成验收：请选择群成员交付方式。' : '合成验收：请取消这次群成员提问。',
+              options: [{ label: '提交原成员' }, { label: '稍后处理' }] }],
+          }).then(answer => { state.answer = answer; state.status = 'answered' }, error => {
+            state.error = { code: error?.code ?? null, message: error instanceof Error ? error.message : String(error) }
+            state.status = 'failed'
+          })
+        }
+        response.end(JSON.stringify({ question: questionState, modelCalls }))
+      } catch (error) {
+        response.statusCode = 409
+        response.end(JSON.stringify({ error: error instanceof Error ? error.message : 'Synthetic question failed' }))
+      }
+    } }))
   let handoffTail = Promise.resolve()
   const seedHandoff = async phase => {
     const team = ctx.get('katcatsTeam'), chats = ctx.get('katcatsChats')
@@ -205,7 +248,7 @@ export function apply(ctx) {
     } }))
 }
 `)
-  await writeFile(join(plugin, 'bundle.yml'), `- insert:\n    - id: ${name}\n      name: ${name}\n      inject: [webServer, loader, llm, sessionController, sessions]\n`)
+  await writeFile(join(plugin, 'bundle.yml'), `- insert:\n    - id: ${name}\n      name: ${name}\n      inject: [webServer, loader, llm, sessionController, sessions, userQuestions]\n`)
   const manifestPath = join(profile, 'package.json')
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
     dependencies?: Record<string, string>

@@ -17,6 +17,7 @@ const DEFAULT_MAX_DELAY_MS = 10_000
 const DEFAULT_JITTER_RATIO = 0.1
 const DEFAULT_RETRYABLE_CODES = Object.freeze([
   EMPTY_RESPONSE_CODE,
+  'MALFORMED_RESPONSE',
   'RATE_LIMIT',
   'SERVER',
   'TIMEOUT',
@@ -33,9 +34,9 @@ export interface BackoffConfig {
   jitterRatio?: number
 }
 
-/** Current bounded transient retry behavior for one provider route. */
+/** Bounded model-request retry behavior for one provider route. */
 export interface NormalRetryPolicyConfig {
-  /** Retry only configured transient failure codes. */
+  /** Retry only configured model-request failure codes. */
   mode: 'normal'
   /** Maximum eligible retries after the first request (default 5). */
   maxRetries?: number

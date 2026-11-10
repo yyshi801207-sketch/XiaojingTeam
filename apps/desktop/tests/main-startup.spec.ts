@@ -28,9 +28,9 @@ vi.mock('../src/crash-report.ts', async importOriginal => ({
 vi.mock('../src/xiaojing-product.ts', () => ({
   XIAOJING_IDENTITY: {
     appId: 'ai.xiaojing.accounting.team.desktop',
-    productName: '小兢会计团队版',
+    productName: '小兢Bot',
     productVersion: '1.0.0',
-    shortcutName: '小兢会计团队版',
+    shortcutName: '小兢Bot',
   },
   assertXiaojingDesktopClientBuild: vi.fn(),
   initializeXiaojingApplication: vi.fn(() => ({
@@ -739,8 +739,8 @@ describe('desktop main startup', () => {
     await vi.advanceTimersByTimeAsync(0)
     const zh = locale === 'zh-CN'
     expect(harness.dialog.showMessageBox).toHaveBeenLastCalledWith(expect.objectContaining({
-      type: 'info', title: zh ? '关于 小兢会计团队版' : 'About Xiaojing Accounting Team',
-      message: zh ? '小兢会计团队版' : 'Xiaojing Accounting Team',
+      type: 'info', title: zh ? '关于 小兢Bot' : 'About 小兢Bot',
+      message: zh ? '小兢Bot' : '小兢Bot',
       detail: `${zh ? '版本' : 'Version'} V1.0.0`, buttons: [zh ? '确定' : 'OK'], cancelId: 0,
     }))
     // A dialog that cannot open is logged, not surfaced as an unhandled rejection.
@@ -1161,7 +1161,7 @@ describe('desktop main startup', () => {
     expect(() => handler(event, 'application', NaN, 34)).toThrow('invalid popup request')
     const application = handler(event, 'application', 48, 34)
     expect(harness.menu.buildFromTemplate.mock.lastCall![0].map(item => item.label ?? item.type)).toEqual([
-      '关于 小兢会计团队版', 'separator', '退出 小兢会计团队版',
+      '关于 小兢Bot', 'separator', '退出 小兢Bot',
     ])
     expect(harness.popup.mock.lastCall![0]).toMatchObject({ window, x: 48, y: 34 })
     expect(harness.popup.mock.lastCall![0].callback).toBeTypeOf('function')
@@ -1194,7 +1194,7 @@ describe('desktop main startup', () => {
       .find(items => items.some(item => item.role === 'editMenu'))
     if (template === undefined) throw new Error('application menu missing')
     expect(template.map(describeItem)).toEqual(platform === 'darwin'
-      ? ['小兢会计团队版', en.fileMenu, 'editMenu', 'windowMenu']
+      ? ['小兢Bot', en.fileMenu, 'editMenu', 'windowMenu']
       : ['Application', 'editMenu'])
     const application = template[0]!.submenu as MenuItemConstructorOptions[]
     expect(application.filter(item => item.visible !== false).map(describeItem)).toEqual(platform === 'darwin'

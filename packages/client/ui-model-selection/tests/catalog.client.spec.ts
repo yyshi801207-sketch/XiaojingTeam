@@ -92,4 +92,25 @@ describe('ModelCatalogDirectory', () => {
       })
     })
   })
+
+  it.each(['success', 'failure'] as const)('does not publish a late %s or start more reads after disposal', async (outcome) => {
+    const pending = Promise.withResolvers<unknown>()
+    const models = vi.fn().mockReturnValue(pending.promise)
+    const subject = directory(models)
+    const loading = subject.load()
+    const before = subject.store.getSnapshot()
+    subject.dispose()
+    if (outcome === 'success') {
+      pending.resolve({ ok: true, value: catalog('late') })
+      await expect(loading).resolves.toEqual(catalog('late'))
+    } else {
+      pending.reject(new Error('late failure'))
+      await expect(loading).rejects.toThrow('late failure')
+    }
+    expect(subject.store.getSnapshot()).toEqual(before)
+    subject.refresh()
+    subject.resetGeneration()
+    await expect(subject.load()).rejects.toThrow('The model catalog is closed')
+    expect(models).toHaveBeenCalledOnce()
+  })
 })

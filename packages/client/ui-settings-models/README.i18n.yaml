@@ -15,11 +15,17 @@
   en: d152484eb41ac6b4
   zh: 09388d293f9be9cb
 /deepseek-ai-dsh-client-ui-settings-models/use-this-package:
-  en: 31ad268e192294ea
-  zh: a98c0f34608fc2ca
-/deepseek-ai-dsh-client-ui-settings-models/use-this-package/api-keys:
-  en: f4817eb2e3537ed9
-  zh: e589c193fa85473f
+  en: 7d1986709d369a78
+  zh: 36f3422e1f47bc6f
+/deepseek-ai-dsh-client-ui-settings-models/use-this-package/candidate-verification:
+  en: 137854f98104c11a
+  zh: 6b30d646e85cfb33
+/deepseek-ai-dsh-client-ui-settings-models/use-this-package/chatgpt-codex-subscription-account:
+  en: 2df20548b4a394ea
+  zh: 1e4eda64eef6c31a
+/deepseek-ai-dsh-client-ui-settings-models/use-this-package/api-key-storage:
+  en: 1bde8613c9a54122
+  zh: 5ada2da143fc0bbd
 /deepseek-ai-dsh-client-ui-settings-models/use-this-package/editing-a-provider:
   en: 3af73644655c8b7b
   zh: d689eba772100c63
@@ -48,14 +54,23 @@
   en: 20abd8b98b6c20e2
   zh: 6dfda7955ce5f33f
 /deepseek-ai-dsh-client-ui-settings-models/model-experience:
-  en: 3120df665299c634
-  zh: 1d9f365d091d0d2a
-/deepseek-ai-dsh-client-ui-settings-models/model-experience/kv-cache-effect:
-  en: ca75c51c89c2c9b0
-  zh: 9779c98fff4c949a
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-client-ui-settings-models/model-experience/explicit-candidate-verification:
+  en: 0373e89ca2a2f9ac
+  zh: 4aa4af78f135054a
+/deepseek-ai-dsh-client-ui-settings-models/model-experience/explicit-candidate-verification/what-the-model-sees:
+  en: 49fc6494f45a7344
+  zh: b355535ade7c5557
+/deepseek-ai-dsh-client-ui-settings-models/model-experience/explicit-candidate-verification/token-effect:
+  en: 532ee0109fdfeabc
+  zh: 1998a1da3590fdc8
+/deepseek-ai-dsh-client-ui-settings-models/model-experience/explicit-candidate-verification/kv-cache-effect:
+  en: ca1dfab83f57e3b3
+  zh: 2a6b33122b3c4ded
 /deepseek-ai-dsh-client-ui-settings-models/known-limitations-and-deferred-work:
-  en: cc69c9934bf22302
-  zh: 4ea896f4b54aa203
+  en: 1f9e028e46a9707e
+  zh: 633cb787f97e947b
 /deepseek-ai-dsh-client-ui-settings-models/known-limitations-and-deferred-work/dev-note:
   en: e67f633dc6fe7773
   zh: 3bb0c20c93f16f98

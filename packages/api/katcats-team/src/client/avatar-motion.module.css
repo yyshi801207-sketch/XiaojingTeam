@@ -11,6 +11,9 @@
     &[data-head='tilt'] { animation-name: cat-tilt; }
     &[data-head='fluffy'] { animation-name: cat-shake; }
     &[data-head='slim'] { animation-name: cat-stretch; }
+    &[data-head='wave'] { animation-name: cat-sway; }
+    &[data-head='layered'] { animation-name: cat-shake; }
+    &[data-head='ponytail'] { animation-name: cat-tilt; }
   }
 }
 @keyframes cat-nod {

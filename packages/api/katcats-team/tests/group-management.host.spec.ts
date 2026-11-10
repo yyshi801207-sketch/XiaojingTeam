@@ -97,10 +97,11 @@ describe('custom-group management', () => {
     const finance = (await first.team.createGroup({ name: 'Finance' })).group
     await first.team.createBot({ name: 'Writer', groupId: editorial.id })
     const before = await first.team.snapshot()
+    expect(before.groups.map(group => group.id)).toEqual([ordinaryGroupId, chatGroupId, finance.id, research.id, editorial.id])
     const moved = await first.team.moveGroup({ id: research.id, direction: 'up' })
-    expect(moved.groups).toEqual([before.groups[0], before.groups[1], research, editorial, finance])
-    const down = await first.team.moveGroup({ id: editorial.id, direction: 'down' })
-    expect(down.groups).toEqual([before.groups[0], before.groups[1], research, finance, editorial])
+    expect(moved.groups).toEqual([before.groups[0], before.groups[1], research, finance, editorial])
+    const down = await first.team.moveGroup({ id: finance.id, direction: 'down' })
+    expect(down.groups).toEqual([before.groups[0], before.groups[1], research, editorial, finance])
     expect(down.bots).toEqual(before.bots)
     await first.close()
     const second = await harness(first.root)
@@ -112,8 +113,8 @@ describe('custom-group management', () => {
     const first = (await h.team.createGroup({ name: 'First' })).group
     const last = (await h.team.createGroup({ name: 'Last' })).group
     const before = await h.team.snapshot()
-    await expect(h.team.moveGroup({ id: first.id, direction: 'up' })).rejects.toMatchObject({ code: 'gateway/bad-request' })
-    await expect(h.team.moveGroup({ id: last.id, direction: 'down' })).rejects.toMatchObject({ code: 'gateway/bad-request' })
+    await expect(h.team.moveGroup({ id: last.id, direction: 'up' })).rejects.toMatchObject({ code: 'gateway/bad-request' })
+    await expect(h.team.moveGroup({ id: first.id, direction: 'down' })).rejects.toMatchObject({ code: 'gateway/bad-request' })
     for (const id of [ordinaryGroupId, chatGroupId, brandString<GroupId>('missing-group')]) {
       await expect(h.team.moveGroup({ id, direction: 'up' })).rejects.toMatchObject({ code: 'gateway/bad-request' })
     }
@@ -132,10 +133,10 @@ describe('custom-group management', () => {
     const path = join(h.root, 'storage', 'katcats_team.json')
     const document = await readFile(path, 'utf8')
     vi.spyOn(h.ctx.storageDomain.get('katcats_team')!.global, 'set').mockRejectedValueOnce(new Error('Fixture group order write failed'))
-    await expect(h.team.moveGroup({ id: last.id, direction: 'up' })).rejects.toThrow('Fixture group order write failed')
+    await expect(h.team.moveGroup({ id: first.id, direction: 'up' })).rejects.toThrow('Fixture group order write failed')
     expect(await h.team.snapshot()).toEqual(before)
     expect(await readFile(path, 'utf8')).toBe(document)
-    const moved = await h.team.moveGroup({ id: last.id, direction: 'up' })
-    expect(moved.groups.filter(group => !group.system).map(group => group.id)).toEqual([last.id, first.id])
+    const moved = await h.team.moveGroup({ id: first.id, direction: 'up' })
+    expect(moved.groups.filter(group => !group.system).map(group => group.id)).toEqual([first.id, last.id])
   })
 })

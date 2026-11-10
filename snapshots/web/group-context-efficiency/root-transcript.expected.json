@@ -1,0 +1,344 @@
+[
+  {
+    "type": "session",
+    "version": 4,
+    "id": "{{session:2}}",
+    "createdAt": 0,
+    "cwd": "{{cwd}}",
+    "isSeeded": false,
+    "delegationDepth": 0,
+    "agentPreset": "standard"
+  },
+  {
+    "type": "permission/preset",
+    "data": {
+      "preset": "workspace-write"
+    }
+  },
+  {
+    "type": "sandbox/mode",
+    "data": {
+      "mode": "workspace-write"
+    }
+  },
+  {
+    "type": "approval/policy",
+    "data": {
+      "policy": "ask"
+    }
+  },
+  {
+    "type": "session/title",
+    "data": {
+      "title": "Context efficiency snapshot",
+      "messageSeqs": [],
+      "source": {
+        "kind": "user"
+      }
+    }
+  },
+  {
+    "type": "user/message",
+    "data": {
+      "content": [
+        {
+          "type": "text",
+          "text": "ORIGINAL_CODE: blue. Keep this synthetic label for later verification."
+        }
+      ],
+      "source": {
+        "kind": "user",
+        "rpcId": "{{rpc:1}}"
+      },
+      "role": "user",
+      "id": "{{message:9}}"
+    },
+    "surfaceOp": "append"
+  },
+  {
+    "type": "katcats/group-task-lifecycle",
+    "data": {
+      "schemaVersion": 1,
+      "chatId": "{{id:1}}",
+      "rootSessionId": "{{session:2}}",
+      "runId": "{{workflow:1}}",
+      "generation": 1,
+      "deliveryId": "{{id:2}}",
+      "parentDeliveryId": null,
+      "actor": {
+        "kind": "owner"
+      },
+      "target": {
+        "kind": "member",
+        "botId": "{{id:3}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        }
+      },
+      "message": "ORIGINAL_CODE: blue. Keep this synthetic label for later verification.",
+      "eventId": "{{id:5}}",
+      "status": "queued",
+      "recovered": false,
+      "error": null
+    }
+  },
+  {
+    "type": "katcats/group-task-lifecycle",
+    "data": {
+      "schemaVersion": 1,
+      "chatId": "{{id:1}}",
+      "rootSessionId": "{{session:2}}",
+      "runId": "{{workflow:1}}",
+      "generation": 1,
+      "deliveryId": "{{id:2}}",
+      "parentDeliveryId": null,
+      "actor": {
+        "kind": "owner"
+      },
+      "target": {
+        "kind": "member",
+        "botId": "{{id:3}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        }
+      },
+      "message": "ORIGINAL_CODE: blue. Keep this synthetic label for later verification.",
+      "eventId": "{{id:6}}",
+      "status": "started",
+      "recovered": false,
+      "error": null
+    }
+  },
+  {
+    "type": "katcats/group-task-lifecycle",
+    "data": {
+      "schemaVersion": 1,
+      "chatId": "{{id:1}}",
+      "rootSessionId": "{{session:2}}",
+      "runId": "{{workflow:1}}",
+      "generation": 1,
+      "deliveryId": "{{id:2}}",
+      "parentDeliveryId": null,
+      "actor": {
+        "kind": "owner"
+      },
+      "target": {
+        "kind": "member",
+        "botId": "{{id:3}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        }
+      },
+      "message": "ORIGINAL_CODE: blue. Keep this synthetic label for later verification.",
+      "eventId": "{{id:7}}",
+      "status": "completed",
+      "recovered": false,
+      "error": null
+    }
+  },
+  {
+    "type": "user/message",
+    "data": {
+      "id": "{{message:10}}",
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Original label noted."
+        }
+      ],
+      "source": {
+        "kind": "katcats-group-relay",
+        "form": "relay",
+        "schemaVersion": 1,
+        "chatId": "{{id:1}}",
+        "runId": "{{workflow:1}}",
+        "generation": 1,
+        "deliveryId": "{{id:2}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        },
+        "executionSessionId": "{{session:1}}",
+        "inputMessageId": "{{message:1}}",
+        "outputMessageId": "{{message:4}}"
+      }
+    },
+    "surfaceOp": "append"
+  },
+  {
+    "type": "user/message",
+    "data": {
+      "content": [
+        {
+          "type": "text",
+          "text": "LATEST_CORRECTION: the code is green. Read the original message before acknowledging this correction."
+        }
+      ],
+      "source": {
+        "kind": "user",
+        "rpcId": "{{rpc:2}}"
+      },
+      "role": "user",
+      "id": "{{message:11}}"
+    },
+    "surfaceOp": "append"
+  },
+  {
+    "type": "katcats/group-task-lifecycle",
+    "data": {
+      "schemaVersion": 1,
+      "chatId": "{{id:1}}",
+      "rootSessionId": "{{session:2}}",
+      "runId": "{{workflow:2}}",
+      "generation": 2,
+      "deliveryId": "{{id:4}}",
+      "parentDeliveryId": null,
+      "actor": {
+        "kind": "owner"
+      },
+      "target": {
+        "kind": "member",
+        "botId": "{{id:3}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        }
+      },
+      "message": "LATEST_CORRECTION: the code is green. Read the original message before acknowledging this correction.",
+      "eventId": "{{id:8}}",
+      "status": "queued",
+      "recovered": false,
+      "error": null
+    }
+  },
+  {
+    "type": "katcats/group-task-lifecycle",
+    "data": {
+      "schemaVersion": 1,
+      "chatId": "{{id:1}}",
+      "rootSessionId": "{{session:2}}",
+      "runId": "{{workflow:2}}",
+      "generation": 2,
+      "deliveryId": "{{id:4}}",
+      "parentDeliveryId": null,
+      "actor": {
+        "kind": "owner"
+      },
+      "target": {
+        "kind": "member",
+        "botId": "{{id:3}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        }
+      },
+      "message": "LATEST_CORRECTION: the code is green. Read the original message before acknowledging this correction.",
+      "eventId": "{{id:9}}",
+      "status": "started",
+      "recovered": false,
+      "error": null
+    }
+  },
+  {
+    "type": "katcats/group-task-lifecycle",
+    "data": {
+      "schemaVersion": 1,
+      "chatId": "{{id:1}}",
+      "rootSessionId": "{{session:2}}",
+      "runId": "{{workflow:2}}",
+      "generation": 2,
+      "deliveryId": "{{id:4}}",
+      "parentDeliveryId": null,
+      "actor": {
+        "kind": "owner"
+      },
+      "target": {
+        "kind": "member",
+        "botId": "{{id:3}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        }
+      },
+      "message": "LATEST_CORRECTION: the code is green. Read the original message before acknowledging this correction.",
+      "eventId": "{{id:10}}",
+      "status": "completed",
+      "recovered": false,
+      "error": null
+    }
+  },
+  {
+    "type": "user/message",
+    "data": {
+      "id": "{{message:12}}",
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "The original code was blue; the latest correction is green."
+        }
+      ],
+      "source": {
+        "kind": "katcats-group-relay",
+        "form": "relay",
+        "schemaVersion": 1,
+        "chatId": "{{id:1}}",
+        "runId": "{{workflow:2}}",
+        "generation": 2,
+        "deliveryId": "{{id:4}}",
+        "sender": {
+          "botId": "{{id:3}}",
+          "name": "Coordinator",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          }
+        },
+        "executionSessionId": "{{session:1}}",
+        "inputMessageId": "{{message:5}}",
+        "outputMessageId": "{{message:8}}"
+      }
+    },
+    "surfaceOp": "append"
+  }
+]

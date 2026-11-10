@@ -29,9 +29,9 @@ it('serves the Web entry and assets without starting or contacting a Host', asyn
   expect((await serveWebDocument(new Request('dsh-app://app/missing.js'), root)).status).toBe(404)
 })
 
-it('ships the supplied website-green startup PNG without re-encoding it', async () => {
-  const artwork = await readFile(join(import.meta.dirname, '../renderer/assets/xiaojing-startup-green.png'))
-  expect(createHash('sha256').update(artwork).digest('hex')).toBe('b18145b0a15537cb680efd9e0221abbff66926dff9638363a7466611446efbd7')
+it('ships the supplied paper startup PNG without re-encoding it', async () => {
+  const artwork = await readFile(join(import.meta.dirname, '../renderer/assets/xiaojing-startup-paper.png'))
+  expect(createHash('sha256').update(artwork).digest('hex')).toBe('ce1a0f735a1599bc336bb6cd0cd2d9f151bcc7c54a156d4efb15b0fb94c2b0f7')
 })
 
 it.each(['zh-CN', 'en'])('includes a localized branded startup before the application entry loads (%s)', async (language) => {
@@ -43,10 +43,12 @@ it.each(['zh-CN', 'en'])('includes a localized branded startup before the applic
   const html = await response.text()
   expect(html).toContain('href="dsh-app://shell/startup.css"')
   expect(html).toContain('<div id="root"></div><main id="xiaojing-startup" aria-busy="true" aria-labelledby="katcat-startup-title">')
-  expect(html).toContain('src="dsh-app://shell/assets/xiaojing-startup-green.png"')
-  expect(html).toContain('width="1584" height="993"')
+  expect(html).toContain('src="dsh-app://shell/assets/xiaojing-startup-paper.png"')
+  expect(html).toContain('width="3840" height="2400"')
   expect(html).toContain(locale.messages.startupTitle)
   expect(html).toContain(`<p role="status">${locale.messages.startupLoading}</p>`)
+  expect(html.indexOf('class="katcat-startup-progress"')).toBeLessThan(html.indexOf('<p role="status">'))
+  expect(html).not.toContain('<span></span>')
   expect(html).not.toContain('aria-valuenow')
   expect(html.indexOf('id="xiaojing-startup"')).toBeLessThan(html.indexOf('assets/entry.js'))
   expect(html).not.toContain('startup-logo.png')

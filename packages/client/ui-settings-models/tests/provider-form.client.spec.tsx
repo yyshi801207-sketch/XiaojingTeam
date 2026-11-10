@@ -160,7 +160,12 @@ function ctxWith(face: object): PageContext {
   const existing = contexts.get(face)
   if (existing !== undefined) return existing
   const ctx = Object.assign(new Context(), { remote: { ...face,
-    session: { initializeDefaultModel: async () => ({ ok: true, value: undefined }) },
+    session: {
+      initializeDefaultModel: async () => ({ ok: true, value: undefined }),
+      modelCatalog: async () => remoteOk({
+        default: { provider: 'deepseek-official', model: 'deepseek-chat' }, routableProviders: [], groups: [], failures: [],
+      }),
+    },
   } })
   contexts.set(face, ctx)
   return ctx

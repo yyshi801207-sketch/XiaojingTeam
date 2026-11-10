@@ -1,6 +1,5 @@
 /** Question composer props and one pending Remote waterfall response. */
-import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
-// The client module declares the conversation.composer SlotMap entry required by PropsRuntime.
+import type { FactoryComponentPropsOf } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ToolCallId } from '@deepseek-ai/dsh-llm/brand'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {
@@ -16,6 +15,17 @@ declare module '@deepseek-ai/dsh-client-ui-session/client' {
 }
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface SlotFactoryMap {
+    /** Original question panel reusable under the request's owning Session. */
+    'question.panel': {
+      scope: 'session'
+      props: { matched: PendingQuestion }
+      store: ReturnType<typeof createQuestionDraftStore>
+      locale: 'question'
+      inject: { keyedHooks: { questionCard: (key: string) => PendingQuestion | undefined } }
+      children: { 'conversation.plan-review.actions': { kind: 'list'; scope: 'session' } }
+    }
+  }
   interface SlotMap {
     /** Actions for the exact plan under review; approval remains with the question composer. */
     'conversation.plan-review.actions': { kind: 'list'; scope: 'session'; owner: { review: PlanReview; requestKey: PendingQuestion['key'] } }
@@ -558,17 +568,5 @@ export class PendingQuestion {
 /** Pending value returned by the composer-chain selector. */
 export type QuestionWait = PendingQuestion
 
-/**
- * Full component props: the framework runtime share (chain currency +
- * session/global standard kit) plus the chain `matched` share — the entry's
- * selector result, already narrowed to the question carrier — plus the
- * standard locale seat; the carrier plus the domain face above carry the
- * whole behavior surface.
- */
-export type QuestionComposerProps =
-  PropsRuntime<'conversation.composer'>
-  & PropsStore<ReturnType<typeof createQuestionDraftStore>>
-  & PropsRenderSlots<'conversation.plan-review.actions'>
-  & InjectFace<{ keyedHooks: { questionCard: (key: string) => PendingQuestion | undefined } }>
-  & { matched: QuestionWait }
-  & PropsLocale<'question'>
+/** Provider-owned panel props, including the original carrier and Session-scoped drafts. */
+export type QuestionComposerProps = FactoryComponentPropsOf<'question.panel'>

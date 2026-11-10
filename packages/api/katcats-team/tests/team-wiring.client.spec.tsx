@@ -10,6 +10,7 @@ import type { ModelCatalog } from '@deepseek-ai/dsh-api-session-controller/types
 import type { ConnectionGeneration, ConnectionState } from '@deepseek-ai/dsh-client-connection/client'
 import type { WorkspaceId, WorkspaceSnapshot, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
+import { ModelDirectoryResolver } from '../../../client/ui-model-selection/src/client/service.ts'
 import { allowAllAccess, bindSnapshotSelector, conversationSnapshot, makeTranslate, sessionSnapshot,
   SlotTestRuntime } from '@deepseek-ai/dsh-client-test-runtime'
 import { SlotCore, type GlobalStandardProps, type PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
@@ -40,17 +41,26 @@ import { MainBotWelcome } from '../src/client/MainBotWelcome.tsx'
 import { GroupMessageActions, type GroupMessageActionsInjected } from '../src/client/GroupMessageActions.tsx'
 import { ScheduleList, ScheduleManager, type ScheduleListProps, type ScheduleManagerProps, type ScheduleViewsInjected } from '../src/client/ScheduleViews.tsx'
 import { SCHEDULE_NS } from '../src/client/schedule-locales.ts'
+import { GroupRoomAction, type GroupRoomInjected } from '../src/client/GroupRoom.tsx'
+import { Headquarters, type HeadquartersInjected } from '../src/client/Headquarters.tsx'
+import { ChatRelayMessage, type ChatRelayActionsInjected } from '../src/client/ChatRelayMessage.tsx'
 
 const controls = vi.hoisted(() => ({ entries: [] as {
   replace: (frame: TeamFrame | ChatFrame) => void
   update: (frame: TeamFrame | ChatFrame) => void
   failed: (error: unknown) => void
+  restart: ReturnType<typeof vi.fn<() => void>>
 }[] }))
 vi.mock('@deepseek-ai/dsh-api-gateway/client', async original => ({
   ...await original<typeof import('@deepseek-ai/dsh-api-gateway/client')>(),
   RemoteSnapshotStream: class {
-    constructor(_stream: object, options: typeof controls.entries[number]) { controls.entries.push(options) }
+    private readonly control: typeof controls.entries[number]
+    constructor(_stream: object, options: Omit<typeof controls.entries[number], 'restart'>) {
+      this.control = { ...options, restart: vi.fn() }
+      controls.entries.push(this.control)
+    }
     start() {}
+    restart() { this.control.restart() }
     async dispose() {}
   },
 }))
@@ -106,18 +116,29 @@ function sessionList(bots: readonly Pick<TeamBot, 'sessionId' | 'name'>[], selec
   }
 }
 
-async function boot(initialSessions = sessionList(snapshot.bots), autoSnapshot = true, initialChats: ChatSnapshot | null = emptyChats) {
+async function boot(initialSessions = sessionList(snapshot.bots), autoSnapshot = true, initialChats: ChatSnapshot | null = emptyChats,
+  realQuestionSlots = false) {
   const ctx = new Context()
   const categories = new WorkspaceCategoryRegistry()
   const locale = new LocaleRuntime(ctx)
   locale.setLocale('zh')
+  const questionSlots = new SlotCore()
+  if (realQuestionSlots) {
+    questionSlots.register({ name: 'root', children: {
+      'conversation.composer': { kind: 'chain', scope: 'session' },
+      'conversation.input.dock': { kind: 'list', scope: 'session' },
+    } }, (_props: PropsRenderSlots<'conversation.composer' | 'conversation.input.dock'>) => null)
+    questionSlots.register({ name: 'conversation.composer', select: () => null }, () => null)
+  }
   const entries: { name: string; key?: string; priority?: number; inject?: () => object; component?: unknown }[] = []
   const slots = {
     inject: (_name: string, register: () => () => void) => ctx.effect(register),
     register: (entry: { name: string; key?: string; priority?: number; inject?: () => object }, component?: unknown) => {
+      const release = realQuestionSlots && (entry.name === 'conversation.input.dock' || entry.name === 'katcats.group.question-panel')
+        ? questionSlots.register(entry as never, component as never) : undefined
       const registered = { ...entry, component }
       entries.push(registered)
-      return () => { entries.splice(entries.indexOf(registered), 1) }
+      return () => { release?.(); entries.splice(entries.indexOf(registered), 1) }
     },
   }
   const remote: TeamRemote = {
@@ -182,9 +203,12 @@ async function boot(initialSessions = sessionList(snapshot.bots), autoSnapshot =
   ctx.provide('composerPresentation', { register: vi.fn(() => () => {}) } as never)
   const schedule = { catalog: vi.fn<() => Promise<RemoteResult<ScheduleCatalogEntry[]>>>().mockResolvedValue({ ok: true, value: [] }) }
   const scheduleChanged = new Set<() => void>()
-  const remoteOn = vi.fn((_name: string, listener: () => void) => {
-    scheduleChanged.add(listener)
-    return () => { scheduleChanged.delete(listener) }
+  const remoteListeners = new Map<string, Set<() => void>>([['schedule/changed', scheduleChanged]])
+  const remoteOn = vi.fn((name: string, listener: () => void) => {
+    const listeners = remoteListeners.get(name) ?? new Set<() => void>()
+    remoteListeners.set(name, listeners)
+    listeners.add(listener)
+    return () => { listeners.delete(listener) }
   })
   ctx.provide('remote', { katcatsTeam: remote, katcatsChats: chatRemote, katcatsMemory: memoryRemote, session,
     schedule, $on: remoteOn, $mount: mountRemote, $stream: vi.fn(() => ({})) } as never)
@@ -219,6 +243,7 @@ async function boot(initialSessions = sessionList(snapshot.bots), autoSnapshot =
   ctx.provide('sessions', {
     create: sessionCreate, list: sessions, refresh: refreshSessions, registerTransport, binding: vi.fn(), retain: retainSession,
   } as never)
+  await ctx.plugin(ModelDirectoryResolver).await()
   const fiber = ctx.plugin({ inject, apply })
   await fiber.await()
   if (initialChats !== null) controls.entries[1]!.replace({ type: 'snapshot', value: initialChats })
@@ -233,7 +258,7 @@ async function boot(initialSessions = sessionList(snapshot.bots), autoSnapshot =
     mountRemote, disposeRemote, entries, sessions, refreshSessions, workspaces, workspaceOpen, sessionOpen, pinSession, unpinSession,
     mountedSidebar, adoptedSurfaces, sidebarExpanded, toggleSidebar, openSettingsTab, registerTransport, retainSession, connection,
     connectionGeneration, scopedInput, submitInput,
-    blockComposer, schedule, scheduleChanged, remoteOn }
+    blockComposer, schedule, scheduleChanged, remoteOn, remoteListeners, questionSlots }
 }
 
 function modelProps(b: Awaited<ReturnType<typeof boot>>, sessionId: SessionId): BotModelControlProps {
@@ -272,6 +297,112 @@ function composerProps(b: Awaited<ReturnType<typeof boot>>, sessionId: SessionId
 }
 
 describe('Katcats shell integration', () => {
+  it.each(['before', 'after'] as const)('recovers both directories when their opening snapshot arrives %s connection reset', async (arrival) => {
+    const b = await boot(sessionList(withOrdinaryBot.bots), false, null)
+    try {
+      if (arrival === 'before') {
+        controls.entries[0]!.replace({ type: 'snapshot', value: withOrdinaryBot })
+        controls.entries[1]!.replace({ type: 'snapshot', value: withGroup })
+      }
+      b.ctx.emit('connection/reset')
+      expect(controls.entries[0]!.restart).toHaveBeenCalledOnce()
+      expect(controls.entries[1]!.restart).toHaveBeenCalledOnce()
+      expect(b.sidebar.hooks.directory.getSnapshot().phase).toBe('loading')
+      expect(b.sidebar.hooks.chats.getSnapshot().phase).toBe('loading')
+
+      controls.entries[0]!.replace({ type: 'snapshot', value: withOrdinaryBot })
+      expect(b.sidebar.hooks.directory.getSnapshot().phase).toBe('ready')
+      expect(b.sidebar.hooks.chats.getSnapshot().phase).toBe('loading')
+      controls.entries[1]!.replace({ type: 'snapshot', value: withGroup })
+      expect(b.sidebar.hooks.directory.getSnapshot()).toMatchObject({ phase: 'ready', snapshot: withOrdinaryBot })
+      expect(b.sidebar.hooks.chats.getSnapshot()).toMatchObject({ phase: 'ready', snapshot: withGroup })
+    } finally { await b.ctx.fiber.dispose() }
+  })
+
+  it('keeps retained directories loading when a previous connection mutation settles before fresh snapshots', async () => {
+    const b = await boot(sessionList(withOrdinaryBot.bots), false, null)
+    try {
+      controls.entries[0]!.replace({ type: 'snapshot', value: withOrdinaryBot })
+      controls.entries[1]!.replace({ type: 'snapshot', value: withGroup })
+      const pending = Promise.withResolvers<Awaited<ReturnType<TeamRemote['updateBot']>>>()
+      vi.mocked(b.remote.updateBot).mockReturnValueOnce(pending.promise)
+      const moving = b.sidebar.entityActions.move(ordinaryEntity, snapshot.groups[0]!.id)
+      b.ctx.emit('connection/reset')
+      pending.resolve({ ok: true, value: { bot: ordinaryBot, snapshot: { ...withOrdinaryBot, revision: 99 } } })
+      await expect(moving).rejects.toThrow('connection changed')
+      expect(b.sidebar.hooks.directory.getSnapshot()).toMatchObject({ phase: 'loading', snapshot: withOrdinaryBot })
+      expect(b.sidebar.hooks.chats.getSnapshot()).toMatchObject({ phase: 'loading', snapshot: withGroup })
+    } finally { await b.ctx.fiber.dispose() }
+  })
+
+  it('reports clipboard success and refusal consistently from messages, settings and both room views', async () => {
+    const b = await boot()
+    const writeText = vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
+    try {
+      const relay = b.entries.find(entry => entry.component === ChatRelayMessage)!.inject!() as ChatRelayActionsInjected
+      const headquarters = b.entries.find(entry => entry.component === Headquarters)!.inject!() as HeadquartersInjected
+      const settings = b.entries.find(entry => entry.component === ChatSettings)!.inject as (id: SessionId) => ChatSettingsInjected
+      const room = b.entries.find(entry => entry.component === GroupRoomAction)!.inject as (id: SessionId) => GroupRoomInjected
+      relay.copyRelayText('Recorded message body')
+      await waitFor(() => { expect(b.overlay.hooks.teamUi.getSnapshot().notice).toMatchObject({ key: 'copy.copied', success: true }) })
+      await settings(groupChat.rootSessionId).copyText('Recorded task goal')
+      await room(groupChat.rootSessionId).copyText('Recorded member name')
+      await headquarters.copyText('Recorded task ID')
+      expect(writeText.mock.calls.map(([text]) => text)).toEqual([
+        'Recorded message body', 'Recorded task goal', 'Recorded member name', 'Recorded task ID',
+      ])
+      writeText.mockRejectedValueOnce(new Error('synthetic clipboard permission refused'))
+      await headquarters.copyText('Restricted text')
+      expect(b.overlay.hooks.teamUi.getSnapshot().notice).toMatchObject({ key: 'copy.failed', success: false })
+      expect(b.remote.updateBot).not.toHaveBeenCalled()
+      expect(b.chatRemote.updateChat).not.toHaveBeenCalled()
+    } finally { await b.ctx.fiber.dispose() }
+  })
+
+  it('ignores late clipboard feedback and further actions after plugin disposal', async () => {
+    const b = await boot()
+    let finish!: () => void
+    const writeText = vi.fn<(text: string) => Promise<void>>(() => new Promise(resolve => { finish = resolve }))
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
+    const headquarters = b.entries.find(entry => entry.component === Headquarters)!.inject!() as HeadquartersInjected
+    const pending = headquarters.copyText('Pending copy')
+    await b.ctx.fiber.dispose()
+    finish()
+    await pending
+    await headquarters.copyText('Disposed copy')
+    expect(writeText).toHaveBeenCalledExactlyOnceWith('Pending copy')
+    expect(b.overlay.hooks.teamUi.getSnapshot().notice).toBeNull()
+  })
+
+  it('opens an existing member from a message and visibly rejects a member removed from the directory', async () => {
+    const b = await boot(sessionList([...snapshot.bots, ordinaryBot]))
+    try {
+      controls.entries[0]!.update({ type: 'replace', value: withOrdinaryBot })
+      const relay = b.entries.find(entry => entry.component === ChatRelayMessage)!.inject!() as ChatRelayActionsInjected
+      b.sessionOpen.mockClear()
+      relay.openRelayMember(ordinaryBot.id)
+      expect(b.sessionOpen).toHaveBeenCalledExactlyOnceWith(ordinaryBot.sessionId)
+      controls.entries[0]!.update({ type: 'replace', value: { ...snapshot, revision: 2 } })
+      relay.openRelayMember(ordinaryBot.id)
+      expect(b.sessionOpen).toHaveBeenCalledOnce()
+      expect(b.overlay.hooks.teamUi.getSnapshot().notice).toMatchObject({ key: 'team.openFailed', success: false })
+    } finally { await b.ctx.fiber.dispose() }
+  })
+
+  it('mounts the actual group question registrations alongside an already-owned ordinary composer', async () => {
+    const b = await boot(sessionList(snapshot.bots), true, emptyChats, true)
+    try {
+      expect(b.questionSlots.entriesOfSlot('conversation.composer')).toHaveLength(1)
+      expect(b.questionSlots.entriesOfSlot('conversation.input.dock').map(entry => entry.options.id))
+        .toEqual(['katcats-team.worker-approvals', 'katcats-team.worker-questions', 'katcats-team.chat-controls'])
+      expect(b.questionSlots.entriesOfSlot('katcats.group.question-panel')).toHaveLength(1)
+      expect(b.sidebar.hooks.directory.getSnapshot().snapshot?.mainBotId).toBe(snapshot.mainBotId)
+    } finally { await b.ctx.fiber.dispose() }
+    expect(b.questionSlots.entriesOfSlot('katcats.group.question-panel')).toHaveLength(0)
+    expect(b.questionSlots.entriesOfSlot('conversation.composer')).toHaveLength(1)
+  })
+
   it.each([ordinaryEntity, groupEntity])('pins, unpins and copies the public $kind conversation without using a worker', async (entity) => {
     const b = await boot()
     const writeText = vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined)
@@ -557,7 +688,8 @@ describe('Katcats shell integration', () => {
         <ScheduleList {...bound as ScheduleListProps} sessionId={groupChat.rootSessionId} /></>)
       await waitFor(() => { expect(screen.getAllByText(task.title)).toHaveLength(2) })
       expect(b.schedule.catalog).toHaveBeenCalledOnce()
-      expect(b.remoteOn).toHaveBeenCalledExactlyOnceWith('schedule/changed', expect.any(Function))
+      expect(b.remoteOn.mock.calls.filter(([name]) => name === 'schedule/changed'))
+        .toEqual([['schedule/changed', expect.any(Function)]])
       fireEvent.click(screen.getAllByRole('button', { name: b.locale.bind(SCHEDULE_NS)('detail', { name: task.title }) })[0]!)
       expect(b.openSettingsTab).toHaveBeenCalledExactlyOnceWith('scheduleTask', { params: { sessionId: task.sessionId, id: task.id } })
       b.schedule.catalog.mockResolvedValueOnce({ ok: true, value: [] })
@@ -610,6 +742,8 @@ describe('Katcats shell integration', () => {
     expect(b.mountRemote).toHaveBeenCalledOnce()
     expect(b.ctx.get('remote.katcatsChats')).toBe(b.chatRemote)
     expect(b.entries.some(entry => entry.name === 'conversation.session.header.actions')).toBe(true)
+    expect(b.entries.some(entry => entry.name === 'conversation.session.header.actions'
+      && entry.component === GroupRoomAction)).toBe(true)
     expect(b.entries.some(entry => entry.name === 'conversation.session.header.lineage')).toBe(false)
     await b.ctx.fiber.dispose()
     expect(b.disposeRemote).toHaveBeenCalledOnce()
@@ -635,6 +769,9 @@ describe('Katcats shell integration', () => {
       fireEvent.click(screen.getByRole('checkbox', { name: writer.name }))
       fireEvent.click(screen.getByRole('button', { name: zh['team.create'] }))
       await waitFor(() => { expect(b.ctx.uiWorkspace.openSession).toHaveBeenLastCalledWith(groupChat.rootSessionId) })
+      expect(b.sidebar.hooks.sidebarReveal.getSnapshot()).toMatchObject({
+        sessionId: groupChat.rootSessionId, groupId: groupChat.groupId,
+      })
       expect(b.chatRemote.createChat).toHaveBeenCalledExactlyOnceWith({ name: groupChat.name, memberIds: [writer.id], managerId: null, relayLimit: 6 })
       expect(b.openSettingsTab).not.toHaveBeenCalled()
       expect(b.remote.createBot).not.toHaveBeenCalled()
@@ -710,7 +847,71 @@ describe('Katcats shell integration', () => {
       vi.mocked(b.remote.createBot).mockResolvedValueOnce({ ok: true, value: { bot, snapshot: { ...snapshot, revision: 1, bots: [...snapshot.bots, bot] } } })
       await act(async () => { await b.overlay.createBot({ name: 'Writer', groupId: snapshot.groups[0]!.id }) })
       expect(b.ctx.uiWorkspace.openSession).toHaveBeenLastCalledWith(bot.sessionId)
+      expect(b.sidebar.hooks.sidebarReveal.getSnapshot()).toMatchObject({ sessionId: bot.sessionId, groupId: bot.groupId })
       expect(b.overlay.hooks.teamUi.getSnapshot().notice).toMatchObject({ key: 'team.created', name: 'Writer', success: true })
+    } finally { await b.ctx.fiber.dispose() }
+  })
+
+  it('selects tool-created members in order and switches to the saved group, without reopening old rows on snapshots', async () => {
+    const b = await boot()
+    try {
+      const reviewer = { ...ordinaryBot, id: 'reviewer' as BotId, name: 'Reviewer', sessionId: 'reviewer-private' as SessionId }
+      const withTwoBots = { ...withOrdinaryBot, revision: 2, bots: [reviewer, ...withOrdinaryBot.bots] }
+      b.sessions.set(sessionList([...snapshot.bots, ordinaryBot, reviewer,
+        { name: groupChat.name, sessionId: groupChat.rootSessionId }], snapshot.bots[0]!.sessionId))
+      controls.entries[0]!.update({ type: 'replace', value: withOrdinaryBot })
+      expect(b.sessionOpen).toHaveBeenLastCalledWith(ordinaryBot.sessionId)
+      expect(b.sidebar.hooks.sidebarReveal.getSnapshot()).toMatchObject({
+        sessionId: ordinaryBot.sessionId, groupId: ordinaryBot.groupId,
+      })
+      controls.entries[0]!.update({ type: 'replace', value: withTwoBots })
+      expect(b.sessionOpen).toHaveBeenLastCalledWith(reviewer.sessionId)
+      controls.entries[1]!.update({ type: 'replace', value: withGroup })
+      expect(b.sessionOpen).toHaveBeenLastCalledWith(groupChat.rootSessionId)
+      expect(b.sidebar.hooks.sidebarReveal.getSnapshot()).toMatchObject({
+        sessionId: groupChat.rootSessionId, groupId: groupChat.groupId,
+      })
+      b.sessionOpen.mockClear()
+      controls.entries[0]!.update({ type: 'replace', value: { ...withTwoBots, revision: 3 } })
+      controls.entries[1]!.update({ type: 'replace', value: { ...withGroup, revision: 2 } })
+      controls.entries[0]!.replace({ type: 'snapshot', value: withTwoBots })
+      controls.entries[1]!.replace({ type: 'snapshot', value: withGroup })
+      expect(b.sessionOpen).not.toHaveBeenCalled()
+    } finally { await b.ctx.fiber.dispose() }
+  })
+
+  it('selects the newest entry when one directory update includes several new Bots or chats', async () => {
+    const b = await boot()
+    try {
+      const reviewer = { ...ordinaryBot, id: 'reviewer' as BotId, name: 'Reviewer', sessionId: 'reviewer-private' as SessionId }
+      const newestChat = { ...groupChat, id: 'newest-chat' as ChatId, name: 'Newest chat', rootSessionId: 'newest-chat-session' as SessionId }
+      b.sessions.set(sessionList([...snapshot.bots, ordinaryBot, reviewer,
+        { name: groupChat.name, sessionId: groupChat.rootSessionId },
+        { name: newestChat.name, sessionId: newestChat.rootSessionId }], snapshot.bots[0]!.sessionId))
+      controls.entries[0]!.update({ type: 'replace', value: { ...snapshot, revision: 1, bots: [snapshot.bots[0]!, reviewer, ordinaryBot] } })
+      expect(b.sessionOpen).toHaveBeenLastCalledWith(reviewer.sessionId)
+      controls.entries[1]!.update({ type: 'replace', value: { ...withGroup, chats: [newestChat, groupChat] } })
+      expect(b.sessionOpen).toHaveBeenLastCalledWith(newestChat.rootSessionId)
+    } finally { await b.ctx.fiber.dispose() }
+  })
+
+  it('waits for a tool-created Session to appear and yields if the user navigates elsewhere first', async () => {
+    const b = await boot()
+    try {
+      controls.entries[0]!.update({ type: 'replace', value: withOrdinaryBot })
+      await Promise.resolve()
+      expect(b.sessionOpen).toHaveBeenCalledExactlyOnceWith(snapshot.bots[0]!.sessionId)
+      expect(b.overlay.hooks.teamUi.getSnapshot().notice).toBeNull()
+      b.sessions.set(sessionList([...snapshot.bots, ordinaryBot], snapshot.bots[0]!.sessionId))
+      expect(b.sessionOpen).toHaveBeenLastCalledWith(ordinaryBot.sessionId)
+
+      const reviewer = { ...ordinaryBot, id: 'reviewer' as BotId, name: 'Reviewer', sessionId: 'reviewer-private' as SessionId }
+      controls.entries[0]!.update({ type: 'replace', value: { ...withOrdinaryBot, revision: 2,
+        bots: [...withOrdinaryBot.bots, reviewer] } })
+      b.sidebar.commands.openBot(snapshot.mainBotId)
+      b.sessionOpen.mockClear()
+      b.sessions.set(sessionList([...snapshot.bots, ordinaryBot, reviewer], snapshot.bots[0]!.sessionId))
+      expect(b.sessionOpen).not.toHaveBeenCalled()
     } finally { await b.ctx.fiber.dispose() }
   })
 
@@ -1107,6 +1308,7 @@ describe('Katcats shell integration', () => {
         default: { provider: 'mock', model: 'base' }, routableProviders: ['mock'], failures: [],
         groups: [{ id: 'mock', name: 'Mock', models: [{ id: 'base', name: 'Base' }, { id: 'writer', name: 'Writer' }] }],
       } })
+      act(() => { for (const changed of b.remoteListeners.get('llm/adapters-updated') ?? []) changed() })
       b.sidebar.commands.openBot(base.id)
       await Promise.resolve()
       const projection = () => ({ next: { provider: 'mock', model: 'base' } })
@@ -1132,6 +1334,90 @@ describe('Katcats shell integration', () => {
       })) })
       expect(b.session.selectModel).not.toHaveBeenCalled()
     } finally { await b.ctx.fiber.dispose() }
+  })
+
+  it.each(['llm/adapters-updated', 'settings/document-updated', 'credentials/record-updated', 'credentials/reference-updated'])(
+    'offers newly authorized models to any Bot after %s without changing other model policies', async (event) => {
+      const b = await boot(sessionList(withOrdinaryBot.bots))
+      try {
+        const main = snapshot.bots[0]!
+        const writer: TeamBot = { ...ordinaryBot, model: { kind: 'override', provider: 'mock', model: 'writer' } }
+        const supported: TeamSnapshot = { ...withOrdinaryBot, modelCapabilities: { override: true, followGlobal: true },
+          bots: [main, writer] }
+        controls.entries[0]!.update({ type: 'replace', value: supported })
+        const available: ModelCatalog = { default: { provider: 'mock', model: 'base' }, failures: [],
+          routableProviders: ['mock', 'openai-codex'], groups: [
+            { id: 'mock', name: 'Mock', models: [{ id: 'base', name: 'Base' }, { id: 'writer', name: 'Writer' }] },
+            { id: 'openai-codex', name: 'ChatGPT', models: [{ id: 'gpt-fixture', name: 'GPT fixture' }] },
+          ] }
+        const settingsProps = { sessionId: main.sessionId, useDirectory: bindSnapshotSelector(b.settings.hooks.directory),
+          useConnection: bindSnapshotSelector(b.connection), useTabInfo: () => ({ tab: { visible: true } }), renderFactorySlot: () => null,
+          useProjection: () => ({ next: available.default }), save: b.settings.save, t: b.locale.bind('katcats.team') } as BotSettingsProps
+        render(<BotSettings {...settingsProps} />)
+        b.session.modelCatalog.mockResolvedValueOnce({ ok: true, value: available })
+        act(() => { for (const changed of b.remoteListeners.get(event) ?? []) changed() })
+        await waitFor(() => { expect(b.settings.hooks.directory.getSnapshot().catalog).toEqual(available) })
+        const updated: TeamBot = { ...main, model: { kind: 'override', provider: 'openai-codex', model: 'gpt-fixture' } }
+        vi.mocked(b.remote.updateBot).mockResolvedValueOnce({ ok: true, value: {
+          bot: updated, snapshot: { ...supported, revision: 2, bots: [updated, writer] },
+        } })
+        fireEvent.click(screen.getByLabelText(zh['bot.model']))
+        expect(screen.getAllByRole('menuitem').map(item => item.textContent)).toMatchInlineSnapshot(`
+          [
+            "跟随主模型（默认）",
+            "使用当前基础模型",
+            "Mock / Base",
+            "Mock / Writer",
+            "ChatGPT / GPT fixture",
+          ]
+        `)
+        fireEvent.click(screen.getByRole('menuitem', { name: 'ChatGPT / GPT fixture' }))
+        fireEvent.click(screen.getByRole('button', { name: zh['bot.save'] }))
+        await waitFor(() => { expect(b.remote.updateBot).toHaveBeenCalledExactlyOnceWith({
+          id: main.id, model: { kind: 'override', provider: 'openai-codex', model: 'gpt-fixture' },
+        }) })
+        expect(b.settings.hooks.directory.getSnapshot().snapshot?.bots.find(bot => bot.id === writer.id)).toEqual(writer)
+        expect(b.settings.hooks.directory.getSnapshot().catalog?.default).toEqual({ provider: 'mock', model: 'base' })
+        expect(b.session.selectModel).not.toHaveBeenCalled()
+        expect(b.session.modelCatalog).toHaveBeenCalledTimes(2)
+      } finally { await b.ctx.fiber.dispose() }
+    },
+  )
+
+  it('keeps the newest shared model catalog when an earlier authorization read completes later', async () => {
+    const b = await boot()
+    try {
+      const earlier = Promise.withResolvers<RemoteResult<ModelCatalog>>()
+      const latest = Promise.withResolvers<RemoteResult<ModelCatalog>>()
+      const old = b.settings.hooks.directory.getSnapshot().catalog!
+      const fresh: ModelCatalog = { ...old, groups: [{ id: 'openai-codex', name: 'ChatGPT',
+        models: [{ id: 'gpt-fixture', name: 'GPT fixture' }] }], routableProviders: ['openai-codex'] }
+      b.session.modelCatalog.mockReturnValueOnce(earlier.promise).mockReturnValueOnce(latest.promise)
+      act(() => { for (const changed of b.remoteListeners.get('credentials/record-updated') ?? []) changed() })
+      act(() => { for (const changed of b.remoteListeners.get('llm/adapters-updated') ?? []) changed() })
+      latest.resolve({ ok: true, value: fresh })
+      await waitFor(() => { expect(b.settings.hooks.directory.getSnapshot().catalog).toEqual(fresh) })
+      earlier.resolve({ ok: true, value: old })
+      await earlier.promise
+      await Promise.resolve()
+      expect(b.settings.hooks.directory.getSnapshot().catalog).toEqual(fresh)
+      expect(b.remote.updateBot).not.toHaveBeenCalled()
+    } finally { await b.ctx.fiber.dispose() }
+  })
+
+  it('clears previous-Host model choices on reconnect and ignores pending choices after disposal', async () => {
+    const b = await boot()
+    const pending = Promise.withResolvers<RemoteResult<ModelCatalog>>()
+    const retained = b.settings.hooks.directory.getSnapshot().catalog!
+    b.session.modelCatalog.mockReturnValueOnce(pending.promise)
+    b.ctx.emit('connection/reset')
+    expect(b.settings.hooks.directory.getSnapshot().catalog).toBeNull()
+    await b.ctx.fiber.dispose()
+    const closed = b.settings.hooks.directory.getSnapshot()
+    pending.resolve({ ok: true, value: retained })
+    await pending.promise
+    await Promise.resolve()
+    expect(b.settings.hooks.directory.getSnapshot()).toEqual(closed)
   })
 
   it('registers the main introduction only for the main Bot and restores other hero content on navigation', async () => {

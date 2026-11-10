@@ -65,9 +65,9 @@ export class TeamClientModel {
 
   /**
    * Replace the credential-free model choices from the current Host.
-   * @param catalog - Available configured models without provider credentials.
+   * @param catalog - Available configured models without provider credentials, or null after a Host replacement.
    */
-  setCatalog(catalog: ModelCatalog): void {
+  setCatalog(catalog: ModelCatalog | null): void {
     if (this.active) this.state.set({ ...this.state.getSnapshot(), catalog })
   }
 

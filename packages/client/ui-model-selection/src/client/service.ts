@@ -17,8 +17,10 @@ import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
 import type { SessionBinding } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { ModelCatalog } from '@deepseek-ai/dsh-api-session-controller/types'
+import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import { WeakMapWithValues } from '@deepseek-ai/dsh-util-values'
-import { ModelCatalogDirectory } from './catalog.ts'
+import { ModelCatalogDirectory, type ModelCatalogState } from './catalog.ts'
 import { ModelDirectory } from './directory.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -37,6 +39,9 @@ interface LiveState {
 export class ModelDirectoryResolver extends Service {
   static inject = ['sessions', 'remote', 'remote.session']
 
+  /** Shared credential-free model choices, including loading and failure state, without a Session binding. */
+  readonly catalogState: ObservableSnapshot<ModelCatalogState>
+
   private readonly live: LiveState = { directories: new WeakMapWithValues() }
   private readonly catalog: ModelCatalogDirectory
 
@@ -46,6 +51,8 @@ export class ModelDirectoryResolver extends Service {
   constructor(ctx: Context) {
     super(ctx, 'modelDirectories')
     this.catalog = new ModelCatalogDirectory(ctx)
+    this.catalogState = this.catalog.store
+    ctx.effect(() => () => { this.catalog.dispose() }, 'ui-model-selection: catalog lifetime')
     void this.catalog.load().catch(() => { /* selectors expose the shared error */ })
     ctx.on('connection/reset', () => {
       this.catalog.resetGeneration()
@@ -55,6 +62,19 @@ export class ModelDirectoryResolver extends Service {
     ctx.remote.$on('settings/document-updated', () => { this.catalog.refresh() })
     ctx.remote.$on('credentials/record-updated', () => { this.catalog.refresh() })
     ctx.remote.$on('credentials/reference-updated', () => { this.catalog.refresh() })
+  }
+
+  /**
+   * Load shared available choices without selecting a model or changing application defaults.
+   * @returns The current Host generation's catalog, sharing an existing read.
+   */
+  loadCatalog(): Promise<ModelCatalog> {
+    return this.catalog.load()
+  }
+
+  /** Refresh shared choices after an explicit retry without changing any saved model selection. */
+  refreshCatalog(): void {
+    this.catalog.refresh()
   }
 
   /**

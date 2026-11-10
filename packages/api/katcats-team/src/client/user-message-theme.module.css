@@ -1,7 +1,13 @@
-/* Rebind only the original user-content bubble token; other message kinds keep their palette. */
+/* User bubbles share the same monochrome treatment across Bot and group conversations. */
 body[data-katcats-user-bubbles] {
-  --katcats-user-bubble: #9df29f;
+  --katcats-user-bubble: #0a0a0a;
+  --katcats-user-label: #fff;
   --katcats-message-label: var(--dsw-alias-label-primary);
+}
+
+body[data-katcats-user-bubbles][data-ds-dark-theme] {
+  --katcats-user-bubble: #fff;
+  --katcats-user-label: #0a0a0a;
 }
 
 body[data-katcats-user-bubbles] :is(
@@ -11,7 +17,10 @@ body[data-katcats-user-bubbles] :is(
   [data-pending-steering="true"]
 ) {
   --dsw-specific-bubble: var(--katcats-user-bubble);
-  --dsw-alias-label-primary: #202124;
+  --dsw-specific-bubble-radius: var(--dsw-radius-xl);
+  --dsw-specific-bubble-padding: 10px 16px;
+  --dsw-specific-bubble-border: transparent;
+  --dsw-alias-label-primary: var(--katcats-user-label);
 }
 
 body[data-katcats-user-bubbles] :is(

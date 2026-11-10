@@ -143,33 +143,97 @@ export async function verifyPackagedKatcatsBrowser({ loginUrl, directory, enviro
     assert.deepEqual(restoredSettingsTab[savedSettingsTab.id], savedSettingsTab)
     checks.push('reload collapses a previously saved expanded sidebar without deleting its settings tab')
     await page.screenshot({ path: join(directory, '01-main-bot-reloaded.png'), animations: 'disabled' })
+    await page.setViewportSize({ width: 1440, height: 720 })
+    await page.getByRole('button', { name: '创建分组', exact: true }).click()
+    const folderName = '打包验收空分组'
+    const folderDialog = page.getByRole('dialog', { name: '创建分组', exact: true })
+    await folderDialog.getByLabel('分组名称', { exact: true }).fill(folderName)
+    await folderDialog.getByRole('button', { name: '创建', exact: true }).click()
+    await folderDialog.waitFor({ state: 'detached' })
+    const countBesideLabel = async (label, count) => {
+      const toggle = page.getByRole('region', { name: label, exact: true }).locator('button[aria-controls]')
+      assert.equal((await toggle.innerText()).replace(/\s/gu, ''), label + '(' + count + ')')
+      const spacing = await toggle.evaluate((element, expected) => {
+        const number = [...element.querySelectorAll('span')].find(span => span.textContent === '(' + expected + ')')
+        const label = number?.previousElementSibling
+        if (number === undefined || label === null || label === undefined) return null
+        const range = document.createRange()
+        range.selectNodeContents(label)
+        const first = range.getBoundingClientRect(), second = number.getBoundingClientRect()
+        return { gap: second.left - first.right, truncated: label.scrollWidth > label.clientWidth,
+          fits: second.right <= element.getBoundingClientRect().right + 1,
+          vertical: Math.abs(second.top + second.height / 2 - first.top - first.height / 2) }
+      }, count)
+      assert.notEqual(spacing, null)
+      assert(spacing.fits, label + ' count must fit inside its toggle')
+      if (!spacing.truncated) assert(spacing.gap >= 0 && spacing.gap <= 8,
+        label + ' count must directly follow its rendered text')
+      assert(spacing.vertical <= 3, label + ' count must stay on the same line')
+    }
+    await countBesideLabel(folderName, 0)
+    const createdRow = async (section, name, centered) => {
+      const group = page.getByRole('region', { name: section, exact: true })
+      const row = group.getByRole('button', { name, exact: true })
+      await page.waitForFunction(({ section, name, centered }) => {
+        const group = [...document.querySelectorAll('section[aria-label]')]
+          .find(element => element.getAttribute('aria-label') === section)
+        const row = group?.querySelector('button[aria-current="page"]')
+        const list = document.querySelector('[role="region"][aria-label="Bot 和群聊列表"]')
+        if (row?.getAttribute('aria-label') !== name || list === null) return false
+        const viewport = list.getBoundingClientRect(), target = row.getBoundingClientRect()
+        const more = [...document.querySelectorAll('button[aria-label="更多"]')]
+          .find(button => button.getClientRects().length > 0)
+        const bottom = Math.min(viewport.bottom, more?.getBoundingClientRect().top ?? Infinity)
+        return target.top >= viewport.top - 1 && target.bottom <= bottom + 1
+          && (!centered || Math.abs((target.top + target.bottom - viewport.top - bottom) / 2) <= 25)
+      }, { section, name, centered })
+      assert.equal(await group.locator('[data-session-id]').first().getAttribute('aria-label'), name)
+      const viewport = await page.getByRole('region', { name: 'Bot 和群聊列表', exact: true }).boundingBox()
+      const target = await row.boundingBox()
+      const more = page.getByRole('button', { name: '更多', exact: true })
+      const overlay = await more.isVisible() ? await more.boundingBox() : null
+      assert.notEqual(viewport, null)
+      assert.notEqual(target, null)
+      const bottom = Math.min(viewport.y + viewport.height, overlay?.y ?? Infinity)
+      assert(target.y >= viewport.y - 1 && target.y + target.height <= bottom + 1,
+        name + ' must be fully visible above the More button')
+      if (centered) assert(Math.abs(target.y + target.height / 2 - (viewport.y + bottom) / 2) <= 25,
+        name + ' must open near the usable sidebar midpoint')
+    }
     const names = ['打包验收文案助手', '打包验收复核助手']
-    for (const name of names) {
-      await page.getByRole('button', { name: '在「未分组」中创建 Bot', exact: true }).click()
+    const paddingNames = Array.from({ length: 8 }, (_, index) => '打包验收列表成员' + (index + 1))
+    let botCount = 0
+    for (const name of [...paddingNames, ...names]) {
+      await page.getByRole('button', { name: '创建新 Bot', exact: true }).first().click()
       const dialog = page.getByRole('dialog', { name: '创建 Bot', exact: true })
       await dialog.getByLabel('名称', { exact: true }).fill(name)
       await dialog.getByRole('button', { name: '创建', exact: true }).click()
       await dialog.waitFor({ state: 'detached' })
-      await page.getByRole('region', { name: '未分组', exact: true }).getByRole('button', { name, exact: true })
-        .waitFor({ state: 'visible' })
+      await createdRow('未分组', name, names.includes(name))
+      await countBesideLabel('未分组', ++botCount)
       await cleanComposer('private', '主人，有什么需要我帮忙的？')
       await page.getByText('小兢会计，您的AI财务团队', { exact: true }).waitFor({ state: 'visible' })
     }
-    checks.push('original creation dialog saves two ordinary Bots in the Bot section')
+    checks.push('new Bots prepend to Ungrouped, select their private conversation and center above More in an overflowing sidebar')
+    checks.push('custom folder and Ungrouped totals appear in parentheses directly beside their section labels')
     await page.screenshot({ path: join(directory, '02-ordinary-bots.png'), animations: 'disabled' })
-    await page.getByRole('button', { name: '创建群聊', exact: true }).click()
-    const dialog = page.getByRole('dialog', { name: '创建群聊', exact: true })
-    assert.equal(await dialog.getByLabel('每轮最多协作次数', { exact: true }).inputValue(), '16')
     const chatName = '打包验收协作群'
-    await dialog.getByLabel('群聊名称', { exact: true }).fill(chatName)
-    for (const name of names) await dialog.getByRole('checkbox', { name, exact: true }).check()
-    await dialog.getByRole('button', { name: '创建', exact: true }).click()
-    await dialog.waitFor({ state: 'detached' })
-    await page.getByRole('region', { name: '群聊', exact: true }).getByRole('button', { name: chatName, exact: true })
-      .waitFor({ state: 'visible' })
-    await cleanComposer('group', '主人，这次让我们一起完成什么？')
-    checks.push('group creation saves a separate group sidebar entry and a clean group composer')
+    let chatCount = 0
+    for (const name of ['打包验收较早群', chatName]) {
+      await page.getByRole('button', { name: '创建群聊', exact: true }).click()
+      const dialog = page.getByRole('dialog', { name: '创建群聊', exact: true })
+      assert.equal(await dialog.getByLabel('每轮最多协作次数', { exact: true }).inputValue(), '16')
+      await dialog.getByLabel('群聊名称', { exact: true }).fill(name)
+      for (const member of names) await dialog.getByRole('checkbox', { name: member, exact: true }).check()
+      await dialog.getByRole('button', { name: '创建', exact: true }).click()
+      await dialog.waitFor({ state: 'detached' })
+      await createdRow('群聊', name, false)
+      await countBesideLabel('群聊', ++chatCount)
+      await cleanComposer('group', '主人，这次让我们一起完成什么？')
+    }
+    checks.push('new group chats prepend to their section, select their clean conversation and remain fully visible')
     checks.push('new group creation defaults to sixteen total member task starts per round')
+    await page.setViewportSize({ width: 1440, height: 1080 })
     const groupSettings = page.locator('[data-sidebar-right-panel][data-sidebar-right-open]:visible')
     const batchPermissions = groupSettings.getByRole('group', { name: '统一设置成员权限', exact: true })
     const batchPicker = batchPermissions.getByRole('button', { name: /^所有成员权限/u })
@@ -195,12 +259,10 @@ export async function verifyPackagedKatcatsBrowser({ loginUrl, directory, enviro
       await groupSettings.getByRole('group', { name: name + '的群内权限', exact: true })
         .getByRole('button', { name: /仅可查看/u }).waitFor({ state: 'visible' })
     }
-    await page.waitForFunction(() => {
-      const group = [...document.querySelectorAll('[role="group"]')]
-        .find(element => element.getAttribute('aria-label') === '统一设置成员权限')
-      return group !== undefined && [...group.querySelectorAll('[role="status"] li')]
-        .filter(item => item.textContent.endsWith('已应用')).length === 2
-    })
+    const appliedResults = batchPermissions.getByRole('status').getByRole('listitem')
+      .filter({ hasText: /已应用$/u })
+    await appliedResults.nth(1).waitFor({ state: 'visible' })
+    assert.equal(await appliedResults.count(), 2)
     checks.push('one safe bulk selection updates both exact group member permissions and reports two confirmed successes')
     await page.screenshot({ path: join(directory, '03-group-chat.png'), animations: 'disabled' })
     for (const name of names) {
@@ -216,6 +278,44 @@ export async function verifyPackagedKatcatsBrowser({ loginUrl, directory, enviro
     await page.locator('[data-sidebar-right-panel][data-sidebar-right-open]:visible')
       .getByRole('group', { name: '统一设置成员权限', exact: true })
       .getByRole('button', { name: /^所有成员权限.*仅可查看/u }).waitFor({ state: 'visible' })
+    const questionProbe = async method => {
+      const response = await page.request[method](origin + '/katcats-packaged-ui-question')
+      assert.equal(response.status(), 200)
+      return response.json()
+    }
+    const waitForQuestionOutcome = async status => {
+      await page.waitForFunction(async expected => {
+        const response = await fetch('/katcats-packaged-ui-question')
+        return response.ok && (await response.json()).question?.status === expected
+      }, status)
+      return questionProbe('get')
+    }
+    const startedQuestion = await questionProbe('post')
+    assert.equal(startedQuestion.question.phase, 'answer')
+    assert.notEqual(startedQuestion.question.sessionId, startedQuestion.question.rootSessionId)
+    assert.notEqual(startedQuestion.question.sessionId, startedQuestion.question.privateSessionId)
+    const questionCard = page.locator('[data-katcats-question]')
+    await questionCard.getByText('合成验收：请选择群成员交付方式。', { exact: true }).waitFor({ state: 'visible' })
+    assert.equal(await questionCard.count(), 1)
+    await questionCard.getByRole('radio', { name: '提交原成员', exact: true }).click()
+    await questionCard.getByRole('button', { name: '提交', exact: true }).click()
+    const answeredQuestion = await waitForQuestionOutcome('answered')
+    assert.equal(answeredQuestion.question.sessionId, startedQuestion.question.sessionId)
+    assert.deepEqual(answeredQuestion.question.answer, {
+      answers: [{ id: 'packaged-group-question', selected: ['提交原成员'] }],
+    })
+    await questionCard.waitFor({ state: 'detached' })
+    const cancelQuestion = await questionProbe('post')
+    assert.equal(cancelQuestion.question.phase, 'cancel')
+    assert.equal(cancelQuestion.question.sessionId, startedQuestion.question.sessionId)
+    await questionCard.getByText('合成验收：请取消这次群成员提问。', { exact: true }).waitFor({ state: 'visible' })
+    await questionCard.getByRole('button', { name: '放弃整组问题', exact: true }).click()
+    const cancelledQuestion = await waitForQuestionOutcome('failed')
+    assert.equal(cancelledQuestion.question.error.code, 'ASK_CANCELLED')
+    assert.equal(cancelledQuestion.modelCalls, 0)
+    await questionCard.waitFor({ state: 'detached' })
+    await cleanComposer('group-after-questions', '主人，这次让我们一起完成什么？')
+    checks.push('real executor-scoped questions render through the packaged provider, return the exact answer and cancel with ASK_CANCELLED without model calls')
     const seedHandoffs = async phase => {
       const response = await page.request.post(origin + '/katcats-packaged-ui-handoff-' + phase)
       assert.equal(response.status(), 200)
@@ -231,10 +331,8 @@ export async function verifyPackagedKatcatsBrowser({ loginUrl, directory, enviro
     checks.push('persisted synthetic lifecycle events render two task cards and one full handoff beside ordinary chat')
     const handoffToggle = groupSettings.getByRole('switch', { name: '显示交接记录与状态', exact: true })
     const waitForAutomaticDisplaySave = async checked => {
-      await page.waitForFunction(expected => {
-        const toggle = document.querySelector('[role="switch"][aria-label="显示交接记录与状态"]')
-        return toggle !== null && toggle.getAttribute('aria-checked') === String(expected) && !toggle.disabled
-      }, checked)
+      await groupSettings.locator(`[role="switch"][aria-label="显示交接记录与状态"][aria-checked="${checked}"]:not(:disabled)`)
+        .waitFor({ state: 'visible' })
       assert.equal(await groupSettings.getByRole('button', { name: '保存设置', exact: true }).isDisabled(), true)
     }
     await handoffToggle.click()
@@ -286,14 +384,27 @@ export async function verifyPackagedKatcatsBrowser({ loginUrl, directory, enviro
     assert.equal(await interrupt.isDisabled(), true)
     checks.push('ordinary Enter persists one queued message without unpausing the group, confirms receipt and exposes the separate explicit interrupt action')
     await page.screenshot({ path: join(directory, '05-group-queued-message.png'), animations: 'disabled' })
+    for (const [section, name] of [['群聊', '打包验收较早群'], ['未分组', paddingNames.at(-1)]]) {
+      await page.getByRole('region', { name: section, exact: true }).getByRole('button', { name, exact: true })
+        .click({ button: 'right' })
+      await page.getByRole('menuitem', { name: '移至', exact: true }).click()
+      await page.getByRole('menuitem', { name: folderName, exact: true }).click()
+      await page.getByRole('region', { name: folderName, exact: true }).getByRole('button', { name, exact: true })
+        .waitFor({ state: 'visible' })
+    }
+    await countBesideLabel(folderName, 2)
+    await countBesideLabel('未分组', botCount - 1)
+    await countBesideLabel('群聊', chatCount - 1)
+    checks.push('moving one Bot and one group chat into a custom folder counts both as one unit and updates source section totals')
+    await page.screenshot({ path: join(directory, '06-mixed-folder-count.png'), animations: 'disabled' })
     after = await probe()
     assert.equal(after.modelCalls, 0, 'UI boot and entity creation must make zero model calls')
-    assert.equal(after.bots, 3)
-    assert.equal(after.chats, 1)
+    assert.equal(after.bots, 1 + paddingNames.length + names.length)
+    assert.equal(after.chats, 2)
     assert.deepEqual(pageErrors, [])
     assert.deepEqual(consoleErrors, [])
     const result = { passed: true, productMode: '1', developmentModePresent: false, before, after, checks, composers,
-      pageErrors, consoleErrors, modelCalls: 0, pausedQueue, retainedQueue,
+      pageErrors, consoleErrors, modelCalls: 0, pausedQueue, retainedQueue, answeredQuestion, cancelledQuestion,
       limitations: ['Task cards use persisted synthetic Session events. Queue submission uses the real paused Host; model execution, explicit interruption and the installed Electron shell were not exercised by this browser smoke.'] }
     await writeFile(join(directory, 'ui-result.json'), JSON.stringify(result, null, 2) + '\n')
     return result

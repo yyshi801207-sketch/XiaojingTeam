@@ -27,7 +27,7 @@ import type { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import { createWaterfallRequest, PendingQuestion, type QuestionRpcChannel } from './contract/slots.ts'
 import { createQuestionDraftStore } from './draft-store.ts'
-import { QuestionComposer } from './QuestionComposer.tsx'
+import { QuestionComposer, QuestionComposerEntry } from './QuestionComposer.tsx'
 import { questionReplyDefinition } from './question-reply.ts'
 import { QuestionReplyView } from './QuestionReplyView.tsx'
 import { en, zh, type QuestionKey } from './locales.ts'
@@ -379,17 +379,18 @@ export function apply(ctx: ClientContext): void {
   } satisfies UserQuestionPanels)
   ctx.effect(() => disposePanels, 'ui-user-questions: answer panels')
   ctx.effect(() => publishContinuedQuestions(ctx, cards), 'ui-user-questions: continued questions')
+  ctx.effect(() => ctx.slots.registerFactory({
+    name: 'question.panel', scope: 'session', locale: NS, store: questionDraftStore,
+    inject: () => ({ keyedHooks: { questionCard: (key: string) => cards.source(key) } }),
+    children: { 'conversation.plan-review.actions': { kind: 'list', scope: 'session' } },
+  }, QuestionComposer), 'ui-user-questions: reusable original question panel')
   ctx.slots.inject('conversation.composer', () => ctx.slots.register(
     {
       name: 'conversation.composer',
       select: ({ pendingInteraction }: ComposerChainProps): PendingQuestion | null =>
         pendingInteraction instanceof PendingQuestion ? pendingInteraction : null,
-      locale: NS,
-      store: questionDraftStore,
-      inject: () => ({ keyedHooks: { questionCard: (key: string) => cards.source(key) } }),
-      children: { 'conversation.plan-review.actions': { kind: 'list', scope: 'session' } },
     },
-    QuestionComposer,
+    QuestionComposerEntry,
   ))
   ctx.uiConversation.events.register(questionReplyDefinition)
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({

@@ -13,7 +13,7 @@ import type { MessageId, UserMessage } from '@deepseek-ai/dsh-llm'
 import Storage from '@deepseek-ai/dsh-storage'
 import * as JsonStorage from '@deepseek-ai/dsh-storage-json'
 import * as StorageDomain from '@deepseek-ai/dsh-storage-domain'
-import { chatsDomainSpec, chatsStateSchema, legacyChatsDomainSpec } from '../src/chats-storage.ts'
+import { chatsDomainSpec, chatsStateSchema, legacyChatsDomainSpec, previousChatsDomainSpec } from '../src/chats-storage.ts'
 import { openChatsDomain } from '../src/chats-migration.ts'
 import { chatGroupId, mainBotId } from '../src/storage.ts'
 import type { ChatDelivery, ChatDeliveryId, ChatInbound } from '../src/chats-types.ts'
@@ -167,6 +167,17 @@ describe('direct group journal', () => {
       memberIds: [mainBotId, 'reviewer'] })) }).inbounds).toEqual(state.inbounds)
   })
 
+  it('preserves legacy execution when the collaboration version is absent and rejects unsupported versions', () => {
+    const state = directState()
+    const inbound = state.inbounds[0]!
+    expect(chatsStateSchema.parse(state).inbounds[0]).not.toHaveProperty('collaborationVersion')
+    const updated = { ...state, inbounds: [{ ...inbound, collaborationVersion: 1 }] }
+    expect(chatsStateSchema.parse(updated).inbounds[0]).toEqual(updated.inbounds[0])
+    for (const collaborationVersion of [0, 2, '1', null]) {
+      expect(chatsStateSchema.safeParse({ ...state, inbounds: [{ ...inbound, collaborationVersion }] }).success).toBe(false)
+    }
+  })
+
   it('requires pass evidence and keeps silence distinct from text, failure, and publication', () => {
     const state = directState()
     const delivery = state.deliveries[1]!
@@ -231,7 +242,22 @@ describe('direct group journal', () => {
     expect(chatsStateSchema.safeParse({ ...state, deliveries: [first, second] }).success).toBe(false)
   })
 
-  it('imports a complete v1 journal into v2 without rewriting its source and reopens only v2 afterwards', async () => {
+  it('imports committed v2 without rewriting it or reading an older invalid v1', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'katcats-group-storage-v2-'))
+    roots.push(root)
+    await mkdir(join(root, 'storage'))
+    const path = join(root, 'storage', `${previousChatsDomainSpec.name}.json`)
+    const text = JSON.stringify({ unit: { name: previousChatsDomainSpec.name, version: 2 }, global: directState(), tables: {} })
+    await writeFile(path, text)
+    await writeFile(join(root, 'storage', 'katcats_chats.json'), 'invalid older generation')
+    const h = await storageFixture(root)
+    const domain = await openChatsDomain(h.ctx)
+    expect(domain.global.get()).toEqual(chatsStateSchema.parse(directState()))
+    expect(await readFile(path, 'utf8')).toBe(text)
+    await domain.close()
+  })
+
+  it('imports a complete v1 journal into v3 without rewriting its source and reopens only v3 afterwards', async () => {
     const root = await mkdtemp(join(tmpdir(), 'katcats-group-storage-'))
     roots.push(root)
     await mkdir(join(root, 'storage'))
@@ -258,7 +284,7 @@ describe('direct group journal', () => {
     expect(reopened.global.get()).toEqual(value)
     expect(await readFile(path, 'utf8')).toBe('this predecessor must never be opened again')
     expect(JSON.parse(await readFile(join(root, 'storage', `${chatsDomainSpec.name}.json`), 'utf8')))
-      .toMatchObject({ unit: { name: chatsDomainSpec.name, version: 2 } })
+      .toMatchObject({ unit: { name: chatsDomainSpec.name, version: 3 } })
     await reopened.close()
   })
 
@@ -295,7 +321,7 @@ describe('direct group journal', () => {
     await domain.close()
   })
 
-  it('creates a durable v2 marker for an empty profile and does not import a later predecessor', async () => {
+  it('creates a durable v3 marker for an empty profile and does not import a later predecessor', async () => {
     const root = await mkdtemp(join(tmpdir(), 'katcats-group-storage-empty-'))
     roots.push(root)
     const first = await storageFixture(root)
@@ -311,7 +337,7 @@ describe('direct group journal', () => {
     await reopened.close()
   })
 
-  it('retains v1 and permits retry after the first v2 write fails', async () => {
+  it('retains v1 and permits retry after the first v3 write fails', async () => {
     const root = await mkdtemp(join(tmpdir(), 'katcats-group-storage-retry-'))
     roots.push(root)
     await mkdir(join(root, 'storage'))
@@ -323,10 +349,10 @@ describe('direct group journal', () => {
     const open = kv.open.bind(kv)
     vi.spyOn(kv, 'open').mockImplementationOnce(async (descriptor) => {
       const unit = await open(descriptor)
-      vi.spyOn(unit, 'setGlobal').mockRejectedValueOnce(new Error('Fixture v2 write failed'))
+      vi.spyOn(unit, 'setGlobal').mockRejectedValueOnce(new Error('Fixture v3 write failed'))
       return unit
     })
-    await expect(openChatsDomain(first.ctx)).rejects.toThrow('Fixture v2 write failed')
+    await expect(openChatsDomain(first.ctx)).rejects.toThrow('Fixture v3 write failed')
     expect(first.ctx.storageDomain.get(chatsDomainSpec.name)).toBeUndefined()
     expect(first.ctx.storageDomain.get(legacyChatsDomainSpec.name)).toBeUndefined()
     expect(await readFile(path, 'utf8')).toBe(text)
@@ -336,7 +362,7 @@ describe('direct group journal', () => {
     await retried.close()
   })
 
-  it('rejects a predecessor containing a custom group assignment and never falls back from malformed v2', async () => {
+  it('rejects a predecessor containing a custom group assignment and never falls back from malformed v3', async () => {
     const root = await mkdtemp(join(tmpdir(), 'katcats-group-storage-generations-'))
     roots.push(root)
     await mkdir(join(root, 'storage'))
@@ -351,7 +377,7 @@ describe('direct group journal', () => {
     await first.close()
     await writeFile(path, JSON.stringify({ unit: { name: 'katcats_chats', version: 1 }, global: previous, tables: {} }))
     const currentPath = join(root, 'storage', `${chatsDomainSpec.name}.json`)
-    const broken = JSON.stringify({ unit: { name: chatsDomainSpec.name, version: 2 }, global: { broken: true }, tables: {} })
+    const broken = JSON.stringify({ unit: { name: chatsDomainSpec.name, version: 3 }, global: { broken: true }, tables: {} })
     await writeFile(currentPath, broken)
     const second = await storageFixture(root)
     await expect(openChatsDomain(second.ctx)).rejects.toMatchObject({ code: 'invalid-record' })

@@ -1,0 +1,15 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`subscription and legacy provider identities > separates the primary route from candidates and reflects the confirmed subscription connection 1`] = `
+{
+  "candidates": "openai-codexLegacy routeConfigure ChatGPT subscriptionDeleteopenai-codex uses separate authorization. A ChatGPT subscription does not connect this route or switch Bots that still use it.ChatGPT subscriptionEditDeleteChoose ChatGPT in each Bot’s model settings to use these candidates. Existing model selections stay unchanged.",
+  "candidatesHint": "Connect a subscription account or an API provider.",
+  "defaultRule": "New Bots follow the primary model by default. Each Bot can choose a candidate model in its settings.",
+  "divider": 1,
+  "headings": [
+    "Primary model",
+    "Candidate models",
+  ],
+  "primary": "DeepSeekEdit",
+}
+`;

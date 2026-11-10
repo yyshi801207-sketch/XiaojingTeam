@@ -277,7 +277,7 @@ describe('group task record', () => {
       inject: () => ({ hooks: { groupDirectory: model.state } }) }, GroupTaskLifecycle)
     runtime.slots.register({ name: 'conversation.chat.node', key: 'katcats-relay', locale: 'katcats.team',
       children: { 'katcats.group.delivered-files': { kind: 'single', scope: 'session' } },
-      inject: () => ({ hooks: { groupDirectory: model.state } }) }, ChatRelayMessage)
+      inject: () => ({ hooks: { groupDirectory: model.state }, copyRelayText: vi.fn(), openRelayMember: vi.fn() }) }, ChatRelayMessage)
     let view = runtime.renderRoot()
     const visible = () => ({ handoffs: view.container.querySelectorAll('[data-katcats-handoff]').length,
       records: view.container.querySelectorAll('[data-katcats-task]').length,
@@ -316,7 +316,7 @@ describe('group task record', () => {
       ? <GroupTaskLifecycle key={node.key} {...{ node, sessionId: task.rootSessionId,
         useGroupDirectory: directory.useGroupDirectory, t: makeTranslate(taskZh) } as GroupTaskLifecycleProps} />
       : node.kind === 'katcats-relay' ? <ChatRelayMessage key={node.key} {...{ node, sessionId: task.rootSessionId,
-        useGroupDirectory: directory.useGroupDirectory, renderSlot: () => null,
+        useGroupDirectory: directory.useGroupDirectory, copyRelayText: vi.fn(), openRelayMember: vi.fn(), renderSlot: () => null,
         t: makeTranslate(zh) } as ChatRelayMessageProps} /> : null)}</>
     const view = render(draw())
     const visible = () => ({ handoffs: view.container.querySelectorAll('[data-katcats-handoff]').length,

@@ -29,6 +29,8 @@ Web GUI 允许用户通过 `/model` 弹窗或 composer 模型控件切换既有�
 
 DeepSeek 账号和 API Key 路由显示为独立提供方分组，各自展示相同的已配置模型目录。
 
+`controlsEnabled` 默认为 `true`。设为 `false` 时，共享的 `modelDirectories` 服务保持可用，同时不注册 `/model` 命令和 composer 选择器。Host 在浏览器插件激活前发布该选项。Katcats 使用此设置，由 Bot 控件负责模型选择。
+
 未选择模型或已保存的选择不在目录中时，composer 以常规字重显示“请选择模型”，并隐藏推理强度文案。点击后直接打开模型列表，Escape 和 Shift+Tab 关闭列表。目录为空时显示“暂无可用模型”
 
 与 `ui-conversation` 及命令包一起挂载本插件；composer 随即在待处理指示器旁显示模型位，`/model` 则以弹窗打开同一份目录。模型位菜单打开期间，`↑`／`↓` 在根菜单和推理等级行间移动焦点，或在模型列表中移动高亮并让焦点保留在搜索框。Enter 和 Tab 选定高亮模型或聚焦行；Escape 与 `Shift+Tab` 先退出已下钻的面板，否则关闭并回到触发器。下钻时若显示模型搜索框则聚焦搜索框，否则聚焦当前模型或推理强度行，返回则落在打开该面板的格子上。所选模型可用时，composer 显示目录中的模型名称。模型或提供方被删除时（包括账号退登），保留已保存的提供方、模型和推理强度，但不展示其 ID。目录条目恢复后重新显示名称和推理强度。
@@ -67,6 +69,8 @@ composer 菜单中的模型名称和推理等级均使用 400（regular）字重
 ## 理解实现
 
 菜单采用共享 `MenuSurface` 材质，包括用于背景模糊的 macOS 底层；自定义内容遵循[菜单规则](../../../docs/web-styling.zh.md#component-rules)。
+
+该服务还通过 `catalogState`、`loadCatalog()` 与 `refreshCatalog()` 提供不依赖已打开 Session 的无凭据模型选项。这些读取者与选择器共用目录和失效生命周期，不选择模型，也不保存应用默认值。销毁后，待完成响应不再发布。
 
 <details>
 <summary>实现细节——点击展开</summary>

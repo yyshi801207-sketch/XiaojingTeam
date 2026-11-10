@@ -11,6 +11,8 @@ The Team build defaults to the light theme and uses `XIAOJING_OFFICE_WORKSPACE_R
 
 The Team composition disables desktop product analytics and its exporter, along with the inherited account and feedback UI and account controller. It does not send usage events to the inherited product collector. Custom model settings remain available.
 
+The Team sidebar groups its footer under one initially collapsed “Tools and settings” row. Expanding it shows panel entries directly, followed by footer actions and Settings.
+
 ## Summary
 
 Run `dsh --profile web` for browser chat, model and settings management, and session history, with the same model access, tools, and safety defaults as other dsh surfaces. Startup prints a tokenized URL and normally opens the default browser; SSH sessions and `--no-open` require manual opening. You can change the port, allow extra authorities, bind one concrete local IP, and serve HTTPS from a certificate you supply; wildcard addresses are rejected. Remote access uses an advertised HTTP(S) URL behind a prefix-stripping proxy, listener TLS, or plain HTTP on a non-loopback bind. Use the headless profile for one-shot command-line tasks.

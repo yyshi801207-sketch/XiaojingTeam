@@ -15,7 +15,7 @@ export type BotId = Branded<'KatcatsBotId'>
 /** Logical sidebar group identity; it does not name a filesystem workspace. */
 export type GroupId = Branded<'KatcatsGroupId'>
 
-/** Financial robot silhouette and independently chosen color, using existing saved shape identifiers. */
+/** Head-and-shoulders silhouette and independently chosen color, retaining existing saved shape identifiers. */
 export interface BotAvatar {
   readonly shape: string
   readonly color: string

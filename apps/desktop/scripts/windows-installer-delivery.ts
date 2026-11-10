@@ -20,7 +20,7 @@ export async function copyWindowsInstallerDelivery(
     timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit',
   }).formatToParts(createdAt)
   const date = ['year', 'month', 'day'].map(type => parts.find(part => part.type === type)?.value).join('')
-  const destination = join(directory, `小兢会计团队版-V${version}-Windows-x64-${date}.exe`)
+  const destination = join(directory, `小兢Bot-V${version}-Windows-x64-${date}.exe`)
   await mkdir(directory, { recursive: true })
   await copyFile(source, destination)
   return destination

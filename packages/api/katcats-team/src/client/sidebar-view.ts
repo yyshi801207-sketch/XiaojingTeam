@@ -1,9 +1,32 @@
 /** Persistent sidebar folds and the product-owned scroll affordance. */
 import { createSnapshotStore, defineStore } from '@deepseek-ai/dsh-client-store'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { GroupId } from '../types.ts'
 
 /** Saved presentation preferences, independent from member and Session records. */
 export interface SidebarViewState {
   collapsedGroups: Record<string, boolean>
+  /** Older preferences leave the main Bot expanded. */
+  mainCollapsed?: boolean
+  /** Missing on previously saved preferences; entries retain their Session identities. */
+  entryOrder?: Record<string, readonly SessionId[]>
+}
+
+/**
+ * Apply saved member ordering within the pinned and ordinary sections of one group.
+ * @param ids - Current Bot and chat Session identities in their default directory order.
+ * @param order - Saved browser-local order; absent or departed identities are ignored.
+ * @param pinnedIds - Registry pin order, used for pins without a saved position.
+ * @returns Current identities once each, pinned first; newly seen entries follow saved entries in their section.
+ */
+export function orderSidebarEntries(
+  ids: readonly SessionId[], order: readonly SessionId[] | undefined, pinnedIds: readonly SessionId[],
+): readonly SessionId[] {
+  const current = new Set(ids)
+  const pinned = new Set(pinnedIds)
+  const saved = (Array.isArray(order) ? order as readonly SessionId[] : []).filter(id => current.has(id))
+  const entries = [...new Set([...saved, ...pinnedIds.filter(id => current.has(id)), ...ids])]
+  return [...entries.filter(id => pinned.has(id)), ...entries.filter(id => !pinned.has(id))]
 }
 
 /**
@@ -15,7 +38,12 @@ export function createSidebarViewStore() {
     init: (): SidebarViewState => ({ collapsedGroups: {} }),
     persist: 'katcats.sidebar.view.v1',
     actions: {
+      setMainCollapsed: (draft, collapsed: boolean) => { draft.mainCollapsed = collapsed },
       setGroupCollapsed: (draft, id: string, collapsed: boolean) => { draft.collapsedGroups[id] = collapsed },
+      setEntryOrder: (draft, id: GroupId, ids: readonly SessionId[]) => {
+        draft.entryOrder ??= {}
+        draft.entryOrder[id] = [...ids]
+      },
     },
   })
 }

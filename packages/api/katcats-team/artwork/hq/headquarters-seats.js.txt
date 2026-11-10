@@ -1,0 +1,15 @@
+DEPTS.forEach(function (D, k) {
+  var R = D.R;
+  function seat(u, v, scale, head) {
+    var place = rPlace(R, u, v, 0, 'sit', v);
+    place.sh = SEAT_H;
+    var point = rw(R, u, v + 0.55 * scale);
+    return { place: place, visit: rPlace(R, u, v + 1.4 * scale, Math.PI, 'stand', v + 1.4 * scale),
+      tray: [point[0], DESK_Y * scale, point[1]], trayYaw: R.a,
+      deskPt: [point[0], DESK_Y * scale, point[1]], own: null, head: head, D: k, scale: scale };
+  }
+  D.seats = R.hqSeats.map(function (p) { return seat(p.u, p.v, p.scale, false); });
+  D.headSeat = seat(R.head[0], R.head[1], 1, true);
+  D.cap = D.seats.length;
+  var cc = rw(R, 0, 0); D.cx = cc[0]; D.cz = cc[1];
+});

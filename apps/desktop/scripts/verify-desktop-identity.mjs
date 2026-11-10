@@ -9,11 +9,11 @@ const integration = JSON.parse(await readFile(join(appRoot, 'integration-patches
 const manifest = JSON.parse(await readFile(join(appRoot, 'package.json'), 'utf8'))
 const rootManifest = JSON.parse(await readFile(join(appRoot, '..', '..', 'package.json'), 'utf8'))
 const webManifest = JSON.parse(await readFile(join(appRoot, '..', 'web', 'public', 'xiaojing-manifest.webmanifest'), 'utf8'))
-if (webManifest.name !== '小兢会计团队版' || webManifest.short_name !== '小兢会计团队版') {
-  throw new Error('installed browser application metadata must use 小兢会计团队版')
+if (webManifest.name !== '小兢Bot' || webManifest.short_name !== '小兢Bot') {
+  throw new Error('installed browser application metadata must use 小兢Bot')
 }
 for (const path of ['build/internal-use-notice.txt', 'src/locale.ts']) {
-  if (/Katcats?\.AI|小兢会计(?!团队版)|小兢办公/u.test(await readFile(join(appRoot, path), 'utf8'))) {
+  if (/Katcats?\.AI|小兢会计|小兢办公/u.test(await readFile(join(appRoot, path), 'utf8'))) {
     throw new Error(`old product display text remains in ${path}`)
   }
 }
@@ -43,9 +43,9 @@ const expected = Object.freeze({
   nsisGuid: 'c8462347-245f-49dd-8195-e1174bb7e3ef',
   installDirectoryName: 'XiaojingAccountingTeam-desktop',
   executableName: 'XiaojingAccountingTeam',
-  productName: '小兢会计团队版',
+  productName: '小兢Bot',
   installScope: 'currentUser',
-  shortcutName: '小兢会计团队版',
+  shortcutName: '小兢Bot',
   userDataSegments: ['XiaojingAccountingTeam-desktop'],
 })
 
@@ -195,12 +195,12 @@ if (!installer.includes('installer-product-logo.bmp')
   || installerCompanyLogo.subarray(0, 2).toString('ascii') !== 'BM') {
   throw new Error('installer brand bitmaps are missing or invalid')
 }
-if (installerProductLogo.readUInt32LE(18) !== 480
-  || installerProductLogo.readUInt32LE(22) !== 400
+if (installerProductLogo.readUInt32LE(18) !== 640
+  || installerProductLogo.readUInt32LE(22) !== 360
   || installerProductLogoSmall.readUInt32LE(18) !== 72
   || installerProductLogoSmall.readUInt32LE(22) !== 72
-  || installerCompanyLogo.readUInt32LE(18) !== 110
-  || installerCompanyLogo.readUInt32LE(22) !== 28) {
+  || installerCompanyLogo.readUInt32LE(18) !== 180
+  || installerCompanyLogo.readUInt32LE(22) !== 58) {
   throw new Error('installer artwork, cancellation, and company bitmaps must match their presentation sizes')
 }
 assertWhiteBmpBorder(installerCompanyLogo, 'installer company logo')
@@ -216,7 +216,7 @@ if (!installer.includes('!define MUI_CUSTOMFUNCTION_ABORT xiaojingInstallerAbort
   || !installer.includes('SetErrorLevel 1602')
   || !installer.includes('Call muiPageLoadFullWindow')
   || !installer.includes('ShowWindow $mui.InstFilesPage.Log ${SW_HIDE}')
-  || !installer.includes('正在安装小兢会计团队版，请稍候…')
+  || !installer.includes('正在安装小兢Bot，请稍候…')
   || !installer.includes('xiaojing-company-logo.bmp')
   || !installer.includes('${NSD_SetStretchedImage} $xiaojingProgressProductControl')
   || !/CreateWindowExW\([^\n]+p \$mui\.InstFilesPage[^\n]+\) p \.r0'[\s\S]+StrCpy \$xiaojingProgressProductControl \$0/.test(installer)

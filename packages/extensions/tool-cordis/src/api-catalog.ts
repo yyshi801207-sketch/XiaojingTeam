@@ -1478,7 +1478,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: '@Remote async createChat(request: CreateChatRequest): Promise<ChatMutationValue>',
-        description: 'Create an isolated group and one persistent execution Session per selected ordinary member.',
+        description: 'Create an isolated group and one persistent execution Session per selected ordinary member. Newly created groups precede existing groups in the durable directory.',
         parameters: [{ name: 'request', description: 'name, ordinary members, and optional positive dispatch limit.' }],
         returns: 'the fully committed group and replacement directory.',
       },
@@ -1593,8 +1593,8 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: '@Remote async createBot(request: CreateBotRequest): Promise<BotMutationValue>',
-        description: 'Create a general member and a durable ordinary private Session. A retry matching a still-pending name, group, avatar, and empty role returns that recovered member.',
-        parameters: [{ name: 'request', description: 'member name, optional group, and optional approved avatar.' }],
+        description: 'Create a general member and a durable ordinary private Session. New members precede existing ordinary members; an omitted group uses 未分组. A retry matching a still-pending name, group, avatar, and empty role returns that recovered member.',
+        parameters: [{ name: 'request', description: 'member name, optional explicit group, and optional approved avatar.' }],
         returns: 'the committed member and replacement snapshot.',
       },
       {
@@ -1611,7 +1611,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: '@Remote async createGroup(request: CreateGroupRequest): Promise<GroupMutationValue>',
-        description: 'Create a logical group for ordinary members.',
+        description: 'Create a logical group before existing custom groups, retaining system-group order.',
         parameters: [{ name: 'request', description: 'non-empty group name.' }],
         returns: 'the committed group and replacement snapshot.',
       },
@@ -5972,7 +5972,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ChatDelivery',
-    declaration: 'export interface ChatDelivery {\n    readonly id: ChatDeliveryId;\n    readonly chatId: ChatId;\n    readonly runId: ChatRunId;\n    readonly generation: number;\n    readonly sourceSessionId: SessionId;\n    readonly source: ChatDeliverySource;\n    readonly botId: BotId;\n    readonly executorSessionId: SessionId;\n    readonly message: string;\n    readonly inputMessageId: MessageId;\n    readonly relayMessageId: MessageId;\n    readonly state: \'accepted\' | \'running\' | \'completed\' | \'passed\' | \'failed\' | \'unknown\';\n    readonly receipt: ChatReceipt | null;\n    readonly pass: ChatPass | null;\n    readonly relayed: boolean;\n    readonly error: ChatFailure | null;\n}',
+    declaration: 'export interface ChatDelivery {\n    readonly recoveryOf?: ChatDeliveryId;\n    readonly takeover?: {\n        readonly version: 1;\n        readonly botId: BotId;\n        readonly state: \'pending\' | \'handled\' | \'stopped\';\n    };\n    readonly id: ChatDeliveryId;\n    readonly chatId: ChatId;\n    readonly runId: ChatRunId;\n    readonly generation: number;\n    readonly sourceSessionId: SessionId;\n    readonly source: ChatDeliverySource;\n    readonly botId: BotId;\n    readonly executorSessionId: SessionId;\n    readonly message: string;\n    readonly inputMessageId: MessageId;\n    readonly relayMessageId: MessageId;\n    readonly state: \'accepted\' | \'running\' | \'completed\' | \'passed\' | \'failed\' | \'unknown\';\n    readonly receipt: ChatReceipt | null;\n    readonly pass: ChatPass | null;\n    readonly relayed: boolean;\n    readonly error: ChatFailure | null;\n}',
   },
   {
     name: 'ChatDeliveryId',
@@ -7017,6 +7017,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'GroupOrganizationParticipant',
     declaration: 'export interface GroupOrganizationParticipant {\n    memberships(botId: BotId): Promise<readonly ChatId[]>;\n    moveGroup(groupId: GroupId): Promise<void>;\n}',
+  },
+  {
+    name: 'GroupTicket',
+    declaration: 'export interface GroupTicket {\n    readonly version: 1;\n    readonly id: GroupTicketId;\n    readonly ownerId: BotId;\n    readonly goal: string;\n    readonly acceptance: readonly string[];\n    readonly stage: string;\n    readonly nextStep: string;\n    readonly state: \'open\' | \'blocked\';\n    readonly blocker: string | null;\n    readonly artifacts: readonly string[];\n    readonly messageIds: readonly MessageId[];\n    readonly revision: number;\n}',
+  },
+  {
+    name: 'GroupTicketId',
+    declaration: 'export type GroupTicketId = Branded<\'KatcatsGroupTicketId\'>;',
   },
   {
     name: 'HookBudget',
@@ -9640,7 +9648,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'TeamChat',
-    declaration: 'export interface TeamChat {\n    readonly id: ChatId;\n    readonly name: string;\n    readonly groupId: GroupId;\n    readonly rootSessionId: SessionId;\n    readonly workDir: string;\n    readonly memberIds: readonly BotId[];\n    readonly managerId: BotId | null;\n    readonly memberRoles: readonly ChatMemberRole[];\n    readonly executors: readonly ChatExecutor[];\n    readonly relayLimit: number;\n    readonly showHandoffRecords?: boolean;\n    readonly generation: number;\n    readonly status: \'active\' | \'paused\' | \'stopped\';\n    readonly pauseReason: string | null;\n    readonly run: ChatRun | null;\n    readonly error: ChatFailure | null;\n}',
+    declaration: 'export interface TeamChat {\n    readonly tickets?: readonly GroupTicket[];\n    readonly id: ChatId;\n    readonly name: string;\n    readonly groupId: GroupId;\n    readonly rootSessionId: SessionId;\n    readonly workDir: string;\n    readonly memberIds: readonly BotId[];\n    readonly managerId: BotId | null;\n    readonly memberRoles: readonly ChatMemberRole[];\n    readonly executors: readonly ChatExecutor[];\n    readonly relayLimit: number;\n    readonly showHandoffRecords?: boolean;\n    readonly generation: number;\n    readonly status: \'active\' | \'paused\' | \'stopped\';\n    readonly pauseReason: string | null;\n    readonly run: ChatRun | null;\n    readonly error: ChatFailure | null;\n}',
   },
   {
     name: 'TeamFrame',

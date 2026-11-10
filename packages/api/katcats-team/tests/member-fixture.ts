@@ -19,6 +19,7 @@ import { SessionCommandController } from '@deepseek-ai/dsh-api-session-controlle
 import { installModelSelectionProjection } from '@deepseek-ai/dsh-api-session-controller/src/model-selection-projection.ts'
 import TypertRegistry from '@deepseek-ai/dsh-typert-registry'
 import WorkspaceRegistry from '@deepseek-ai/dsh-workspace'
+import FsLocal from '@deepseek-ai/dsh-fs-local'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import KatcatsTeam from '../src/index.ts'
 
@@ -85,6 +86,7 @@ export async function harness(providedRoot?: string): Promise<MemberFixture> {
     await backend.close()
   }
   cleanups.push(close)
+  await ctx.plugin(FsLocal, { cwd: root })
   await mountAgentLoopTestDependencies(ctx, { systemPrompt: { personaPrefix: 'You are Katcat.AI, the personal assistant.', personaSuffix: '' } })
   await ctx.plugin(TypertRegistry)
   installModelSelectionProjection(ctx)

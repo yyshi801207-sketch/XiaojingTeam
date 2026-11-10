@@ -1,0 +1,8 @@
+version: 1
+scenario: group-context-efficiency
+profile: web
+composition: web-group-context
+recording: authored
+header:
+  class: web-group-context
+  pin: true

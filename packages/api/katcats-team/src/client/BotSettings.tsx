@@ -47,18 +47,19 @@ export function BotSettings({ sessionId, useDirectory, useProjection, useConnect
   const bot = view.snapshot?.bots.find(item => item.sessionId === sessionId)
   if (bot === undefined || view.snapshot === null) return <p className={css.empty}>{t('bot.missing')}</p>
   return <SettingsForm key={bot.id} bot={bot} groups={view.snapshot.groups} catalog={view.catalog}
-    actualModel={selection?.next ?? selection?.lastUsed ?? undefined}
+    sessionChoice={selection?.next ?? selection?.lastUsed ?? undefined} lastUsedModel={selection?.lastUsed ?? undefined}
     overrideEnabled={view.snapshot.modelCapabilities.override} followEnabled={view.snapshot.modelCapabilities.followGlobal}
     permissionsEnabled={view.phase === 'ready' && connected && visible} renderFactorySlot={renderFactorySlot}
     save={save} openMemory={openMemory} openSchedules={openSchedules} t={t} />
 }
 
-function SettingsForm({ bot, groups, catalog, actualModel, overrideEnabled, followEnabled, permissionsEnabled,
+function SettingsForm({ bot, groups, catalog, sessionChoice, lastUsedModel, overrideEnabled, followEnabled, permissionsEnabled,
   renderFactorySlot, save, openMemory, openSchedules, t }: PropsRenderFactories & {
     readonly bot: TeamBot
     readonly groups: readonly TeamGroup[]
     readonly catalog: ModelCatalog | null
-    readonly actualModel: ModelCatalog['default'] | undefined
+    readonly sessionChoice: ModelCatalog['default'] | undefined
+    readonly lastUsedModel: ModelCatalog['default'] | undefined
     readonly overrideEnabled: boolean
     readonly followEnabled: boolean
     readonly permissionsEnabled: boolean
@@ -70,18 +71,20 @@ function SettingsForm({ bot, groups, catalog, actualModel, overrideEnabled, foll
   const [draft, setDraft] = useState<Partial<Pick<TeamBot, 'name' | 'role' | 'avatar' | 'model' | 'groupId'>> | null>(null)
   const value = { ...bot, ...draft }
   const [busy, setBusy] = useState(false)
+  const [saved, setSaved] = useState(false)
   const [modelChanged, setModelChanged] = useState(false)
   const id = useId()
-  const set = (patch: NonNullable<typeof draft>) => { setDraft(previous => ({ ...previous, ...patch })) }
+  const set = (patch: NonNullable<typeof draft>) => { setSaved(false); setDraft(previous => ({ ...previous, ...patch })) }
   const options = (overrideEnabled ? catalog?.groups : undefined)?.flatMap(provider => provider.models.map(model => ({
     key: JSON.stringify([provider.id, model.id]), provider: provider.id, model: model.id,
     label: `${provider.name} / ${model.name}`,
   }))) ?? []
-  const selectedModel = modelChanged && value.model.kind === 'override' ? value.model : actualModel
+  const selectedModel = value.model.kind === 'override' ? value.model : sessionChoice
   const selected = followEnabled && value.model.kind === 'follow-global' ? 'follow-global'
     : selectedModel === undefined ? 'current' : JSON.stringify([selectedModel.provider, selectedModel.model])
   const modelKnown = options.some(option => option.key === selected)
   const modelEnabled = overrideEnabled || followEnabled
+  const modelLabel = (model: TeamBot['model']) => model.kind === 'follow-global' ? t('bot.followGlobal') : `${model.provider} / ${model.model}`
   return <form className={[css.settings, settingsCss.scroll].join(' ')} aria-busy={busy} onSubmit={(event) => {
     event.preventDefault()
     if (busy || draft === null || value.name.trim() === '') return
@@ -95,7 +98,7 @@ function SettingsForm({ bot, groups, catalog, actualModel, overrideEnabled, foll
       ...(bot.kind === 'main' || draft.groupId === undefined || draft.groupId === null ? {} : { groupId: draft.groupId }),
     }
     void save(request).then(
-      () => { setDraft(null); setModelChanged(false) },
+      () => { setDraft(null); setModelChanged(false); setSaved(true) },
       () => { /* The frame-owned toast reports the failure; retain this draft. */ },
     ).finally(() => { setBusy(false) })
   }}>
@@ -127,7 +130,7 @@ function SettingsForm({ bot, groups, catalog, actualModel, overrideEnabled, foll
         ...followEnabled ? [{ value: 'follow-global', label: t('bot.followGlobal') }] : [],
         ...overrideEnabled && catalog !== null ? [{ value: 'base', label: t('bot.useBaseModel') }] : [],
         ...selected === 'current' ? [{ value: 'current', label: t('bot.currentModel'), disabled: true }] : [],
-        ...!modelKnown && selectedModel !== undefined ? [{ value: selected,
+        ...!modelKnown && selected !== 'follow-global' && selectedModel !== undefined ? [{ value: selected,
           label: `${selectedModel.provider} / ${selectedModel.model}`, disabled: true }] : [],
         ...options.map(option => ({ value: option.key, label: option.label }))]}
       onChange={(next) => {
@@ -141,9 +144,14 @@ function SettingsForm({ bot, groups, catalog, actualModel, overrideEnabled, foll
     {!modelEnabled && <p id={`${id}-modelHint`} className={css.hint}>{t('bot.modelUnavailable')}</p>}
     {overrideEnabled && !followEnabled && <p id={`${id}-modelHint`} className={css.hint}>{t('bot.fixedModelHint')}</p>}
     {followEnabled && <p className={css.hint}>{t('bot.dynamicModelHint')}</p>}
-    {followEnabled && actualModel !== undefined && <p className={css.hint}>
-      {t('bot.effectiveModel', { model: `${actualModel.provider} / ${actualModel.model}` })}</p>}
-    {catalog !== null && catalog.groups.length === 0 && actualModel === undefined && <p className={css.hint}>{t('bot.noModel')}</p>}
+    {modelEnabled && <p className={css.hint}>{t('bot.modelSourcesHint')}</p>}
+    {modelEnabled && <div className={settingsCss.modelStatus} aria-live="polite">
+      {modelChanged && <p className={settingsCss.modelPending}>{t('bot.pendingModel', { model: modelLabel(value.model) })}</p>}
+      <p>{t('bot.savedModel', { model: modelLabel(bot.model) })}</p>
+      <p className={css.hint}>{lastUsedModel === undefined ? t('bot.noRequestModel')
+        : t('bot.lastRequestModel', { model: `${lastUsedModel.provider} / ${lastUsedModel.model}` })}</p>
+    </div>}
+    {catalog !== null && catalog.groups.length === 0 && sessionChoice === undefined && <p className={css.hint}>{t('bot.noModel')}</p>}
     <section className={permissionCss.section} aria-labelledby={`${id}-permissions`}>
       <h3 id={`${id}-permissions`} className={permissionCss.title}>{t('permissions.bot')}</h3>
       <p className={permissionCss.hint}>{t('permissions.botHint')}</p>
@@ -154,6 +162,6 @@ function SettingsForm({ bot, groups, catalog, actualModel, overrideEnabled, foll
     <Input id={`${id}-folder`} value={bot.workDir} readOnly />
     <Button size="sm" variant="outline" onClick={openMemory}>{t('memory.open')}</Button>
     <div className={css.saveBar}><Button type="submit" variant="outline" disabled={busy || draft === null || value.name.trim() === ''}>
-      {t('bot.save')}</Button></div>
+      {t('bot.save')}</Button>{saved && <span role="status" className={settingsCss.modelSaved}>{t('team.saved')}</span>}</div>
   </form>
 }

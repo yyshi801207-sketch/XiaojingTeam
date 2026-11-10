@@ -220,6 +220,8 @@ export interface ResolvedPiAiProviderProfile
 
 /** Plugin configuration: the provider routes this instance owns. */
 export interface Config {
+  /** Application name presented during provider authorization. */
+  loginAgentName: string
   /**
    * pi-ai provider routes, keyed by provider. An empty (or omitted) dict is
    * the dormant settings-driven posture: the adapter mounts with no routes
@@ -229,7 +231,7 @@ export interface Config {
 }
 
 /** Plain options accepted by the provider resolver. */
-export type Options = { [K in keyof Config]?: Config[K] extends Volatile<infer T> ? T : never }
+export type Options = { [K in keyof Config]?: Config[K] extends Volatile<infer T> ? T : Config[K] }
 
 const thinkingBudgets = z.object({
   minimal: z.number(),
@@ -350,6 +352,7 @@ const profile = z.object({
 
 /** Runtime schema for {@link Config}. */
 export const Config = z.object({
+  loginAgentName: z.string().min(1).default('DeepSeek Harness'),
   providers: z.dict(profile).default({}).volatile(),
 })
 
@@ -418,6 +421,11 @@ export function resolveProfiles(
   const resolved = new Map<string, ResolvedPiAiProviderProfile>()
   for (const [provider, source] of entries) {
     rejectRemovedFields(provider, source)
+    if (provider === 'chatgpt' && (source.apiKeyEnv !== undefined
+      || (source.baseURL !== undefined && source.baseURL.replace(/\/+$/, '') !== 'https://api.openai.com/v1')
+      || (source.api !== undefined && source.api !== 'openai-responses'))) {
+      throw new Error('llm-pi-ai: chatgpt uses the stored ChatGPT subscription with the official OpenAI Responses endpoint; API-key overrides are not supported')
+    }
     if (provider.length === 0) throw new Error('llm-pi-ai: provider names must be non-empty')
     if (source.baseURL !== undefined && source.baseURL.length === 0) {
       throw new Error(`llm-pi-ai: provider "${provider}" has an empty baseURL`)

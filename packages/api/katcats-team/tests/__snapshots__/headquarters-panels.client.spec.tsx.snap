@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`lists every Bot by membership while keeping the unique total and group-local details 1`] = `"总调度室人员管理3 位 Bot · 按身份去重关闭全部主 Bot · 中央办公室1财务部1研发部1独立 Bot1主 Bot · 中央办公室1主 Bot职责说明Synthetic responsibility模型跟随全局模型会话权限暂未读取状态待同步详情财务部1共享成员负责人职责说明职责-财务部模型跟随全局模型会话权限工作区读写空闲详情研发部1共享成员负责人职责说明职责-研发部模型跟随全局模型会话权限暂未读取空闲详情独立 Bot1独立成员职责说明Synthetic responsibility模型跟随全局模型会话权限暂未读取状态待同步详情"`;

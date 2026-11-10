@@ -1,4 +1,4 @@
-/** Supplied Katcats.AI wordmark shared by product-owned SVGs. */
+/** Legacy raster wordmark shared by product-owned SVGs. */
 
 import { useId, type ReactNode } from 'react'
 import wordmark from './assets/katcats-wordmark.png'

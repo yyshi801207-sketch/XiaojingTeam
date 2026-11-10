@@ -76,6 +76,13 @@ flow 声明它写入的凭据记录、面向用户的标签以及它提供的登
 - **点名 flow 未提供的方法会抛出 `UNKNOWN_METHOD`**——不点名则运行 flow 的第一个方法。
 - **「不」是一种结果，不是故障**——被拒绝的 prompt 让尝试以 `cancelled` 结算，与撤销的 signal 完全一致；其余任何失败都以抛出的错误抵达调用方。
 
+<a id="remote-configuration-clients"></a>
+### Remote 配置客户端
+
+生成的 `authorization` Remote namespace 通过 `list()`、`describe(key)` 和 `status(key)` 提供 flow 发现与凭据是否存在的信息；`status` 包含可写性和记录类型，绝不包含记录内容。`begin({ key, method }, signal)` 打开一次不可恢复的流，依次发送 `notice`、`prompt`、`prompt-withdrawn` 和终态 `settled` 事件。prompt 信号留在 Host。发起尝试的 Peer 通过 `answer({ key, id, answer })` 回答；其他 Peer 不能回答或取消它的问题，已撤回的问题 id 不能复用。Client 渲染 notice 时必须只接受安全的外部 URL，并且不得把答案写入日志。
+
+关闭流或其 Peer 会撤回尝试。`cancelAttempt(key)` 等待尝试结束；凭据提交一旦获准，取消操作会等待提交完成。显式调用 `disconnect(key)` 会阻止新尝试，取消正在运行的尝试，等待其结束，然后删除本地记录，不向签发方吊销授权。flow 失败时返回不含秘密的 `authorization/failed` 错误；持久化或删除失败仍作为失败报告，Client 必须重新读取 `status`，才能报告存储状态。应用 Remote 组合选择此 namespace；提供方仍只需注册普通 flow。
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -99,6 +106,7 @@ flow 声明它写入的凭据记录、面向用户的标签以及它提供的登
 |---|---|
 | [`src/index.ts`](src/index.ts) | Service Definition：flow 注册表、每键单尝试生命周期、交互路由、提交确认 |
 | [`src/types.ts`](src/types.ts) | 跨进程安全的词汇：方法、notice、prompt、结果、entry |
+| [`src/remote-attempt.ts`](src/remote-attempt.ts) | Peer 所有的交互队列与待回答 prompt 生命周期 |
 
 ### 生命周期
 

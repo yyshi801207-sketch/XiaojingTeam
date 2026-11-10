@@ -6,13 +6,15 @@ import { unpackIco } from '../scripts/render-tray-icon.ts'
 
 const icon = readFileSync(new URL('../build/installer-icon-source.png', import.meta.url))
 const robots = readFileSync(new URL('../build/installer-robot-source.png', import.meta.url))
+const company = readFileSync(new URL('../build/installer-company-source.png', import.meta.url))
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex')
 
 describe('approved Team application and installation artwork', () => {
   it('retains the supplied PNG bytes across native application aliases', () => {
-    expect(hash(icon)).toBe('8100ec52214d60d470370d43b871fcf531939c8a47a1da1294b97a8a2e9ac9d8')
-    expect(hash(robots)).toBe('3e836ebf876836ce8174ad4c2c449e07b386945901e2bbd0568ab1c49400a7b5')
-    for (const path of ['build/app-icon.png', 'build/installer-company-source.png', 'assets/windows-icon.png',
+    expect(hash(icon)).toBe('1e00be3e6c1356739d04b3f8851507b0655213f8b4329eb6610ca5ecb873ad7d')
+    expect(hash(robots)).toBe('6bffd195db20283616870b3fc17df349183eb317d7ff16774247bc57d0f2dc8b')
+    expect(hash(company)).toBe('7576a1ebfd42b9d3a3001b2d446378b85a117be3ab01a9d8a5f0bb8844c1ff33')
+    for (const path of ['build/app-icon.png', 'assets/windows-icon.png',
       'assets/app-icon.png', 'assets/taskbar-icon.png', 'resources/icon.png', 'resources/icon-windows.png', 'resources/icon-macos.png']) {
       expect(readFileSync(new URL(`../${path}`, import.meta.url)).equals(icon), path).toBe(true)
     }
@@ -27,7 +29,7 @@ describe('approved Team application and installation artwork', () => {
       expect(info.width).toBe(entry.size)
       expect(info.height).toBe(entry.size)
       expect(data[3]).toBeLessThanOrEqual(8)
-      const at = (Math.floor(entry.size / 2) * entry.size + Math.floor(entry.size / 8)) * 4
+      const at = (Math.floor(entry.size / 8) * entry.size + Math.floor(entry.size / 2)) * 4
       const rgba = [...data.subarray(at, at + 4)]
       expect(rgba[0]).toBeGreaterThan(230)
       expect(rgba[1]).toBeGreaterThan(230)
@@ -54,11 +56,11 @@ describe('approved Team application and installation artwork', () => {
     expect({ types, sha256: hash(bytes) }).toMatchSnapshot()
   })
 
-  it('keeps both installer characters on white bitmaps with an uncut outer border', () => {
+  it('keeps the finance team and SUDO footer on white bitmaps with an uncut outer border', () => {
     const summaries = []
     for (const [name, width, height] of [
-      ['installer-product-logo.bmp', 480, 400], ['installer-product-logo-small.bmp', 72, 72],
-      ['installer-sidebar.bmp', 164, 314], ['installer-header.bmp', 150, 57], ['installer-company-logo.bmp', 110, 28],
+      ['installer-product-logo.bmp', 640, 360], ['installer-product-logo-small.bmp', 72, 72],
+      ['installer-sidebar.bmp', 164, 314], ['installer-header.bmp', 150, 57], ['installer-company-logo.bmp', 180, 58],
     ] as const) {
       const bytes = readFileSync(new URL(`../build/${name}`, import.meta.url))
       expect(bytes.subarray(0, 2).toString()).toBe('BM')

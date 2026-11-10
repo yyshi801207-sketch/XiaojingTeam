@@ -76,6 +76,13 @@ A surface runs one attempt per credential at a time. The interaction travels wit
 - **Naming a method the flow does not offer throws `UNKNOWN_METHOD`** — naming none runs the flow's first method.
 - **"No" is an outcome, not a breakage** — a declined prompt settles the attempt as `cancelled`, the same as a withdrawn signal; any other failure reaches the caller as a thrown error.
 
+<a id="remote-configuration-clients"></a>
+### Remote configuration clients
+
+The generated `authorization` Remote namespace exposes `list()`, `describe(key)`, and `status(key)` for flow discovery and credential presence; `status` includes writability and the record kind, never its contents. `begin({ key, method }, signal)` opens one non-resumable stream of `notice`, `prompt`, `prompt-withdrawn`, and terminal `settled` events. Prompt signals remain on the Host. The initiating Peer answers with `answer({ key, id, answer })`; another Peer cannot answer or cancel its questions, and withdrawn question ids cannot be reused. A Client must accept only safe external URLs when rendering notices and keep answers out of logs.
+
+Closing the stream or its Peer withdraws the attempt. `cancelAttempt(key)` waits for settlement; once a credential commit has been admitted, cancellation waits for it. Explicit `disconnect(key)` prevents new attempts, cancels any running attempt, waits for settlement, and then deletes the local record without revoking it at the issuer. A failed flow returns a secret-free `authorization/failed` error; failed persistence or deletion remains a failure and Clients must re-read `status` before reporting the stored state. The application Remote assembly selects this namespace; providers keep registering ordinary flows.
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -99,6 +106,7 @@ This section explains the design decisions behind the seam and points at the cod
 |---|---|
 | [`src/index.ts`](src/index.ts) | Service Definition: flow registry, one-attempt-per-key lifecycle, interaction routing, commit confirmation |
 | [`src/types.ts`](src/types.ts) | Wire-safe vocabulary: methods, notices, prompts, outcomes, entries |
+| [`src/remote-attempt.ts`](src/remote-attempt.ts) | Peer-owned interaction queue and pending prompt lifecycle |
 
 ### Lifecycle
 

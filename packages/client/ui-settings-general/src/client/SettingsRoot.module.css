@@ -173,7 +173,7 @@
 .navLabel {
   flex: 1;
   min-width: 0;
-  font-weight: 600;
+  font-weight: 400;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;

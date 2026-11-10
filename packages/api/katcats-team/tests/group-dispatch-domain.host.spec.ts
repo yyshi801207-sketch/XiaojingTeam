@@ -24,15 +24,17 @@ async function setup(relayLimit = 8, providedRoot?: string) {
   await h.ctx.plugin(Connection)
   await h.ctx.plugin(Commands)
   await h.ctx.plugin(FileUploads)
-  await h.ctx.plugin(KatcatsChats, { workspaceRoot: join(h.root, 'workspaces'), relayLimit })
+  await h.ctx.plugin(KatcatsChats, { workspaceRoot: join(h.root, 'workspaces'), relayLimit,
+    initialHistoryMessages: 20, historyPageSize: 20, historyPageMaxChars: 16000, reviewCandidateMaxBytes: 8388608 })
   const chats = h.ctx.katcatsChats
   await chats.snapshot()
   // These are the real serialized directory operations supplied to the owned runtime.
   const actions: ChatRuntimeActions = chats['runtimeActions']()
   const state = () => chatsStateSchema.parse(h.ctx.storageDomain.get(chatsDomainSpec.name)!.global.get())
   async function admit(chat: TeamChat, request = 'domain-owner-input') {
+    const members = (await actions.read(chat.id)).bots.filter(bot => chat.memberIds.includes(bot.id))
     await chats.sendMessage({ sessionId: chat.rootSessionId, requestId: brandString<SessionRequestId>(request),
-      mode: 'queue', content: [{ type: 'text', text: 'Work together on the saved task.' }] }, new AbortController().signal)
+      mode: 'queue', content: [{ type: 'text', text: members.map(bot => '@' + bot.name).join(' ') + ' Work together on the saved task.' }] }, new AbortController().signal)
     const saved = await actions.read(chat.id)
     const input = saved.inbounds.at(-1)!
     return Promise.all(input.recipients.map(botId => actions.acceptDelivery({

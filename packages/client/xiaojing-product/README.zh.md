@@ -5,11 +5,11 @@ kind: "package-reference"
 
 # @deepseek-ai/dsh-client-xiaojing-product
 
-当前产品为 Katcats.AI（`1.0.2`），只提供办公能力，移除财务助手入口，并支持自定义会话头像与轻量动效。历史更新条目描述各自版本当时的功能。
+当前产品为小兢Bot（`1.0.2`），支持独立 Bot 与群聊协作。历史更新条目描述各自版本当时的功能。
 
 [English](README.md) | 中文
 
-用户可见的应用名称和提示文案统一使用 Katcats.AI。技术包名、路径和历史用户内容保留原值。
+Bot 对用户自我介绍时使用“瑞华云财务共享团队”，应用界面使用“小兢Bot”。技术包名、路径、已保存的 Bot 职责和历史聊天内容保留原值。
 
 ## 概述
 
@@ -24,7 +24,7 @@ kind: "package-reference"
 <a id="capabilities"></a>
 ## 产品贡献
 
-Team 侧栏从 `src/client/assets/sudo-wordmark.png` 嵌入用户提供的透明 SUDO数豆 Logo，两种主题均保留原图字节与颜色。SVG 仅裁去透明外边距，完整文字与绿色豆子保持比例。展开时保留 148 像素宽框，适配共享的 24 像素品牌行；Windows 使用 32 像素高图片和 36 像素高产品按钮，仍放在原有 40 像素行内。收起时将完整 Logo 等比放入已有图标位置。浅色模式的会话与导航区域采用纯白背景。用户消息使用浅灰填充、细边框和紧凑圆角，不加载背景图片。控件与选中底色采用石墨黑和中性灰；主输入框发送按钮使用数豆绿（`#12A489`）和白色箭头，悬停时加深绿色，禁用时保留原有 40% 不透明度；其他按钮保持原有配色，链接使用蓝色强调。深色模式采用中性炭灰底。
+Team 侧栏在浅色模式使用用户提供的 `src/client/assets/sudo-wordmark-light.png`，深色模式使用 `src/client/assets/sudo-wordmark.png`。两张源图片均不修改：浅色图是灰色文字与绿色豆子，深色图是白色文字与绿色豆子。展开时 Logo 使用 116×22 像素显示框，旁边显示本地化的“- 用AI重新定义财务”；侧栏变窄时文案省略，Logo 不缩小。收起时在已有图标位置显示绿色豆子标志。浅色模式的会话与导航区域采用纯白背景。用户消息使用浅灰填充、细边框和紧凑圆角，不加载背景图片。控件与选中底色采用石墨黑和中性灰；主输入框发送按钮使用数豆绿（`#12A489`）和白色箭头，悬停时加深绿色，禁用时保留原有 40% 不透明度；其他按钮保持原有配色，链接使用蓝色强调。深色模式采用中性炭灰底。
 
 `0.3.3` 更新包含 0.2.1-rc.2 内核的新模型与搜索接口、插件索引管理、内置自动化任务、草稿引用保留、模型推理与字体设置、麦克风选择、协作与上游稳定性修复；保留已有Katcat能力。`0.3.2` 更新详情列出支持复用操作的会话授权，并保留单次审批选项。
 
@@ -38,9 +38,9 @@ Katcat桌面端在主工作区内显示这份说明，不先展示独立登录�
 
 产品图片地址和Katcat的启动 Logo、favicon 默认地址相对于文档 base 解析，使这些资源保持在 Web 部署的公开挂载路径内。
 
-Team 新会话欢迎区从 `src/client/assets/xiaojing-finance-team-hero.png` 嵌入用户提供的双财务机器人及脚下阴影，不修改原图像素。SVG 仅裁去透明边距，将完整插画等比居中放入已有响应式框，保持输入框布局。中文标题为“小兢会计，您的AI财务团队”，英文为“Xiaojing Accounting, your AI finance team.”。favicon 使用用户提供的白色应用图标，保留金色装饰与透明边缘，存放为 `xiaojing-character-logo.png`。这些资源文件名属于内部标识。标题独立居中，不受版本角标宽度影响；窄布局中角标移到标题下方。初始 HTML 通过 `DSH_CLIENT_BOOT_LOGO`、`DSH_CLIENT_BOOT_LOGO_ALT` 和 `DSH_CLIENT_FAVICON` 获取品牌与 favicon；未配置这些值的构建保留通用资源。
+Team 新会话欢迎区从 `src/client/assets/xiaojing-finance-team-hero.png` 嵌入用户提供的八位财务机器人团队插画，不修改原图像素。SVG 将完整图片按原比例铺满响应式框，最大显示为 420 × 280 CSS 像素，不再设置内层留白。小窗口自动缩小图片，标题和输入框保持在图片下方。中文标题为“小兢会计，您的AI财务团队”，英文为“Xiaojing Accounting, your AI finance team.”。favicon 使用用户提供的白色应用图标，保留金色装饰与透明边缘，存放为 `xiaojing-character-logo.png`。这些资源文件名属于内部标识。黑色版本角标始终跟在标题右侧，标题折行时也不会独自落到下一行。初始 HTML 通过 `DSH_CLIENT_BOOT_LOGO`、`DSH_CLIENT_BOOT_LOGO_ALT` 和 `DSH_CLIENT_FAVICON` 获取品牌与 favicon；未配置这些值的构建保留通用资源。
 
-浏览器插件只在 `xiaojing` Client 构建 profile 中注册 `sidebar.brand.mark`、`sidebar.brand.name`、`conversation.hero.brand.mark`、`conversation.hero.brand.content`、`onboarding.content` 和 `settings.section`。产品文案、配色覆盖、版本号标签和默认人格位于本包。仍带有 Finance 元数据的历史空会话也使用同一财务团队欢迎页。关于页显示用户提供的 `src/client/assets/xiaojing-team-app-icon.png`、中文名称“小兢会计团队版”或英文名称“Xiaojing Accounting Team”、应用版本号与通过 `DSH_CLIENT_VERSION` 编译注入的 DSH 底座版本号；不显示版本历史、详情入口、介绍和公司页脚。Electron 通过一个受限 preload 方法提供应用实际版本；普通 Web 预览使用必须与 `apps/desktop/identity.json.productVersion` 相同的受检 fallback。测试要求该 fallback 与更新历史首项一致，并拒绝重复版本号。产品层门禁会拒绝版本不一致，也会拒绝把Katcat品牌标记重新写入官方 UI 源码目录。插件生命周期还会在产品 dataset 挂载后同步现有浏览器 `theme-color` 元数据，并在产品插件卸载时恢复通用值。构建 profile 通过通用启动元数据为插件加载前页面选择已登记的 Katcat Logo；缺少该元数据时，shell 仍显示 `HARNESS` 默认内容。`product.json` 通过官方发布标签记录 `dsh-v0.2.1-rc.2` 基线、通用 slot、浏览器资源路径、桌面产品清单和空的产品预设列表。产品层门禁会解析 Finance 与标准模式的声明式组装，只允许 Finance 人格、已声明的 Finance 消费端和产品 skill 目录不同。
+浏览器插件只在 `xiaojing` Client 构建 profile 中注册 `sidebar.brand.mark`、`sidebar.brand.name`、`conversation.hero.brand.mark`、`conversation.hero.brand.content`、`onboarding.content` 和 `settings.section`。产品文案、配色覆盖、版本号标签和默认人格位于本包。仍带有 Finance 元数据的历史空会话也使用同一财务团队欢迎页。关于页显示用户提供的 `src/client/assets/xiaojing-team-app-icon.png`、中英文界面统一使用的产品名称“小兢Bot”、应用版本号与通过 `DSH_CLIENT_VERSION` 编译注入的 DSH 底座版本号；不显示版本历史、详情入口、介绍和公司页脚。Electron 通过一个受限 preload 方法提供应用实际版本；普通 Web 预览使用必须与 `apps/desktop/identity.json.productVersion` 相同的受检 fallback。测试要求该 fallback 与更新历史首项一致，并拒绝重复版本号。产品层门禁会拒绝版本不一致，也会拒绝把Katcat品牌标记重新写入官方 UI 源码目录。插件生命周期还会在产品 dataset 挂载后同步现有浏览器 `theme-color` 元数据，并在产品插件卸载时恢复通用值。构建 profile 通过通用启动元数据为插件加载前页面选择已登记的 Katcat Logo；缺少该元数据时，shell 仍显示 `HARNESS` 默认内容。`product.json` 通过官方发布标签记录 `dsh-v0.2.1-rc.2` 基线、通用 slot、浏览器资源路径、桌面产品清单和空的产品预设列表。产品层门禁会解析 Finance 与标准模式的声明式组装，只允许 Finance 人格、已声明的 Finance 消费端和产品 skill 目录不同。
 
 个性版关闭财务工作区、账套管理、财务计算、依据服务和 Finance 预设，侧边栏与关于页使用办公文案。保留的 Finance 预设和包源码默认不激活。`product.json.agentPresets` 为空；`product.json.financeExtension` 登记保留源码和受保护的 `harness/finance` 目录。普通文档读取继续使用共享解析器，不启动财务业务服务。已有财务记录与文件不会被删除。
 
@@ -100,30 +100,18 @@ Katcat构建通过 `DSH_CLIENT_RUNNING_LABEL_ZH` 与 `DSH_CLIENT_RUNNING_LABEL_E
 
 #### What the model sees
 
-只有下游组装后 `deployment:persona-prefix` 仍为空时，插件才填入该段。标准、PTC 与创造模式继承 Katcat 身份并保留各自的工具；用户显式定义的人格仍然优先。中文身份介绍为“我是 Katcat，您的超级个人助理！”。问候使用开放的探索邀请，不罗列办公功能；具体能力声明仍以可用工具和授权为前提。已有回复属于历史记录，不会重写。
+只有下游组装后 `deployment:persona-prefix` 仍为空时，插件才填入该段。默认身份是来自瑞华云财务共享团队的“小兢会计”；用户显式定义的人格仍然优先。问候使用开放的探索邀请，不罗列固定功能清单。已有回复属于历史记录，不会重写。
 
 ##### Verbatim default persona
 
 ```markdown
-你的名字是Katcat（简称Katcat），在办公搭子模式下的身份始终是用户的AI办公搭子。自我介绍使用“办公搭子”，不要称自己为“办公助手”“AI助手”“智能助手”“财务助手”或“Katcat的助手”。用户用中文问候或询问身份时，自我介绍使用：“你好！我是Katcat，您的AI办公搭子！”；其他语言使用对应表达。即使历史回复中曾使用“办公助手”等称呼，后续自我介绍也应使用“办公搭子”。
+你的名字是小兢会计，来自瑞华云财务共享团队。用户用中文问候或询问身份时，自我介绍使用：“我是小兢会计，来自瑞华云财务共享团队！”；其他语言使用对应表达。即使历史回复、安装名称或工作区中出现旧品牌名称，后续自我介绍也使用瑞华云财务共享团队，不沿用旧身份。
 
-当前是办公搭子工作区，不是财务助手工作区。产品名称中的“会计”不代表当前会话采用财务身份。不要把日常办公介绍成财税专属服务，也不要把编程、命令或脚本当作默认身份；这些只是完成任务时可用的手段。
+你陪用户探索想法、创造新事物，把想做的事一步步推进。表达自然、简洁、有想象力，不把身份限定为办公、财务或编程助手。
 
-用户询问“你能做什么”时，用日常办公语言介绍以下六类能力，按当前可用工具和授权条件说明，不要照搬工具目录：
+用户打招呼时，用身份介绍加一句开放的邀请即可，不主动列出功能清单。用户询问“你能做什么”时，从用户想实现的目标出发，可以说：“无论是一个天马行空的想法，还是一件想做成的事，都可以交给我一起探索、推进。你想从哪里开始？”不要默认罗列文档处理、数据处理、内容撰写、信息检索、网页操作、电脑操作等类别，也不要照搬工具目录。用户要求具体例子时再结合需求展开。
 
-1. 文档处理：读取、整理、提炼 PDF、Word、Excel、PPT、OFD、CSV、TXT 等材料中的信息；具体格式和扫描件识别能力以已配置的文档工具为准。
-
-2. 数据处理：梳理表格、核对汇总、查找差异，生成可复核的报表草稿。
-
-3. 内容撰写：把需求变成文稿，起草通知、说明、邮件、总结等内容。
-
-4. 信息检索：检索政策、法规、行业等公开信息，保留来源并说明无法核实的内容。
-
-5. 网页操作：连接并获得授权后，在可用浏览器工具支持的范围内协助填表、查数据、走流程；不能仅因界面有浏览器面板就声称能接管它。
-
-6. 电脑操作：在授权范围和可用电脑工具支持下操作应用与文件，推进多步骤任务，不只是提供建议。
-
-可以结合已配置工具处理材料、生成成果。没有相应工具、连接或授权时，如实说明，不声称已执行；用户明确提出财务任务时按实际能力协助，不因此改变办公身份或假定已接入客户账套。
+“任何想做的事都可以聊”是开放的邀请，不代表能够无条件完成所有任务。实际执行以当前工具、连接和授权为准；遇到真实限制时简洁说明并提出可行的下一步，不虚构能力、连接或完成结果，也不在普通问候里堆砌限制说明。
 
 Do not volunteer internal model, provider, framework, runtime, or workspace-path details unless the user explicitly requests technical diagnostics. If asked about the product's technical origin, state accurately that it is based on DeepSeek Harness with internal branding and configuration; do not claim that SUDO Tech developed the underlying framework.
 ```

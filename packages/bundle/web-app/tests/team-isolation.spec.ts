@@ -2,9 +2,13 @@
 import { readFileSync } from 'node:fs'
 import { posix } from 'node:path'
 import * as yaml from 'js-yaml'
+import { Context } from '@deepseek-ai/cordis'
+import Loader from '@deepseek-ai/cordis-plugin-loader'
 import { entryListSchema } from '@deepseek-ai/cordis-plugin-include'
 import { interpolate } from '@deepseek-ai/cordis-plugin-loader'
-import { describe, expect, it } from 'vitest'
+import * as ModelSelectionHost from '@deepseek-ai/dsh-client-ui-model-selection'
+import type { IndexInjection } from '@deepseek-ai/dsh-host-webserver'
+import { describe, expect, it, onTestFinished } from 'vitest'
 
 interface Row {
   id: string
@@ -51,11 +55,12 @@ describe('Team product composition', () => {
     expect(Object.keys(manifest.dependencies).filter(name => name.includes('desktop-companion'))).toEqual([])
   })
 
-  it('folds the complete footer only in the Team product presentation', () => {
+  it('uses one footer fold with direct panel entries only in the Team product presentation', () => {
     expect(resolved('ui-sidebar').config).toEqual({})
-    expect(resolved('ui-sidebar', { KATCATS_PRODUCT_MODE: '1' }).config).toMatchObject({
+    expect(resolved('ui-sidebar', { KATCATS_PRODUCT_MODE: '1' }).config).toEqual({
+      primaryActionLabel: { zh: '创建新 Bot', en: 'Create new Bot' },
       footerNavigation: { label: { zh: '工具与设置', en: 'Tools and settings' }, defaultExpanded: false },
-      panelNavigation: { defaultExpanded: false }, footerActionsPlacement: 'after-panels',
+      footerActionsPlacement: 'after-panels',
     })
   })
 
@@ -125,5 +130,25 @@ describe('Team product composition', () => {
         ]
       `)
     expect(resolved('ui-settings-models').disabled).toBeUndefined()
+  })
+
+  it('keeps the Team model-directory plugin enabled while publishing disabled native controls', async () => {
+    const env = { DSH_CLIENT_BUILD_PROFILE: 'xiaojing', KATCATS_PRODUCT_MODE: '1' }
+    const row = resolved('ui-model-selection', env)
+    expect(row.disabled).toBeUndefined()
+    expect(row.config).toEqual({ controlsEnabled: false })
+    expect(resolved('katcats-team', env).disabled).toBe(false)
+    const host = new Context()
+    onTestFinished(() => host.fiber.dispose())
+    host.baseUrl = 'file:///'
+    await host.plugin(Loader)
+    host.loader.builtins.models = ModelSelectionHost
+    await host.loader.root.update([{ id: row.id, name: 'cordis:models', config: row.config }])
+    await host.loader.await()
+    const injections: IndexInjection[] = []
+    host.emit('webserver/index-inject', injections)
+    expect(injections).toEqual([{
+      kind: 'global', name: '__DSH_MODEL_SELECTION__', value: { controlsEnabled: false },
+    }])
   })
 })

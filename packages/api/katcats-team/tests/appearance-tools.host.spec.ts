@@ -29,8 +29,8 @@ describe('member appearance tools', () => {
     const h = await harness()
     const schemas = h.ctx.tools.schemas(mainAgent(h))
     const avatar = { type: 'object', additionalProperties: false, required: ['shape', 'color'], properties: {
-      shape: { type: 'string', enum: ['classic', 'round', 'point', 'fold', 'tilt', 'fluffy', 'slim'],
-        description: 'Financial robot styles: classic ledger, round cashier, point tax, fold reporting, tilt audit, fluffy cost, slim supervisor. The style changes appearance only, not the member role.' },
+      shape: { type: 'string', enum: ['classic', 'round', 'point', 'fold', 'tilt', 'fluffy', 'slim', 'wave', 'layered', 'ponytail'],
+        description: 'Bean Bot avatars: classic B01, round B02, point B03, tilt B04, slim B05, layered B06, fluffy B07, wave B08, fold B09, ponytail B10. The avatar changes appearance only, not the member role.' },
       color: { type: 'string' },
     } }
     expect(schemas.find(tool => tool.name === 'create_bot')).toMatchObject({ parameters: {
@@ -41,11 +41,23 @@ describe('member appearance tools', () => {
     } })
   })
 
+  it('accepts and persists the three additional silhouettes through the member tool', async () => {
+    const h = await harness()
+    for (const [shape, color] of [
+      ['wave', '#10C477'], ['layered', '#2288FF'], ['ponytail', '#FF6B0B'],
+    ] as const) {
+      const avatar = { shape, color }
+      const result = await run(h, mainAgent(h), 'create_bot', { name: shape, role: `Create ${shape} reports.`, avatar })
+      expect(result).toMatchObject({ isError: false, meta: { avatar } })
+      expect((await h.team.snapshot()).bots.find(bot => bot.name === shape)?.avatar).toEqual(avatar)
+    }
+  })
+
   it('creates four distinct saved avatars and reports them through the real directory', async () => {
     const h = await harness()
     const avatars = [
       { shape: 'classic', color: '#FF2849' }, { shape: 'round', color: '#2288FF' },
-      { shape: 'point', color: '#10BF7A' }, { shape: 'fold', color: '#9450FF' },
+      { shape: 'point', color: '#10C477' }, { shape: 'fold', color: '#9253FF' },
     ]
     for (const [index, avatar] of avatars.entries()) {
       const name = `Pipeline ${index + 1}`
@@ -59,7 +71,7 @@ describe('member appearance tools', () => {
     const snapshot = await h.team.snapshot()
     expect(new Set(snapshot.bots.map(bot => bot.sessionId)).size).toBe(5)
     const listed = await run(h, mainAgent(h), 'list_bots', {})
-    expect(listed.meta).toMatchObject({ bots: [expect.anything(), ...avatars.map(avatar => ({ avatar }))] })
+    expect(listed.meta).toMatchObject({ bots: [expect.anything(), ...avatars.toReversed().map(avatar => ({ avatar }))] })
     expect(h.saveDefault).not.toHaveBeenCalled()
   })
 

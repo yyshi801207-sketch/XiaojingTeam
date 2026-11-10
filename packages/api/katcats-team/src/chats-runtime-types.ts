@@ -7,6 +7,15 @@ import type {
   ChatReceipt, ChatRunId, TeamChat, UpdateChatRolesRequest,
 } from './chats-types.ts'
 import type { BotId, TeamBot } from './types.ts'
+import type { GroupTicket, RecordGroupTicket } from './group-tickets.ts'
+
+/** Validated deployment limits for group context and candidate inspection. */
+export interface GroupRuntimeConfig {
+  readonly initialHistoryMessages: number
+  readonly historyPageSize: number
+  readonly historyPageMaxChars: number
+  readonly reviewCandidateMaxBytes: number
+}
 
 /** One group and the current member settings and accepted work needed to execute it. */
 export interface ChatRuntimeSnapshot {
@@ -24,6 +33,8 @@ export interface ChatAgentBinding {
 
 /** A concrete group input or actual member tool position, retained before execution starts. */
 export interface AcceptChatDelivery {
+  /** Omit for ordinary dispatch; present only for a pending confirmed-failure explanation. */
+  readonly recoveryOf?: ChatDeliveryId
   readonly chatId: ChatId
   readonly runId: ChatRunId
   readonly generation: number
@@ -41,6 +52,8 @@ export interface ChatRuntimeExpected {
 
 /** Serialized durable operations supplied by the directory; none waits for a model turn. */
 export interface ChatRuntimeActions {
+  /** Persist classification from the current direct recipient, rechecking authority within the queue. */
+  recordTicket(deliveryId: ChatDeliveryId, request: RecordGroupTicket, admit: () => void): Promise<GroupTicket>
   /** Read the group, current member settings, and its complete accepted delivery records. */
   read(chatId: ChatId): Promise<ChatRuntimeSnapshot>
   /** Save owner-requested group roles after rechecking current member authority inside the queue. */

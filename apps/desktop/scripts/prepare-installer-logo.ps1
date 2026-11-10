@@ -3,11 +3,11 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $buildPath = Join-Path $PSScriptRoot '../build'
 $outputs = @(
-    @{ Source = 'installer-robot-source.png'; Name = 'installer-product-logo.bmp'; Width = 480; Height = 400 },
+    @{ Source = 'installer-robot-source.png'; Name = 'installer-product-logo.bmp'; Width = 640; Height = 360 },
     @{ Source = 'installer-robot-source.png'; Name = 'installer-product-logo-small.bmp'; Width = 72; Height = 72 },
     @{ Source = 'installer-robot-source.png'; Name = 'installer-sidebar.bmp'; Width = 164; Height = 314 },
     @{ Source = 'installer-icon-source.png'; Name = 'installer-header.bmp'; Width = 150; Height = 57 },
-    @{ Source = 'installer-company-source.png'; Name = 'installer-company-logo.bmp'; Width = 110; Height = 28 }
+    @{ Source = 'installer-company-source.png'; Name = 'installer-company-logo.bmp'; Width = 180; Height = 58 }
 )
 foreach ($output in $outputs) {
     $sourceImage = [System.Drawing.Image]::FromFile([System.IO.Path]::GetFullPath((Join-Path $buildPath $output.Source)))

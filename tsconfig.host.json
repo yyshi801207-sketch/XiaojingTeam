@@ -255,6 +255,10 @@
     "packages/experimental/inspector/scripts/**/*.ts",
     "packages/llm/llm-pi-ai/scripts/**/*.ts",
     "scripts/**/*.ts",
+    "snapshots/web/group-context.snapshot.ts",
+    "snapshots/web/group-question.snapshot.ts",
+    "snapshots/web/group-profile-fixture.ts",
+    "snapshots/web/group-context-efficiency-normalize.ts",
     "website/**/*.ts",
     "website/.vitepress/**/*.ts"
   ],
@@ -278,6 +282,8 @@
     "scripts/client-bundle-purity.spec.ts"
   ],
   "references": [
+    { "path": "./packages/client/ui-model-selection/tsconfig.host.json" },
+    { "path": "./packages/client/ui-settings-models/tsconfig.host.json" },
     { "path": "./packages/api/katcats-team/tsconfig.host.json" },
     { "path": "./packages/experimental/client-ui-cot-translation/tsconfig.host.json" },
     { "path": "./packages/experimental/cot-translation-bundle" },

@@ -147,8 +147,10 @@ describe('Xiaojing product UI', () => {
     const artwork = screen.getByRole('img', { name: dictionary.teamArtworkAlt })
     expect(artwork.querySelector('image')?.getAttribute('href')).toContain('xiaojing-finance-team-hero.png')
     expect(artwork.style.width.replaceAll(' ', ''))
-      .toBe('calc(min(220px,35vh,55vw)*1536/1024)')
-    expect(artwork.getAttribute('viewBox')).toBe('0 17 1240 1195')
+      .toBe('calc(min(280px,40vh,55vw)*1536/1024)')
+    expect(artwork.getAttribute('viewBox')).toBe('0 0 330 220')
+    expect(artwork.querySelector('image')?.getAttribute('width')).toBe('330')
+    expect(artwork.querySelector('image')?.getAttribute('height')).toBe('220')
     expect(artwork.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
     render(<HeroBrandContent {...kit} useSessions={sessionHook('standard')} t={translate} />)
     expect(screen.getByText(title)).toBeTruthy()
@@ -166,66 +168,88 @@ describe('Xiaojing product UI', () => {
     expect(artwork()).toContain('xiaojing-finance-team-hero.png')
     view.rerender(<HeroBrandMark {...props} useSessions={sessionHook('finance')} />)
     expect(artwork()).toContain('xiaojing-finance-team-hero.png')
-    expect(screen.getByRole('img', { name: zh.teamArtworkAlt }).getAttribute('viewBox')).toBe('0 17 1240 1195')
+    expect(screen.getByRole('img', { name: zh.teamArtworkAlt }).getAttribute('viewBox')).toBe('0 0 330 220')
     expect(screen.getByRole('img', { name: zh.teamArtworkAlt }).style.width.replaceAll(' ', ''))
-      .toBe('calc(min(220px,35vh,55vw)*1536/1024)')
+      .toBe('calc(min(280px,40vh,55vw)*1536/1024)')
     expect(readFileSync('apps/web/public/xiaojing-office-robot-logo.png')
       .equals(readFileSync('apps/web/public/xiaojing-finance-robot-logo.png'))).toBe(true)
     view.rerender(<HeroBrandMark {...props} useSessions={sessionHook('standard')} />)
     expect(artwork()).toContain('xiaojing-finance-team-hero.png')
-    expect(screen.getByRole('img', { name: zh.teamArtworkAlt }).getAttribute('viewBox')).toBe('0 17 1240 1195')
+    expect(screen.getByRole('img', { name: zh.teamArtworkAlt }).getAttribute('viewBox')).toBe('0 0 330 220')
   })
 
-  it.each([['zh', zh], ['en', en]] as const)('renders the complete supplied SUDO sidebar wordmark (%s)', (_language, dictionary) => {
+  it.each([['zh', zh], ['en', en]] as const)('uses the supplied light and dark SUDO sidebar artwork (%s)', (_language, dictionary) => {
     const view = render(<SidebarBrandMark {...kit} size={24} />)
-    expect(view.container.querySelector('image')?.getAttribute('href')).toContain('sudo-wordmark.png')
-    expect(view.container.querySelector('svg')?.getAttribute('width')).toBe('24')
-    expect(view.container.querySelector('svg')?.getAttribute('height')).toBe('24')
-    expect(view.container.querySelector('svg')?.getAttribute('viewBox')).toBe('35 59 2106 645')
-    render(<SidebarBrandName {...kit} t={key => dictionary[key]} />)
-    const wordmark = screen.getByRole('img', { name: dictionary.sidebarBrandAlt })
-    expect(wordmark.querySelector('image')?.getAttribute('href')).toContain('sudo-wordmark.png')
-    expect(wordmark.querySelector('image')?.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
-    expect(wordmark.getAttribute('viewBox')).toBe('35 59 2106 645')
-    expect(wordmark.getAttribute('preserveAspectRatio')).toBe('xMinYMid meet')
-    expect(wordmark.querySelector('filter')).toBeNull()
+    const marks = view.container.querySelectorAll('svg')
+    expect(marks).toHaveLength(2)
+    expect(Array.from(marks, mark => mark.getAttribute('viewBox')))
+      .toEqual(['635 110 295 310', '835 150 360 420'])
+    expect(marks[0]?.querySelector('image')?.getAttribute('href')).toContain('sudo-wordmark-light.png')
+    expect(marks[1]?.querySelector('image')?.getAttribute('href')).toContain('sudo-wordmark.png')
+    for (const mark of marks) {
+      expect(mark.getAttribute('width')).toBe('24')
+      expect(mark.getAttribute('height')).toBe('24')
+    }
+    const nameView = render(<SidebarBrandName {...kit} t={key => dictionary[key]} />)
+    const wordmarks = nameView.container.querySelectorAll('svg[role="img"]')
+    expect(wordmarks).toHaveLength(2)
+    expect(Array.from(wordmarks, wordmark => wordmark.getAttribute('aria-label')))
+      .toEqual([dictionary.sidebarBrandAlt, dictionary.sidebarBrandAlt])
+    expect(Array.from(wordmarks, wordmark => wordmark.getAttribute('viewBox')))
+      .toEqual(['20 110 1560 300', '25 145 2150 420'])
+    expect(wordmarks[0]?.querySelector('image')?.getAttribute('href')).toContain('sudo-wordmark-light.png')
+    expect(wordmarks[1]?.querySelector('image')?.getAttribute('href')).toContain('sudo-wordmark.png')
+    for (const wordmark of wordmarks) {
+      expect(wordmark.getAttribute('preserveAspectRatio')).toBe('xMinYMid meet')
+      expect(wordmark.querySelector('image')?.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
+    }
+    expect(screen.getByText(dictionary.sidebarBrandTagline)).toBeTruthy()
     expect(screen.queryByText('您的AI办公搭子')).toBeNull()
     const css = readFileSync('packages/client/xiaojing-product/src/client/SidebarBrand.module.css', 'utf8')
+      .replaceAll('\r\n', '\n')
     expect(css).toContain('padding-right: 4px')
-    expect(css).toContain('width: 148px')
-    expect(css).toContain('height: 24px')
+    expect(css).toContain('width: 116px')
+    expect(css).toContain('height: 22px')
     expect(css).toContain('height: 32px')
     expect(css).toContain('min-height: 36px')
-    expect(css).not.toMatch(/invert\(|hue-rotate\(/u)
+    expect(css).toContain('.wordmarkLight {\n  mix-blend-mode: multiply;\n}')
+    expect(css).toContain('.wordmarkDark {\n  display: none;\n}')
+    expect(css).toContain(":global(body[data-xiaojing-product][data-ds-dark-theme]) .wordmark.wordmarkLight {\n  display: none;\n}")
+    expect(css).toContain(":global(body[data-xiaojing-product][data-ds-dark-theme]) .wordmark.wordmarkDark {\n  display: block;\n}")
+    expect(css).toContain(":global(body[data-xiaojing-product][data-ds-dark-theme]) :global([data-sidebar-collapsed='true']) .avatar.wordmarkDark {\n  display: block;\n}")
+    expect(css).not.toMatch(/filter:|clip-path:/u)
   })
 
-  it('retains the supplied transparent SUDO logo bytes without recoloring or raster edits', () => {
-    const source = readFileSync('packages/client/xiaojing-product/src/client/assets/sudo-wordmark.png')
+  it.each([
+    ['light', 'sudo-wordmark-light.png', '82a1166173a6125f1b7bdd23f91f6fca9c55f9c2fb07499f1d29ec80f5709036', 1600, 520, 2],
+    ['dark', 'sudo-wordmark.png', '7adcd1f10f039c22f7bee70a6ba854ed9d37806eb9c4472528ceb0a741bd4731', 2202, 714, 6],
+  ] as const)('retains the supplied %s SUDO logo bytes without raster edits', (_theme, filename, hash, width, height, colorType) => {
+    const source = readFileSync(`packages/client/xiaojing-product/src/client/assets/${filename}`)
     expect(createHash('sha256').update(source).digest('hex'))
-      .toBe('4bc1f518e492d171de515e376be2f8eb88cecfea3741c3c5c2d478593fad00cf')
+      .toBe(hash)
     expect({ width: source.readUInt32BE(16), height: source.readUInt32BE(20), colorType: source[25] })
-      .toEqual({ width: 2172, height: 724, colorType: 6 })
+      .toEqual({ width, height, colorType })
   })
 
-  it('retains the supplied finance robots and foot shadows without raster edits', () => {
+  it('retains the supplied finance team artwork without raster edits', () => {
     const source = readFileSync('packages/client/xiaojing-product/src/client/assets/xiaojing-finance-team-hero.png')
     expect(createHash('sha256').update(source).digest('hex'))
-      .toBe('2e06582e44cabdea0173675f84f06ee83f57ef13fdcd3fae4270b2588a80bdcf')
+      .toBe('6bffd195db20283616870b3fc17df349183eb317d7ff16774247bc57d0f2dc8b')
     expect({ width: source.readUInt32BE(16), height: source.readUInt32BE(20), colorType: source[25] })
-      .toEqual({ width: 1254, height: 1254, colorType: 6 })
+      .toEqual({ width: 1536, height: 1024, colorType: 6 })
   })
 
   it('retains the supplied Team application icon bytes in About', () => {
     const source = readFileSync('packages/client/xiaojing-product/src/client/assets/xiaojing-team-app-icon.png')
     expect(createHash('sha256').update(source).digest('hex'))
-      .toBe('8100ec52214d60d470370d43b871fcf531939c8a47a1da1294b97a8a2e9ac9d8')
+      .toBe('1e00be3e6c1356739d04b3f8851507b0655213f8b4329eb6610ca5ecb873ad7d')
     expect({ width: source.readUInt32BE(16), height: source.readUInt32BE(20), colorType: source[25] })
       .toEqual({ width: 1254, height: 1254, colorType: 6 })
   })
 
   it.each([
-    ['zh', zh, '小兢会计团队版'],
-    ['en', en, 'Xiaojing Accounting Team'],
+    ['zh', zh, '小兢Bot'],
+    ['en', en, '小兢Bot'],
   ] as const)('shows the Team app icon, localized name and installed versions in About (%s)', (_language, dictionary, name) => {
     vi.stubEnv('DSH_CLIENT_VERSION', '0.2.1-rc.2')
     const view = render(<AboutSection {...kit} close={vi.fn()} t={key => dictionary[key]} />)
@@ -307,9 +331,9 @@ describe('Xiaojing product UI', () => {
     await fiber.await()
     for (const hole of HOLES) expect(product.slots.entries(hole)).toHaveLength(1)
     product.ctx.locale.setLocale('zh')
-    expect(resolveSlotLabel(product.slots.entriesOfSlot('settings.section')[0]?.options.label)).toBe('关于 小兢会计团队版')
+    expect(resolveSlotLabel(product.slots.entriesOfSlot('settings.section')[0]?.options.label)).toBe('关于 小兢Bot')
     product.ctx.locale.setLocale('en')
-    expect(resolveSlotLabel(product.slots.entriesOfSlot('settings.section')[0]?.options.label)).toBe('About Xiaojing Accounting Team')
+    expect(resolveSlotLabel(product.slots.entriesOfSlot('settings.section')[0]?.options.label)).toBe('About 小兢Bot')
     expect(document.body.dataset.xiaojingProduct).toBe('')
     expect(document.documentElement.dataset.dshClientBuildProfile).toBe('xiaojing')
     expect(themeColor.content).toBe('rgb(251, 253, 253)')

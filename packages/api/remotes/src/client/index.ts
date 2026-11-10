@@ -12,6 +12,8 @@ import officeToPdfRemote from '@deepseek-ai/dsh-office-to-pdf/remote'
 import goalsRemote from '@deepseek-ai/dsh-goal/remote'
 import scheduleRemote from '@deepseek-ai/dsh-schedule/remote'
 import llmRemote from '@deepseek-ai/dsh-llm/remote'
+import authorizationRemote from '@deepseek-ai/dsh-authorization/remote'
+import modelVerificationRemote from '@deepseek-ai/dsh-client-ui-settings-models/remote'
 import usageAccountingRemote from '@deepseek-ai/dsh-usage-accounting/remote'
 import dynamicRemote from '@deepseek-ai/dsh-cordis-host-runner/remote'
 import pluginManagerRemote from '@deepseek-ai/dsh-plugin-manager/remote'
@@ -56,6 +58,9 @@ export type {} from '@deepseek-ai/dsh-goal/remote'
 export type {} from '@deepseek-ai/dsh-schedule/remote'
 export type {} from '@deepseek-ai/dsh-office-to-pdf/remote'
 export type {} from '@deepseek-ai/dsh-llm/remote'
+export type {} from '@deepseek-ai/dsh-authorization/remote'
+export type {} from '@deepseek-ai/dsh-client-ui-settings-models/remote'
+export type { ModelVerificationRequest, ModelVerificationResult } from '@deepseek-ai/dsh-client-ui-settings-models/types'
 export type {} from '@deepseek-ai/dsh-host-plugin-inventory/remote'
 export type {} from '@deepseek-ai/dsh-message-feedback/remote'
 export type {} from '@deepseek-ai/dsh-permission-presets/remote'
@@ -144,7 +149,11 @@ export type {
   RequestRunOutcome,
 } from '@deepseek-ai/dsh-cordis-host-runner/types'
 // Credential state vocabulary for the credentials namespace (values never ride it).
-export type { CredentialInfo } from '@deepseek-ai/dsh-credentials/types'
+export type { CredentialInfo, CredentialKey } from '@deepseek-ai/dsh-credentials/types'
+export type {
+  AuthorizationEntry, AuthorizationNotice, AuthorizationPromptContent, AuthorizationPromptId,
+  AuthorizationRemoteAnswer, AuthorizationRemoteEvent, AuthorizationRemoteRequest, AuthorizationRemoteStatus,
+} from '@deepseek-ai/dsh-authorization/types'
 // Redacted namespace vocabulary for the settings namespace (secrets never ride
 // it). It travels with its seam, whose `./types` the Client face already reads.
 export type {
@@ -189,7 +198,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
   try {
     for (const contribution of [
       productAnalyticsRemote, agentPresetsRemote, commandsRemote, settingsControllerRemote, accountRemote,
-      goalsRemote, llmRemote, dynamicRemote, scheduleRemote,
+      goalsRemote, llmRemote, authorizationRemote, modelVerificationRemote, dynamicRemote, scheduleRemote,
       pluginInventoryRemote, pluginManagerRemote, pluginMarketRemote, pluginRegistryProbeRemote,
       messageFeedbackRemote, sessionFeedbackRemote,
       fileUploadsRemote, sessionReferencesRemote,

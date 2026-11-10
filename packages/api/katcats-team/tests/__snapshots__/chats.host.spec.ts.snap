@@ -1,0 +1,42 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Katcats durable groups > carries queued workspace context into the next group task without treating it as work 1`] = `
+{
+  "group": [
+    {
+      "source": "user",
+      "text": "@Writer Continue after the workspace update.",
+    },
+    {
+      "source": "katcats-group-relay",
+      "text": "Fixture response",
+    },
+    {
+      "source": "user",
+      "text": "@Writer Continue after the workspace update.",
+    },
+    {
+      "source": "katcats-group-relay",
+      "text": "Fixture response",
+    },
+  ],
+  "member": [
+    {
+      "source": "agent-instructions",
+      "text": "Workspace instructions were updated.",
+    },
+    {
+      "source": "katcats-group-task",
+      "text": "[saved group task]",
+    },
+    {
+      "source": "working-directory",
+      "text": "The working directory changed.",
+    },
+    {
+      "source": "katcats-group-task",
+      "text": "[saved group task]",
+    },
+  ],
+}
+`;

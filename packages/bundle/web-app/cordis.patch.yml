@@ -389,7 +389,6 @@
       config: !!js >-
         process.env.KATCATS_PRODUCT_MODE === '1' ? {
           primaryActionLabel: { zh: '创建新 Bot', en: 'Create new Bot' },
-          panelNavigation: { label: { zh: '工具与自动化', en: 'Tools and automations' }, defaultExpanded: false },
           footerNavigation: { label: { zh: '工具与设置', en: 'Tools and settings' }, defaultExpanded: false },
           footerActionsPlacement: 'after-panels'
         } : {}
@@ -539,7 +538,8 @@
     # Model selection: the /model popupSelect + composer seat over session.models.
     - id: ui-model-selection
       name: '@deepseek-ai/dsh-client-ui-model-selection'
-      disabled: !!js process.env.KATCATS_PRODUCT_MODE === '1'
+      config:
+        controlsEnabled: !!js process.env.KATCATS_PRODUCT_MODE !== '1'
 
     - id: ui-deepseek-model-label-1017
       name: '@deepseek-ai/dsh-client-ui-deepseek-model-label-1017'

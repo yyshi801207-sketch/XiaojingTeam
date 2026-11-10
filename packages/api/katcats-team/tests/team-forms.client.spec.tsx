@@ -39,16 +39,16 @@ const permissionDefaults = {
 }
 
 describe('quick member creation', () => {
-  it('offers the seven approved robots, keeps shape and color independent, and submits a general member', async () => {
+  it('offers ten silhouettes, keeps shape and color independent, and submits a general member', async () => {
     const create = vi.fn(async () => {})
     render(<CreateBot groupId={gid('ordinary')} create={create} close={vi.fn()} t={t} />)
-    expect(within(screen.getByRole('group', { name: zh['avatar.shape'] })).getAllByRole('button')).toHaveLength(7)
+    expect(within(screen.getByRole('group', { name: zh['avatar.shape'] })).getAllByRole('button')).toHaveLength(10)
     fireEvent.change(screen.getByLabelText(zh['bot.name']), { target: { value: '  Editor  ' } })
-    fireEvent.click(screen.getByRole('button', { name: zh['avatar.fluffy'] }))
+    fireEvent.click(screen.getByRole('button', { name: zh['avatar.ponytail'] }))
     fireEvent.click(screen.getByRole('button', { name: zh['color.blue'] }))
-    expect(screen.getByRole('button', { name: zh['avatar.fluffy'] }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: zh['avatar.ponytail'] }).getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(screen.getByRole('button', { name: zh['team.create'] }))
-    await waitFor(() => { expect(create).toHaveBeenCalledExactlyOnceWith({ name: 'Editor', groupId: 'ordinary', avatar: { shape: 'fluffy', color: '#2288FF' } }) })
+    await waitFor(() => { expect(create).toHaveBeenCalledExactlyOnceWith({ name: 'Editor', groupId: 'ordinary', avatar: { shape: 'ponytail', color: '#2288FF' } }) })
   })
 
   it('cancels a populated draft without a create request', () => {
@@ -61,7 +61,7 @@ describe('quick member creation', () => {
     expect(create).not.toHaveBeenCalled()
   })
 
-  it('uses the default red classic robot and prevents a blank name', async () => {
+  it('uses the default red classic silhouette and prevents a blank name', async () => {
     const create = vi.fn(async () => {})
     render(<CreateBot groupId={undefined} create={create} close={vi.fn()} t={makeTranslate(en)} />)
     expect(screen.getByRole<HTMLButtonElement>('button', { name: en['team.create'] }).disabled).toBe(true)
@@ -196,7 +196,8 @@ it('keeps the main member fixed above the two default sections, including an emp
       items: [], archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null })),
     entityActions: { pin: vi.fn(), move: vi.fn(), rename: vi.fn(), copyId: vi.fn(), remove: vi.fn() },
     useStore: bindSnapshotSelector(view), actions: view.actions,
-    useSidebarOverflow: bindSnapshotSelector(createSnapshotStore(false)), observeScrollList: vi.fn(), scrollDown: vi.fn(),
+    useSidebarOverflow: bindSnapshotSelector(createSnapshotStore(false)),
+    useSidebarReveal: bindSnapshotSelector(createSnapshotStore(null)), observeScrollList: vi.fn(), scrollDown: vi.fn(),
     useSessions: (select: (value: { ids: string[] }) => unknown) => select({ ids: [] }),
     useSidebarSessionStatus: bindSnapshotSelector(createSnapshotStore(new Map())),
     useSessionStatus: bindSnapshotSelector(createSnapshotStore(new Map())),
@@ -252,17 +253,19 @@ describe('per-member model selection', () => {
       modelCapabilities: { override: true, followGlobal: true } } })
     const save = vi.fn<(request: UpdateBotRequest) => Promise<void>>().mockResolvedValue(undefined)
     const props = { sessionId: bot.sessionId, useDirectory: bindSnapshotSelector(source),
-      useProjection: () => ({ next: { provider: 'mock', model: 'fixed' } }), save, t } as BotSettingsProps
+      useProjection: () => ({ next: { provider: 'mock', model: 'fixed' }, lastUsed: { provider: 'mock', model: 'fixed' } }), save, t } as BotSettingsProps
     const view = render(<BotSettings {...permissionDefaults} {...props} />)
-    expect(screen.getByText(t('bot.effectiveModel', { model: 'mock / fixed' }))).toBeTruthy()
+    expect(screen.getByText(t('bot.lastRequestModel', { model: 'mock / fixed' }))).toBeTruthy()
     fireEvent.click(screen.getByLabelText(zh['bot.model']))
     fireEvent.click(screen.getByRole('menuitem', { name: zh['bot.followGlobal'] }))
     fireEvent.click(screen.getByRole('button', { name: zh['bot.save'] }))
     await waitFor(() => { expect(save).toHaveBeenCalledExactlyOnceWith({ id: bot.id, model: { kind: 'follow-global' } }) })
     act(() => { source.set({ ...source.getSnapshot(), snapshot: { ...snapshot, modelCapabilities: { override: true, followGlobal: true } } }) })
-    view.rerender(<BotSettings {...permissionDefaults} {...props} useProjection={() => ({ next: { provider: 'mock', model: 'new-base' } })} />)
+    view.rerender(<BotSettings {...permissionDefaults} {...props} useProjection={() => ({
+      next: { provider: 'mock', model: 'new-base' }, lastUsed: { provider: 'mock', model: 'fixed' },
+    })} />)
     expect(screen.getByLabelText(zh['bot.model']).textContent).toContain(zh['bot.followGlobal'])
-    expect(screen.getByText(t('bot.effectiveModel', { model: 'mock / new-base' }))).toBeTruthy()
+    expect(screen.getByText(t('bot.lastRequestModel', { model: 'mock / fixed' }))).toBeTruthy()
   })
 
   it('enables fixed overrides independently and shows the actual Session model without a follow-global option', async () => {
@@ -316,6 +319,85 @@ describe('per-member model selection', () => {
     await waitFor(() => { expect(save).toHaveBeenCalledWith(expect.objectContaining({
       model: { kind: 'override', provider: 'mock', model: 'base', reasoningEffort: 'high' },
     })) })
+  })
+
+  function modelSettingsFixture(model = 'gpt-6.1-sol') {
+    const source = directory()
+    const savedBot: TeamBot = { ...bot, model: { kind: 'override', provider: 'chatgpt', model } }
+    source.set({ ...source.getSnapshot(), snapshot: { ...snapshot, bots: [main, savedBot],
+      modelCapabilities: { override: true, followGlobal: true } }, catalog: {
+      default: { provider: 'chatgpt', model: 'gpt-6.1-sol' }, routableProviders: ['chatgpt'], failures: [],
+      groups: [{ id: 'chatgpt', name: 'ChatGPT', models: [
+        { id: 'gpt-6.1-sol', name: 'GPT-6.1-Sol' }, { id: 'gpt-6-astra', name: 'GPT-6-Astra' },
+      ] }],
+    } })
+    const save = vi.fn<(request: UpdateBotRequest) => Promise<void>>().mockResolvedValue(undefined)
+    const lastUsed = { provider: 'chatgpt', model: 'gpt-6.1-sol' }
+    const props = { sessionId: bot.sessionId, useDirectory: bindSnapshotSelector(source),
+      useProjection: () => ({ next: lastUsed, lastUsed }), save, t } as BotSettingsProps
+    const view = render(<BotSettings {...permissionDefaults} {...props} />)
+    return { source, savedBot, save, props, view }
+  }
+
+  it('shows the saved override in the selector even when the latest request used a different model', () => {
+    const b = modelSettingsFixture('gpt-6-astra')
+    expect(screen.getByLabelText(zh['bot.model']).textContent).toBe('ChatGPT / GPT-6-Astra')
+    expect(screen.getByText(t('bot.savedModel', { model: 'chatgpt / gpt-6-astra' }))).toBeTruthy()
+    expect(screen.getByText(t('bot.lastRequestModel', { model: 'chatgpt / gpt-6.1-sol' }))).toBeTruthy()
+    b.view.rerender(<BotSettings {...permissionDefaults} {...b.props}
+      useProjection={() => ({ next: { provider: 'chatgpt', model: 'gpt-6-astra' }, lastUsed: null })} />)
+    expect(screen.getByText(zh['bot.noRequestModel'])).toBeTruthy()
+    expect(screen.queryByText(t('bot.lastRequestModel', { model: 'chatgpt / gpt-6-astra' }))).toBeNull()
+  })
+
+  it('distinguishes an unsaved model, confirmed Bot settings and a later recorded model request', async () => {
+    const b = modelSettingsFixture()
+    const confirmation = Promise.withResolvers<undefined>()
+    b.save.mockImplementation(async (request) => {
+      await confirmation.promise
+      b.source.set({ ...b.source.getSnapshot(), snapshot: { ...snapshot, bots: [main, { ...b.savedBot, ...request }],
+        modelCapabilities: { override: true, followGlobal: true } } })
+    })
+    const previousRequest = t('bot.lastRequestModel', { model: 'chatgpt / gpt-6.1-sol' })
+    const pending = t('bot.pendingModel', { model: 'chatgpt / gpt-6-astra' })
+    fireEvent.click(screen.getByLabelText(zh['bot.model']))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'ChatGPT / GPT-6-Astra' }))
+    expect(b.save).not.toHaveBeenCalled()
+    expect(screen.getByText(pending)).toBeTruthy()
+    expect(screen.getByText(t('bot.savedModel', { model: 'chatgpt / gpt-6.1-sol' }))).toBeTruthy()
+    expect(screen.getByText(previousRequest)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: zh['bot.save'] }))
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.getByText(pending)).toBeTruthy()
+    await act(async () => { confirmation.resolve(undefined); await confirmation.promise })
+    await waitFor(() => { expect(screen.getByRole('status').textContent).toBe(zh['team.saved']) })
+    expect(screen.queryByText(pending)).toBeNull()
+    const saved = screen.getByText(t('bot.savedModel', { model: 'chatgpt / gpt-6-astra' })).textContent
+    expect(screen.getByText(previousRequest)).toBeTruthy()
+    expect(screen.getByLabelText(zh['bot.model']).textContent).toBe('ChatGPT / GPT-6-Astra')
+    b.view.rerender(<BotSettings {...permissionDefaults} {...b.props} useProjection={() => ({
+      next: { provider: 'chatgpt', model: 'gpt-6-astra' }, lastUsed: { provider: 'chatgpt', model: 'gpt-6-astra' },
+    })} />)
+    expect({ saved, lastRequest: screen.getByText(t('bot.lastRequestModel', { model: 'chatgpt / gpt-6-astra' })).textContent,
+      feedback: screen.getByRole('status').textContent }).toMatchInlineSnapshot(`
+        {
+          "feedback": "已保存 Bot 设置",
+          "lastRequest": "最近一次请求模型：chatgpt / gpt-6-astra",
+          "saved": "已保存 Bot 模型：chatgpt / gpt-6-astra",
+        }
+      `)
+  })
+
+  it('retains the unsaved model and previous saved route when saving fails', async () => {
+    const b = modelSettingsFixture()
+    b.save.mockRejectedValue(new Error('fixture save failure'))
+    fireEvent.click(screen.getByLabelText(zh['bot.model']))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'ChatGPT / GPT-6-Astra' }))
+    fireEvent.click(screen.getByRole('button', { name: zh['bot.save'] }))
+    await waitFor(() => { expect(screen.getByRole<HTMLButtonElement>('button', { name: zh['bot.save'] }).disabled).toBe(false) })
+    expect(screen.getByText(t('bot.pendingModel', { model: 'chatgpt / gpt-6-astra' }))).toBeTruthy()
+    expect(screen.getByText(t('bot.savedModel', { model: 'chatgpt / gpt-6.1-sol' }))).toBeTruthy()
+    expect(screen.queryByRole('status')).toBeNull()
   })
 
   it('keeps model selection in settings instead of rendering a composer control', () => {

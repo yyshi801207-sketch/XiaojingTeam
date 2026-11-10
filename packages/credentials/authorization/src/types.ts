@@ -5,7 +5,8 @@
  * @module @deepseek-ai/dsh-authorization/types
  */
 
-import type { CredentialKey } from '@deepseek-ai/dsh-credentials/types'
+import type { CredentialKey, CredentialRecord } from '@deepseek-ai/dsh-credentials/types'
+import type { Branded } from '@deepseek-ai/dsh-brand'
 
 /** One way a flow can obtain its credential, named by the flow that offers it. */
 export interface AuthorizationMethod {
@@ -47,7 +48,10 @@ export type AuthorizationPrompt = {
    * whole authorization is cancelled through the request's signal instead.
    */
   signal?: AbortSignal
-} & ({
+} & AuthorizationPromptContent
+
+/** Renderable prompt fields; cancellation signals stay on the Host. */
+export type AuthorizationPromptContent = {
   kind: 'text'
   message: string
   placeholder?: string
@@ -59,7 +63,48 @@ export type AuthorizationPrompt = {
   kind: 'select'
   message: string
   options: readonly AuthorizationPromptOption[]
-})
+}
+
+/** Opaque identity of a single question within an authorization attempt. */
+export type AuthorizationPromptId = Branded<'AuthorizationPromptId'>
+
+/** One Remote request to start a registered authorization flow. */
+export interface AuthorizationRemoteRequest {
+  key: CredentialKey
+  /** Runs the first registered method when absent. */
+  method?: string
+}
+
+/** One answer to a still-pending question owned by the requesting Peer. */
+export interface AuthorizationRemoteAnswer {
+  key: CredentialKey
+  id: AuthorizationPromptId
+  answer: string
+}
+
+/** Credential presence and flow activity; no credential value is exposed. */
+export interface AuthorizationRemoteStatus {
+  configured: boolean
+  writable: boolean
+  kind?: CredentialRecord['kind']
+  inFlight: boolean
+}
+
+/** Ordered interaction events for one Remote authorization attempt. */
+export type AuthorizationRemoteEvent =
+  | { type: 'notice'; notice: AuthorizationNotice }
+  | { type: 'prompt'; id: AuthorizationPromptId; prompt: AuthorizationPromptContent }
+  | { type: 'prompt-withdrawn'; id: AuthorizationPromptId }
+  | { type: 'settled'; outcome: AuthorizationOutcome }
+
+declare module '@deepseek-ai/dsh-typert-protocol' {
+  interface RemoteErrorDetailsMap {
+    /** Authorization failed; provider diagnostics and credential values stay on the Host. */
+    'authorization/failed': {}
+    /** A different Peer owns the attempt, or the question has already settled. */
+    'authorization/not-owned': {}
+  }
+}
 
 /** How one authorization attempt ended, as its own caller sees it. */
 export type AuthorizationStatus = 'authorized' | 'cancelled'

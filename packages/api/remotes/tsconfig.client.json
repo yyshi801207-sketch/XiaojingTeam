@@ -12,6 +12,12 @@
   ],
   "references": [
     {
+      "path": "../../client/ui-settings-models/tsconfig.host.json"
+    },
+    {
+      "path": "../../credentials/authorization"
+    },
+    {
       "path": "../../client/product-analytics/tsconfig.client.json"
     },
     {
