@@ -26,7 +26,11 @@ export class ComposerPresentationRegistry implements ComposerPresentations {
     }
   }
 
-  /** @param sessionId - Session whose stable presentation source is requested. @returns the observable display state. */
+  /**
+   * Resolve one stable source across provider registration and disposal.
+   * @param sessionId - Session whose composer presentation is observed.
+   * @returns A store whose snapshot is undefined while no presentation is registered.
+   */
   storeFor(sessionId: SessionId): SnapshotStore<ComposerPresentation | undefined> {
     const existing = this.stores.get(sessionId)
     if (existing !== undefined) return existing

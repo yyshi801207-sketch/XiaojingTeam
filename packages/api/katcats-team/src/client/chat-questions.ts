@@ -1,5 +1,5 @@
 /** Group presentation retains original question identities, including temporarily hidden panels. */
-import { createSnapshotStore, type ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
+import { createSnapshotStore, type ObservableSnapshot, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ISessions, SessionReference } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { PendingQuestion } from '@deepseek-ai/dsh-client-ui-user-questions/client'
 import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
@@ -32,7 +32,10 @@ export interface GroupQuestion {
  * @returns An observable presentation list and its subscription disposer.
  */
 export function createGroupQuestions(status: ObservableSnapshot<SessionStatusSnapshot>, chats: ObservableSnapshot<ChatView>,
-  connection: ConnectionHandle['state'], reveal: (pending: PendingQuestion) => void) {
+  connection: ConnectionHandle['state'], reveal: (pending: PendingQuestion) => void): {
+  source: SnapshotStore<readonly GroupQuestion[]>
+  dispose: () => void
+} {
   const source = createSnapshotStore<readonly GroupQuestion[]>([])
   const cards = new Map<PendingQuestion, () => void>()
   const reconcile = (): void => {

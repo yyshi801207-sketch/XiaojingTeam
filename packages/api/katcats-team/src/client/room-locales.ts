@@ -1,5 +1,6 @@
 /** Group room labels; generated member content is kept verbatim. */
 import { taskArchiveZh, taskArchiveEn } from './task-archive-locales.ts'
+/** Chinese dispatch room copy and the canonical room dictionary keys. */
 export const roomZh = {
   ...taskArchiveZh,
   'member.viewDetails': '查看成员详情', 'member.copyName': '复制名称',

@@ -1,5 +1,6 @@
 /** Katcats team copy; model and user content remain verbatim. */
 import { taskArchiveZh, taskArchiveEn } from './task-archive-locales.ts'
+/** Chinese team interface copy and the canonical dictionary keys. */
 export const zh = {
   ...taskArchiveZh,
   'copy.copied': '已复制',

@@ -623,6 +623,11 @@ export class TestSessions implements ISessions {
     this.transportStub = impl
   }
 
+  /**
+   * Delegate transport registration to the installed test fixture.
+   * @param args - Session identity and transport supplied to the fixture.
+   * @returns The fixture's asynchronous transport disposer.
+   */
   registerTransport(...args: Parameters<ISessions['registerTransport']>): ReturnType<ISessions['registerTransport']> {
     if (this.closed) throw new Error('test Session Controller is disposed')
     if (this.transportStub === undefined) throw new Error('test sessions: transport registration is not stubbed')

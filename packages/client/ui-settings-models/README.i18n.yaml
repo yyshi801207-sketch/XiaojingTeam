@@ -51,23 +51,17 @@
   en: 7f9bd573cde25438
   zh: e496dee1dbc7c534
 /deepseek-ai-dsh-client-ui-settings-models/further-exploration:
-  en: 20abd8b98b6c20e2
-  zh: 6dfda7955ce5f33f
+  en: 93be0116c76ea8a1
+  zh: 51456a0aa9f11dd5
+/deepseek-ai-dsh-client-ui-settings-models/further-exploration/explicit-candidate-verification:
+  en: a99b0dcacd754789
+  zh: b7da1915f0830f2a
 /deepseek-ai-dsh-client-ui-settings-models/model-experience:
-  en: 215e7ba838619b7b
-  zh: a311da3843709f90
-/deepseek-ai-dsh-client-ui-settings-models/model-experience/explicit-candidate-verification:
-  en: 0373e89ca2a2f9ac
-  zh: 4aa4af78f135054a
-/deepseek-ai-dsh-client-ui-settings-models/model-experience/explicit-candidate-verification/what-the-model-sees:
-  en: 49fc6494f45a7344
-  zh: b355535ade7c5557
-/deepseek-ai-dsh-client-ui-settings-models/model-experience/explicit-candidate-verification/token-effect:
-  en: 532ee0109fdfeabc
-  zh: 1998a1da3590fdc8
-/deepseek-ai-dsh-client-ui-settings-models/model-experience/explicit-candidate-verification/kv-cache-effect:
-  en: ca1dfab83f57e3b3
-  zh: 2a6b33122b3c4ded
+  en: 2b5e4b87cb02ebf8
+  zh: 547130b22950a09b
+/deepseek-ai-dsh-client-ui-settings-models/model-experience/kv-cache-effect:
+  en: 4e1a53f77110d9c1
+  zh: 67c66230377db44a
 /deepseek-ai-dsh-client-ui-settings-models/known-limitations-and-deferred-work:
   en: 1f9e028e46a9707e
   zh: 633cb787f97e947b

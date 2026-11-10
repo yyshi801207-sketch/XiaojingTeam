@@ -1,5 +1,5 @@
 /** The global window owns only read subscriptions, never execution or cancellation. */
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ChatId } from '../chats-types.ts'
 import type { RoomActivitySnapshot } from './room-activity.ts'
 import type { WatchRoomActivity } from './RoomActivity.tsx'
@@ -16,7 +16,13 @@ export interface HeadquartersState {
  * @param watch - Existing read-only group journal observer.
  * @returns Window commands and a framework-injected snapshot source.
  */
-export function createHeadquartersState(watch: WatchRoomActivity) {
+export function createHeadquartersState(watch: WatchRoomActivity): {
+  source: SnapshotStore<HeadquartersState>
+  select: (selected: ChatId | null) => void
+  open: () => void
+  close: () => void
+  dispose: () => void
+} {
   const empty: RoomActivitySnapshot = { connected: false, members: [] }
   const source = createSnapshotStore<HeadquartersState>({ open: false, selected: null, activity: empty })
   let controller: AbortController | null = null

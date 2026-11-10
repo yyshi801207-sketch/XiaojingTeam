@@ -131,22 +131,18 @@ These pages cover the settings base, the seams this page joins, and the design r
 
 The `settings.models.sign-in` slot lets account login offer a choice before the credential editor; without a contributor the editor renders directly. Closing the account choice completes the whole onboarding step. Explicit reopening from the account menu enters the same editor even when a provider is already configured.
 
+### Explicit candidate verification
+
+A candidate test sends `Reply with exactly OK.` as the sole user message in a fresh Session. It uses the standard System Prompt and one local probe tool with empty arguments and a fixed `OK` result. The request includes the tool schema and leaves tool use optional. Each test records the token usage the provider reports. Settings reads, account sign-in, and candidate discovery send no model request.
+
 <a id="model-experience"></a>
 ## Model Experience
 
-### Explicit candidate verification
-
-#### What the model sees
-
-An explicit candidate test sends `Reply with exactly OK.` as the sole user message in a fresh Session with the standard System Prompt and one local probe tool whose empty arguments and fixed `OK` result have no side effects. The tool schema is sent on every test; the prompt does not require a tool call. Ordinary settings reads, account sign-in, and candidate discovery send no model request.
-
-#### Token effect
-
-Each tested candidate makes its own short verification request and records the token usage the upstream reports. No existing conversation history enters that request.
+None, as model settings contribute no tools or prompt content to the conversations they configure.
 
 #### KV Cache effect
 
-Verification makes an independent request with a fixed prompt prefix; it changes no existing conversation prefix. Different candidate models have independent provider cache behavior.
+A candidate test uses a fixed prompt prefix in its own Session and leaves existing conversation prefixes unchanged. Each model follows its provider's cache behavior.
 
 ## Known Limitations and Deferred Work
 

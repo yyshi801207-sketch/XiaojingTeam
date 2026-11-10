@@ -1,7 +1,7 @@
 /** Global room placement is independent of each group's conversation view. */
 import type { ChatId, ChatSnapshot, TeamChat } from '../chats-types.ts'
-import type { BotId, TeamSnapshot } from '../types.ts'
-import { projectGroupRoom } from './group-room-model.ts'
+import type { BotId, TeamBot, TeamSnapshot } from '../types.ts'
+import { projectGroupRoom, type RoomProjection } from './group-room-model.ts'
 
 /**
  * Count confirmed dispatch outcomes in the current run, or the latest retained run when idle.
@@ -9,7 +9,14 @@ import { projectGroupRoom } from './group-room-model.ts'
  * @param snapshot - Persisted delivery outcomes; other groups and older runs are excluded.
  * @returns Dispatch completion counts, excluding explicit non-participation from the denominator.
  */
-export function headquartersProgress(chat: TeamChat, snapshot: ChatSnapshot | null) {
+export function headquartersProgress(chat: TeamChat, snapshot: ChatSnapshot | null): {
+  completed: number
+  total: number
+  percent: number | null
+  running: number
+  queued: number
+  unresolved: number
+} {
   const deliveries = (snapshot?.deliveries ?? []).filter(item => item.chatId === chat.id)
   const latest = deliveries.reduce<(typeof deliveries)[number] | undefined>((last, item) =>
     !last || item.generation > last.generation ? item : last, undefined)
@@ -28,7 +35,7 @@ export function headquartersProgress(chat: TeamChat, snapshot: ChatSnapshot | nu
  * @param privateRunning - Known running private Bot identities.
  * @returns Distinct busy Bots and groups currently processing work.
  */
-export function headquartersActivity(snapshot: ChatSnapshot | null, privateRunning: readonly BotId[]) {
+export function headquartersActivity(snapshot: ChatSnapshot | null, privateRunning: readonly BotId[]): { busy: number, active: number } {
   const groups = new Set(snapshot?.chats.map(chat => chat.id))
   const busy = new Set(privateRunning)
   const active = new Set<ChatId>()
@@ -63,7 +70,11 @@ export function headquartersAddresses(previous: ReadonlyMap<ChatId, number>, ids
  * @param connected - Whether the catalog is current.
  * @returns Independent group projections and ungrouped Bots for the common area.
  */
-export function projectHeadquarters(directory: TeamSnapshot | null, snapshot: ChatSnapshot | null, connected: boolean) {
+export function projectHeadquarters(directory: TeamSnapshot | null, snapshot: ChatSnapshot | null, connected: boolean): {
+  main: TeamBot | null
+  groups: Array<{ chat: TeamChat, progress: ReturnType<typeof headquartersProgress>, projection: RoomProjection }>
+  independent: TeamBot[]
+} {
   const bots = directory?.bots ?? []
   const groups = (snapshot?.chats ?? []).map(chat => ({ chat, progress: headquartersProgress(chat, snapshot), projection: projectGroupRoom({
     chat, bots, snapshot, connected, entries: [], cursor: null, waiting: new Map<BotId, 'approval' | 'question'>(),

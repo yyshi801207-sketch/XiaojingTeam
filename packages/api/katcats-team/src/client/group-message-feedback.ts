@@ -23,7 +23,11 @@ export interface GroupMessageFeedbackOptions {
  * @param options - Exact Session lookup and active Host connection.
  * @returns Binding-owned observable notices, acceptance capture and plugin teardown.
  */
-export function createGroupMessageFeedback(options: GroupMessageFeedbackOptions) {
+export function createGroupMessageFeedback(options: GroupMessageFeedbackOptions): {
+  source: (binding: SessionBinding | undefined) => ObservableSnapshot<GroupMessageReceipt | null>
+  submitting: (request: SessionPromptRequest) => () => void
+  dispose: () => void
+} {
   const sources = new WeakMap<SessionBinding, ReturnType<typeof entry>>()
   const absent = createSnapshotStore<GroupMessageReceipt | null>(null)
   let disposed = false

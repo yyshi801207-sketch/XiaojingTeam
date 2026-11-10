@@ -70,7 +70,13 @@ function findViolations(absPath: string): Violation[] {
   return out
 }
 
-const files = uniqueRepoFiles(root, PATTERNS, isArchivedAgentNotePath)
+// These replay fixtures preserve line-separated prompt instructions and JSON exactly.
+const EXACT_PROMPT_FIXTURES = new Set([
+  'snapshots/web/group-context-efficiency/system-prompt.expected.md',
+  'snapshots/web/group-question/system-prompt.expected.md',
+])
+
+const files = uniqueRepoFiles(root, PATTERNS, file => isArchivedAgentNotePath(file) || EXACT_PROMPT_FIXTURES.has(file))
 const all = files.flatMap(file => findViolations(file.abs))
 const checked = files.length
 

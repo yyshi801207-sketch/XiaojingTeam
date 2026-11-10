@@ -1,5 +1,5 @@
 /** Persistent sidebar folds and the product-owned scroll affordance. */
-import { createSnapshotStore, defineStore } from '@deepseek-ai/dsh-client-store'
+import { createSnapshotStore, defineStore, type EngineStoreHandle, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { GroupId } from '../types.ts'
 
@@ -33,7 +33,11 @@ export function orderSidebarEntries(
  * Declare the root-scoped Katcats sidebar preferences.
  * @returns A framework-owned store; groups without a saved choice start expanded.
  */
-export function createSidebarViewStore() {
+export function createSidebarViewStore(): EngineStoreHandle<SidebarViewState, {
+  setMainCollapsed: (draft: SidebarViewState, collapsed: boolean) => void
+  setGroupCollapsed: (draft: SidebarViewState, id: string, collapsed: boolean) => void
+  setEntryOrder: (draft: SidebarViewState, id: GroupId, ids: readonly SessionId[]) => void
+}> {
   return defineStore({
     init: (): SidebarViewState => ({ collapsedGroups: {} }),
     persist: 'katcats.sidebar.view.v1',
@@ -52,7 +56,12 @@ export function createSidebarViewStore() {
  * Observe actual content below the list viewport without changing its scroll position.
  * @returns The injected snapshot, DOM attachment, scroll action, and lifecycle disposer.
  */
-export function createSidebarOverflow() {
+export function createSidebarOverflow(): {
+  source: SnapshotStore<boolean>
+  attach: (element: HTMLDivElement | null) => void
+  scrollDown: () => void
+  dispose: () => void
+} {
   const source = createSnapshotStore(false)
   let list: HTMLDivElement | null = null
   let observer: ResizeObserver | undefined

@@ -282,7 +282,11 @@ export class ChatGptAccountController {
     }
   }
 
-  /** Submit only the currently displayed prompt; stale prompt answers are ignored. */
+  /**
+   * Submit an answer only while its authorization prompt remains current.
+   * @param id - Identity of the displayed prompt.
+   * @param answer - User's response to that prompt.
+   */
   async answer(id: AuthorizationPromptId, answer: string): Promise<void> {
     if (this.store.getSnapshot().prompt?.id !== id || this.disposed) return
     const generation = this.generation

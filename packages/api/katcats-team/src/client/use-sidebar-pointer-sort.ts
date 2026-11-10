@@ -98,7 +98,12 @@ function moveRows(gesture: Gesture): void {
  * @param options - Visible identities, the existing scroll viewport, readiness, and a synchronous order action.
  * @returns Pointer entry, cancellation, click suppression, and whether a row is currently following the pointer.
  */
-export function useSidebarPointerSort(options: SortOptions) {
+export function useSidebarPointerSort(options: SortOptions): {
+  active: boolean
+  onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>, sessionId: SessionId) => void
+  cancel: () => void
+  suppressClick: (event: MouseEvent) => boolean
+} {
   const [active, setActive] = useState(false)
   const latest = useRef(options)
   const current = useRef<Gesture | null>(null)
