@@ -535,13 +535,13 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         throws: ['{AuthorizationError} code `DUPLICATE_FLOW` when the key is already claimed.'],
       },
       {
-        signature: 'list(): readonly AuthorizationEntry[]',
+        signature: '@Remote list(): readonly AuthorizationEntry[]',
         description: 'Every registered flow, for a surface listing what can be authorized.',
         parameters: [],
         returns: 'one entry per flow, in registration order.',
       },
       {
-        signature: 'describe(key: CredentialKey): AuthorizationEntry | undefined',
+        signature: '@Remote describe(key: CredentialKey): AuthorizationEntry | undefined',
         description: 'One registered flow.',
         parameters: [{ name: 'key', description: 'the credential record to ask about.' }],
         returns: 'the entry, or undefined when no flow claims that key.',
@@ -550,6 +550,36 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         signature: 'cancel(key: CredentialKey): void',
         description: 'Withdraw the attempt running for a key, if any. Separate from the request\'s own signal because a request/response transport answers a Cancel button on a second call, with no handle on the first one\'s signal.',
         parameters: [{ name: 'key', description: 'the credential record whose attempt should stop.' }],
+      },
+      {
+        signature: '@Remote async status(key: CredentialKey): Promise<AuthorizationRemoteStatus>',
+        description: 'Read stored presence and writability without exposing credential values.',
+        parameters: [{ name: 'key', description: 'credential whose status is requested.' }],
+        returns: 'record facts and whether a registered flow is running.',
+      },
+      {
+        signature: '@Remote({ name: \'begin\', mode: \'stream\' }) async *beginRemote(request: AuthorizationRemoteRequest, signal: AbortSignal): AsyncIterable<AuthorizationRemoteEvent>',
+        description: 'Run one authorization conversation for its initiating Peer. Closing the stream or Peer cancels the attempt; an admitted credential commit finishes first. Provider errors become a secret-free Remote failure; attempts never resume.',
+        parameters: [{ name: 'request', description: 'credential and optional method; absence selects the first method.' }, { name: 'signal', description: 'carrier cancellation for this stream.' }],
+        returns: 'ordered notices, questions, withdrawals, and one terminal outcome.',
+      },
+      {
+        signature: '@Remote answer(request: AuthorizationRemoteAnswer): void',
+        description: 'Answer one pending question from this Peer\'s own attempt.',
+        parameters: [{ name: 'request', description: 'credential, opaque question identity, and answer.' }],
+        throws: ['when another Peer owns the attempt or the question already ended.'],
+      },
+      {
+        signature: '@Remote async cancelAttempt(key: CredentialKey): Promise<void>',
+        description: 'Cancel this Peer\'s attempt and wait until credential persistence has settled.',
+        parameters: [{ name: 'key', description: 'credential whose owned attempt should stop.' }],
+        returns: 'after the attempt has released its credential key; absent attempts are a no-op.',
+      },
+      {
+        signature: '@Remote async disconnect(key: CredentialKey): Promise<void>',
+        description: 'Forget a credential locally after cancelling and settling any attempt. New attempts for the key are refused until deletion finishes. This explicit operation never revokes the grant at its issuer.',
+        parameters: [{ name: 'key', description: 'credential record to remove.' }],
+        returns: 'once the credential store has removed the record.',
       },
       {
         signature: 'async begin(request: AuthorizationRequest): Promise<AuthorizationOutcome>',
@@ -1793,6 +1823,20 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Delete one item after checking its version; absence succeeds without an event.',
         parameters: [{ name: 'request', description: 'Session, message, and observed item version.' }],
         returns: 'the stable absent postcondition or an explicit failure.',
+      },
+    ],
+  },
+  {
+    key: 'modelVerification',
+    summary: 'Owns user-requested verification; no test modifies the application\'s model routes.',
+    description: 'Owns user-requested verification; no test modifies the application\'s model routes.',
+    methods: [
+      {
+        signature: '@Remote async verify(request: ModelVerificationRequest, signal: AbortSignal): Promise<ModelVerificationResult>',
+        description: 'Test one candidate with a fixed short prompt. A pass requires a nonempty, uninterrupted completion and normal turn termination, with the request, response, and reported usage durably stored before return.',
+        parameters: [{ name: 'request', description: 'explicit candidate; no settings or live catalog are changed.' }, { name: 'signal', description: 'cancels setup or the running test; absent means only owner disposal cancels it.' }],
+        returns: 'outcome and the independent persisted session identity for audit.',
+        throws: ['when setup or persistence prevents a trusted result; diagnostics contain no credential.'],
       },
     ],
   },
@@ -5784,11 +5828,35 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'AuthorizationPrompt',
-    declaration: 'export type AuthorizationPrompt = {\n    signal?: AbortSignal;\n} & ({\n    kind: \'text\';\n    message: string;\n    placeholder?: string;\n} | {\n    kind: \'secret\';\n    message: string;\n    placeholder?: string;\n} | {\n    kind: \'select\';\n    message: string;\n    options: readonly AuthorizationPromptOption[];\n});',
+    declaration: 'export type AuthorizationPrompt = {\n    signal?: AbortSignal;\n} & AuthorizationPromptContent;',
+  },
+  {
+    name: 'AuthorizationPromptContent',
+    declaration: 'export type AuthorizationPromptContent = {\n    kind: \'text\';\n    message: string;\n    placeholder?: string;\n} | {\n    kind: \'secret\';\n    message: string;\n    placeholder?: string;\n} | {\n    kind: \'select\';\n    message: string;\n    options: readonly AuthorizationPromptOption[];\n};',
+  },
+  {
+    name: 'AuthorizationPromptId',
+    declaration: 'export type AuthorizationPromptId = Branded<\'AuthorizationPromptId\'>;',
   },
   {
     name: 'AuthorizationPromptOption',
     declaration: 'export interface AuthorizationPromptOption {\n    id: string;\n    label: string;\n    description?: string;\n}',
+  },
+  {
+    name: 'AuthorizationRemoteAnswer',
+    declaration: 'export interface AuthorizationRemoteAnswer {\n    key: CredentialKey;\n    id: AuthorizationPromptId;\n    answer: string;\n}',
+  },
+  {
+    name: 'AuthorizationRemoteEvent',
+    declaration: 'export type AuthorizationRemoteEvent = {\n    type: \'notice\';\n    notice: AuthorizationNotice;\n} | {\n    type: \'prompt\';\n    id: AuthorizationPromptId;\n    prompt: AuthorizationPromptContent;\n} | {\n    type: \'prompt-withdrawn\';\n    id: AuthorizationPromptId;\n} | {\n    type: \'settled\';\n    outcome: AuthorizationOutcome;\n};',
+  },
+  {
+    name: 'AuthorizationRemoteRequest',
+    declaration: 'export interface AuthorizationRemoteRequest {\n    key: CredentialKey;\n    method?: string;\n}',
+  },
+  {
+    name: 'AuthorizationRemoteStatus',
+    declaration: 'export interface AuthorizationRemoteStatus {\n    configured: boolean;\n    writable: boolean;\n    kind?: CredentialRecord[\'kind\'];\n    inFlight: boolean;\n}',
   },
   {
     name: 'AuthorizationRequest',
@@ -7757,6 +7825,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ModelReasoningEffort',
     declaration: 'export interface ModelReasoningEffort {\n    readonly id: string;\n    readonly name: string;\n    readonly description?: string;\n}',
+  },
+  {
+    name: 'ModelVerificationRequest',
+    declaration: 'export interface ModelVerificationRequest {\n    provider: \'chatgpt\';\n    model: LlmDiscoveredModel;\n}',
+  },
+  {
+    name: 'ModelVerificationResult',
+    declaration: 'export interface ModelVerificationResult {\n    status: \'passed\' | \'failed\' | \'cancelled\';\n    testSessionId: SessionId;\n}',
   },
   {
     name: 'ModEvents',

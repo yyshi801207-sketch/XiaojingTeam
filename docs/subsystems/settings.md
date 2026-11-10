@@ -22,6 +22,27 @@ A form namespace is the local id of a uniquely addressed entry in the active pro
 
 Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
 
+<a id="ctxmodelverification--modelverificationservice"></a>
+
+### `ctx.modelVerification` — `ModelVerificationService`
+
+Owns user-requested verification; no test modifies the application's model routes.
+
+```ts cordis-catalog
+/**
+ * Test one candidate with a fixed short prompt. A pass requires a nonempty,
+ * uninterrupted completion and normal turn termination, with the request,
+ * response, and reported usage durably stored before return.
+ * @param request - explicit candidate; no settings or live catalog are changed.
+ * @param signal - cancels setup or the running test; absent means only owner disposal cancels it.
+ * @returns outcome and the independent persisted session identity for audit.
+ * @throws when setup or persistence prevents a trusted result; diagnostics contain no credential.
+ */
+@Remote async verify(request: ModelVerificationRequest, signal: AbortSignal): Promise<ModelVerificationResult>
+```
+
+Source: [`packages/client/ui-settings-models/src/model-verification.ts`](../../packages/client/ui-settings-models/src/model-verification.ts)
+
 <a id="ctxsettings--settingsforms"></a>
 
 ### `ctx.settings` — `SettingsForms`

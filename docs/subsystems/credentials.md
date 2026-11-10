@@ -92,14 +92,14 @@ registerFlow(flow: AuthorizationFlow): () => void
  * Every registered flow, for a surface listing what can be authorized.
  * @returns one entry per flow, in registration order.
  */
-list(): readonly AuthorizationEntry[]
+@Remote list(): readonly AuthorizationEntry[]
 
 /**
  * One registered flow.
  * @param key - the credential record to ask about.
  * @returns the entry, or undefined when no flow claims that key.
  */
-describe(key: CredentialKey): AuthorizationEntry | undefined
+@Remote describe(key: CredentialKey): AuthorizationEntry | undefined
 
 /**
  * Withdraw the attempt running for a key, if any. Separate from the
@@ -108,6 +108,46 @@ describe(key: CredentialKey): AuthorizationEntry | undefined
  * @param key - the credential record whose attempt should stop.
  */
 cancel(key: CredentialKey): void
+
+/**
+ * Read stored presence and writability without exposing credential values.
+ * @param key - credential whose status is requested.
+ * @returns record facts and whether a registered flow is running.
+ */
+@Remote async status(key: CredentialKey): Promise<AuthorizationRemoteStatus>
+
+/**
+ * Run one authorization conversation for its initiating Peer. Closing the stream
+ * or Peer cancels the attempt; an admitted credential commit finishes first.
+ * Provider errors become a secret-free Remote failure; attempts never resume.
+ * @param request - credential and optional method; absence selects the first method.
+ * @param signal - carrier cancellation for this stream.
+ * @returns ordered notices, questions, withdrawals, and one terminal outcome.
+ */
+@Remote({ name: 'begin', mode: 'stream' }) async *beginRemote(request: AuthorizationRemoteRequest, signal: AbortSignal): AsyncIterable<AuthorizationRemoteEvent>
+
+/**
+ * Answer one pending question from this Peer's own attempt.
+ * @param request - credential, opaque question identity, and answer.
+ * @throws when another Peer owns the attempt or the question already ended.
+ */
+@Remote answer(request: AuthorizationRemoteAnswer): void
+
+/**
+ * Cancel this Peer's attempt and wait until credential persistence has settled.
+ * @param key - credential whose owned attempt should stop.
+ * @returns after the attempt has released its credential key; absent attempts are a no-op.
+ */
+@Remote async cancelAttempt(key: CredentialKey): Promise<void>
+
+/**
+ * Forget a credential locally after cancelling and settling any attempt.
+ * New attempts for the key are refused until deletion finishes. This explicit
+ * operation never revokes the grant at its issuer.
+ * @param key - credential record to remove.
+ * @returns once the credential store has removed the record.
+ */
+@Remote async disconnect(key: CredentialKey): Promise<void>
 
 /**
  * Run one attempt to authorize a key, and report how it ended.

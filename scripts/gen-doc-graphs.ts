@@ -425,6 +425,13 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Projects the user-settings seam onto the generated Remote namespace: the read is always redacted and every refusal is classified here, not on the seam Definition.',
   },
   {
+    key: 'modelVerification',
+    pkg: 'ui-settings-models',
+    title: 'Host candidate model verification',
+    mode: 'core',
+    note: 'Tests a candidate model with a short request and saves its audit record before reporting a result.',
+  },
+  {
     key: 'workspaceFiles',
     pkg: 'api-workspace-files',
     title: 'Host workspace file Remote service',

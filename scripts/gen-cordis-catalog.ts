@@ -98,6 +98,7 @@ export const SERVICE_PAGE: Record<string, string> = {
   credentials: 'credentials.md',
   credentialsController: 'credentials.md',
   settingsController: 'settings.md',
+  modelVerification: 'settings.md',
   directoryPicker: 'workspace.md',
   deepseekLlmApiExtensions: 'llm-streaming.md',
   dynamicCordisRunner: 'extensions.md',
@@ -963,6 +964,12 @@ export const FOUNDATION_TYPE_NAMES: ReadonlySet<string> = new Set([
 
 /** Project types deliberately documented outside the subsystems catalog. */
 export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
+  AuthorizationRemoteStatus: 'Remote authorization status is documented in packages/credentials/authorization/README.md',
+  AuthorizationRemoteEvent: 'Remote authorization events are documented in packages/credentials/authorization/README.md',
+  AuthorizationRemoteRequest: 'Remote authorization requests are documented in packages/credentials/authorization/README.md',
+  AuthorizationRemoteAnswer: 'Remote authorization answers are documented in packages/credentials/authorization/README.md',
+  ModelVerificationRequest: 'Candidate verification requests are documented in packages/client/ui-settings-models/README.md',
+  ModelVerificationResult: 'Candidate verification outcomes are documented in packages/client/ui-settings-models/README.md',
   TeamSnapshot: 'Private Katcats member directory snapshots are owned by packages/api/katcats-team/README.md and src/types.ts',
   TeamBot: 'Private Katcats member records are owned by packages/api/katcats-team/README.md and src/types.ts',
   BotId: 'Private Katcats member identities are owned by packages/api/katcats-team/README.md and src/types.ts',
