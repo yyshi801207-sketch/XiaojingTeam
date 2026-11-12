@@ -301,6 +301,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * --dsh-composer-model-icon-display to block for an occupant's compact display.
      */
     'conversation.input.model': { kind: 'single'; scope: 'session'; owner: InputControlOwnerProps }
+    /** Content beside the main Session body when the navigation sidebar is collapsed. */
+    'conversation.session.leading': { kind: 'single'; scope: 'session' }
   }
 
   interface SlotFactoryMap {
@@ -552,7 +554,7 @@ export interface HeroContextOwnerProps {
 /** Full props of the resident optional-Session Conversation shell. */
 export type ConversationSlotProps =
   PropsRuntime<'main.conversation'>
-  & PropsRenderSlots<'conversation.header'>
+  & PropsRenderSlots<'conversation.header' | 'conversation.session.leading'>
   & PropsRenderFactories
 
 /** Inputs shared by main and embedded Conversation content occurrences. */

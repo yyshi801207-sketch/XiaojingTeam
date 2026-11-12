@@ -62,6 +62,8 @@ Queue 预览启用空白折叠和文档边缘 trim，保留 emoji，并使用 CS
 <a id="shell-and-standard-props"></a>
 ## Shell 与标准 props
 
+导航侧栏折叠时，主会话在正文左侧呈现 Session 作用域的 `conversation.session.leading` 插槽。插槽无内容时不占宽度。插槽通过继承的 `--dsh-conversation-leading-gutter` 读取居中 Composer 左侧的留白宽度。Composer 覆盖正文的视图将该宽度设为零。
+
 欢迎区的品牌图标与标题 slot 均接收可选的 Session 上下文，使插件能够按当前会话选择展示内容，并在尚无会话时正常显示。
 
 共享图片插槽属性将展示选择与持久化引用分开：`thumbnail` 请求完整缩放的附件列表缩略图，`compact` 请求裁剪的图片方块。每张图片可通过可选的 `label` 提供无障碍展示名称；加载和缓存标识仍使用原始附件引用。`MessageImagesContentInput` 为 root 作用域的 `conversation.images.content` Factory 增加可选的完整 `MessageImageLabels`。消息、工具及 Factory 输入显式携带视图提供的授权 `loadImage` 回调；读取和 URL 缓存仍由资源所有者负责。[ui-attachment](../ui-attachment/README.zh.md) 提供该 Factory，负责渲染与灯箱。

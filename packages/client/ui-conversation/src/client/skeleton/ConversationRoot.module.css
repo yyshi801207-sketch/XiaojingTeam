@@ -368,24 +368,46 @@ button.crumb:hover {
   flex: none;
 }
 
-/* Band below the header: the scrollport plus the width handles. Anchoring the
-   handles here keeps their full-height strips and glow under the header's
-   bottom edge at every header height. */
+.bodyRow {
+  --dsh-chat-content-width: var(
+    --dsh-chat-user-width,
+    clamp(680px, calc(var(--dsh-conversation-column-width, 0px) * 0.64), 920px)
+  );
+  --dsh-composer-card-max-width: calc(var(--dsh-chat-content-width) + 32px);
+  --dsh-conversation-leading-gutter: max(
+    0px,
+    calc((var(--dsh-conversation-column-width, 0px) - var(--dsh-composer-card-max-width)) / 2 - 16px)
+  );
+
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.bodyRow:has([data-conversation-composer-overlay]) {
+  --dsh-conversation-leading-gutter: 0px;
+}
+
+.sessionLeading {
+  display: none;
+  flex: none;
+  min-height: 0;
+}
+
+:global([data-sidebar-collapsed]) .sessionLeading {
+  display: flex;
+}
+
+/* Band below the header: the scrollport plus the width handles. */
 .body {
   position: relative;
   display: flex;
   flex: 1;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
 
-  /* Shared width axis for the transcript, dock cards, composer, and takeover
-     cards. Main width controls publish the live body width and optional user
-     preference; embedded occurrences override this adaptive axis below. */
-  --dsh-chat-content-width: var(
-    --dsh-chat-user-width,
-    clamp(680px, calc(var(--dsh-conversation-column-width, 0px) * 0.64), 920px)
-  );
-  --dsh-composer-card-max-width: calc(var(--dsh-chat-content-width) + 32px);
   --dsh-composer-side-clearance: 16px;
   --dsh-composer-dock-inset: 8px;
 }

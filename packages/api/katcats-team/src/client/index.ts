@@ -36,6 +36,7 @@ import type { FinanceBindingActions } from './FinanceBinding.tsx'
 import { BotModelControl, type BotModelControlInjected, type BotSettingsRequest } from './BotModelControl.tsx'
 import { BotHeaderAction } from './BotHeaderAction.tsx'
 import { GroupRoomAction, type GroupRoomInjected } from './GroupRoom.tsx'
+import { ConversationMemberRail } from './ConversationMemberRail.tsx'
 import { roomEn, roomZh } from './room-locales.ts'
 import { observeRoomActivity } from './room-activity.ts'
 import { Headquarters, type HeadquartersInjected } from './Headquarters.tsx'
@@ -132,7 +133,9 @@ function mountUI(ctx: Context, hasSetup: boolean): void {
     }
     readonly katcatsChats: ChatRemote & {
       financeBinding(chatId: ChatId): Promise<RemoteResult<FinanceConnectorId | null>>
-      bindFinance(chatId: ChatId, connectorId: FinanceConnectorId | null, expectedBinding?: FinanceConnectorId | null): Promise<RemoteResult<void>>
+      bindFinance(
+        chatId: ChatId, connectorId: FinanceConnectorId | null, expectedBinding?: FinanceConnectorId | null,
+      ): Promise<RemoteResult<void>>
       connectFinance(chatId: ChatId, connectorId: FinanceConnectorId): Promise<RemoteResult<FinanceConnector>>
     }
     readonly katcatsMemory: MemoryRemote
@@ -142,7 +145,9 @@ function mountUI(ctx: Context, hasSetup: boolean): void {
   const model = new TeamClientModel(remote.katcatsTeam)
   const chats = new ChatClientModel(remote.katcatsChats)
   const setupRemote = hasSetup ? remote.xiaojingLedgerSetup : undefined
-  const { catalog: financeCatalog, setupView, setupDatabase } = installFinancePage(ctx, remote.katcatsTeam, connection.generation, setupRemote)
+  const { catalog: financeCatalog, setupView, setupDatabase } = installFinancePage(
+    ctx, remote.katcatsTeam, connection.generation, setupRemote,
+  )
   const archiveActions = { continueTask: chats.continueTask.bind(chats), completeTask: chats.completeTask.bind(chats) }
   const messageFeedback = createGroupMessageFeedback({ binding: id => ctx.sessions.binding(id), connection })
   ctx.effect(() => () => { messageFeedback.dispose() }, 'katcats-team: scoped group admission notices')
@@ -193,10 +198,10 @@ function mountUI(ctx: Context, hasSetup: boolean): void {
     block: (id, blocked) => { ctx.conversation.blocks.setOwned('katcats-group-transport', id,
       blocked ? { reason: t('chat.transportUnavailable') } : undefined) },
     failed: () => { ui.notify('chat.transportUnavailable', false) },
-    submitting: request => {
+    submitting: (request) => {
       const acknowledge = messageFeedback.submitting(request)
       const generation = connection.generation.getSnapshot()
-      return value => {
+      return (value) => {
         const acceptance = value.taskAcceptance
         if (acceptance === undefined) { acknowledge(); return }
         if (disposed || generation === undefined || generation !== connection.generation.getSnapshot()
@@ -594,6 +599,10 @@ function mountUI(ctx: Context, hasSetup: boolean): void {
     name: 'conversation.session.header.actions', id: 'katcats-team.identity', order: -100, locale: NS,
     inject: () => ({ hooks: { directory: model.state, chats: chats.state }, openSettings }),
   }, BotHeaderAction))
+  ctx.slots.inject('conversation.session.leading', () => ctx.slots.register({
+    name: 'conversation.session.leading', locale: NS,
+    inject: () => ({ hooks: { directory: model.state, chats: chats.state, groupQuestions: groupQuestions.source } }),
+  }, ConversationMemberRail))
   ctx.slots.inject('sidebar.workspaces', () => ctx.slots.register({
     name: 'sidebar.workspaces', priority: -100, locale: NS, store: sidebarView,
     inject: (): TeamSidebarInjected => ({
@@ -785,8 +794,8 @@ function mountUI(ctx: Context, hasSetup: boolean): void {
       hooks: { headquarters: headquarters.source, directory: model.state, chats: chats.state,
         connection: connection.state, statuses: ctx.uiSession.sessionStatus },
       close: headquarters.close, select: headquarters.select, copyText, archiveActions,
-      openChat: id => { headquarters.close(); openChat(id) },
-      openBot: id => { headquarters.close(); openBot(id) },
+      openChat: (id) => { headquarters.close(); openChat(id) },
+      openBot: (id) => { headquarters.close(); openBot(id) },
     }),
   }, Headquarters))
   const emptyRoomEvents = createSnapshotStore<SessionEventWindow>({ entries: [], hasMore: false,
@@ -828,10 +837,13 @@ function mountUI(ctx: Context, hasSetup: boolean): void {
   }, GroupQuestionPanel))
   ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
     name: 'conversation.input.dock', id: 'katcats-team.chat-controls', order: -100, locale: NS,
-    inject: (): ChatControlsInjected => ({ hooks: { directory: model.state, chats: chats.state, groupQuestions: groupQuestions.source }, control: async (action, request) => {
-      try { await chats.control(action, request) }
-      catch (error) { if (!disposed) ui.notify(error instanceof TeamRequestSupersededError ? 'team.outcomeUnknown' : 'chat.controlFailed', false); throw error }
-    } }),
+    inject: (): ChatControlsInjected => ({
+      hooks: { directory: model.state, chats: chats.state, groupQuestions: groupQuestions.source },
+      control: async (action, request) => {
+        try { await chats.control(action, request) }
+        catch (error) { if (!disposed) ui.notify(error instanceof TeamRequestSupersededError ? 'team.outcomeUnknown' : 'chat.controlFailed', false); throw error }
+      },
+    }),
   }, ChatControls))
   const groupMessageInjected = (sessionId: SessionId): GroupMessageActionsInjected => {
     const binding = ctx.sessions.binding(sessionId)
@@ -941,8 +953,8 @@ function mountUI(ctx: Context, hasSetup: boolean): void {
       update: (frame) => {
         const known = new Set(model.state.getSnapshot().snapshot?.bots.map(bot => bot.id) ?? [])
         model.replace(frame.value)
-        const created = frame.value.bots.filter(bot => bot.kind === 'ordinary' && !isOdooAdminBot(bot.id) && !known.has(bot.id))
-        if (created.length > 0) openCreatedBot(created[0]!)
+        const created = frame.value.bots.find(bot => bot.kind === 'ordinary' && !isOdooAdminBot(bot.id) && !known.has(bot.id))
+        if (created !== undefined) openCreatedBot(created)
       },
       failed: () => { model.failed() },
     })
@@ -958,8 +970,8 @@ function mountUI(ctx: Context, hasSetup: boolean): void {
       update: (frame) => {
         const known = new Set(chats.state.getSnapshot().snapshot?.chats.map(chat => chat.id) ?? [])
         chats.replace(frame.value)
-        const created = frame.value.chats.filter(chat => !known.has(chat.id))
-        if (created.length > 0) openCreatedChat(created[0]!)
+        const created = frame.value.chats.find(chat => !known.has(chat.id))
+        if (created !== undefined) openCreatedChat(created)
       }, failed: () => { chats.failed() },
     })
   }

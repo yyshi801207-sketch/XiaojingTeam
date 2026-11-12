@@ -8,7 +8,7 @@ const CONTENT_SLOTS = { widthControls: ConversationWidthControls }
 /**
  * Render the existing main Conversation frame around the extracted content.
  * @param props - the original `main.conversation` Slot props.
- * @returns the unchanged root, Header, content, and width-control subtree.
+ * @returns the Header, optional leading content, and Conversation body.
  */
 export function ConversationMainPanel(props: ConversationSlotProps) {
   const { sessionId, useSession, useSessions, useConversation, renderSlot, renderFactorySlot } = props
@@ -45,13 +45,16 @@ export function ConversationMainPanel(props: ConversationSlotProps) {
   return (
     <div className={css.root} data-phase={phase}>
       {renderSlot('conversation.header', {})}
-      {renderFactorySlot('conversation.content', {
-        variant: 'main',
-        phase,
-        hero,
-      }, {
-        slots: CONTENT_SLOTS,
-      })}
+      <div className={css.bodyRow}>
+        {sessionId !== undefined && <div className={css.sessionLeading}>{renderSlot('conversation.session.leading', {})}</div>}
+        {renderFactorySlot('conversation.content', {
+          variant: 'main',
+          phase,
+          hero,
+        }, {
+          slots: CONTENT_SLOTS,
+        })}
+      </div>
     </div>
   )
 }

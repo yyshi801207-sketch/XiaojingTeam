@@ -62,6 +62,8 @@ Queue previews enable whitespace collapsing and document-edge trimming, retain e
 <a id="shell-and-standard-props"></a>
 ## Shell and standard props
 
+The main Conversation renders the Session-scoped `conversation.session.leading` slot beside its body while the navigation sidebar is collapsed. An empty slot takes no width. The slot inherits `--dsh-conversation-leading-gutter` for the space beside the centered Composer. Views with a Composer overlay expose zero gutter.
+
 The hero brand-mark and headline slots both receive optional Session context, so their occupants can select presentation for the current Session while also rendering before a Session exists.
 
 The shared image slot props keep display choices separate from durable references: `thumbnail` requests a contained attachment-list thumbnail, while `compact` requests a cropped gallery tile. An optional per-image `label` supplies the accessible display name; loading and cache identity still use the original attachment reference. `MessageImagesContentInput` adds optional complete `MessageImageLabels` for the root-scoped `conversation.images.content` Factory. Message, tool, and Factory inputs carry the view's authorized `loadImage` callback explicitly; loading and URL caching remain with the resource owner. [ui-attachment](../ui-attachment/README.md) provides this Factory and owns rendering and the lightbox.

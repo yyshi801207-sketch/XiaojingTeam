@@ -85,6 +85,10 @@ Cancellation is checked before mutation admission. Once a durable intent has bee
 
 ## Group conversations
 
+Collapse the navigation sidebar in a group conversation to see **Team members** beside the transcript. When space permits, active members move to the edge of the gap nearest the list, centered vertically, and return to their reserved rows when they finish. The working avatar grows from 30 to 45 pixels, flips once and then hops while three thinking dots move in sequence, centered beneath the member's name. Members waiting for approval or an answer show their status with a still avatar. Reduced motion applies position and size changes immediately and keeps the dots still.
+
+In a private Bot conversation, collapsing the sidebar places the current Bot's stationary avatar at the left center of the conversation. Xiaojing Accounting, Jingjing and Yeye use 120px portraits aligned to the same left edge as ordinary avatars and show three thinking dots below the portrait while working. Jingjing uses the green laptop artwork and Yeye uses the orange magnifier artwork. Ordinary Bots show their saved name below their 64px bean avatar, with three thinking dots to the right of the name while working.
+
 In group settings, the Task records section uses white text on black and a white Task details button with black text. Its header counts all registered tasks in gray, completed tasks in SUDO green, deliveries awaiting acceptance in orange, and blocked tasks in red, with white numerals in compact badges that expand for additional digits. Counts follow saved task states even while the section is collapsed. The archive dialog follows the host's light or dark theme with SUDO green accents. Archives opened from either dispatch view use a fixed dark background with orange-gold accents.
 
 Group settings and both dispatch views open the same task archive. It follows saved group updates, labels disconnected data as stale, and marks the current task by its saved run input. Handoff lists follow new records by default. Scrolling up or jumping to the top pauses only that list, and Jump to bottom restores following.

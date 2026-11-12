@@ -8,9 +8,11 @@ import { PendingApproval } from '../../../client/ui-approval/src/client/contract
 import { createWaterfallRequest, PendingQuestion } from '../../../client/ui-user-questions/src/client/contract/slots.ts'
 import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { BotId, TeamBot } from '../src/types.ts'
+import { ledgerSetupBotId, odooAccessBotId, type BotId, type TeamBot } from '../src/types.ts'
+import type { ChatId } from '../src/chats-types.ts'
 import type { TeamView } from '../src/client/model.ts'
 import { GroupWorkerStatus, type GroupWorkerStatusItem } from '../src/client/GroupWorkerStatus.tsx'
+import { ConversationMemberRail } from '../src/client/ConversationMemberRail.tsx'
 import { ChatControls, type ChatControlsProps } from '../src/client/ChatControls.tsx'
 import { createGroupQuestions } from '../src/client/chat-questions.ts'
 import { en, zh } from '../src/client/locales.ts'
@@ -31,6 +33,111 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 const visible = (container: HTMLElement) => container.querySelector('[data-katcats-working-member]')?.getAttribute('data-katcats-working-member')
+
+it('keeps the full roster in group order and marks work only for the selected group', () => {
+  const writerExecutor = 'editorial-writer' as SessionId
+  const reviewerExecutor = 'editorial-reviewer' as SessionId
+  const group = presentationDirectory({ memberIds: [reviewer.id, writer.id], executors: [
+    { botId: writer.id, sessionId: writerExecutor }, { botId: reviewer.id, sessionId: reviewerExecutor },
+  ] })
+  const other = { ...group.chat, id: 'other-group' as ChatId, rootSessionId: 'other-root' as SessionId,
+    memberIds: [writer.id], executors: [{ botId: writer.id, sessionId: 'other-writer' as SessionId }] }
+  const saved = group.source.getSnapshot().snapshot!
+  const activities = [
+    { chatId: group.chat.id, processing: true, runningBotIds: [reviewer.id], pendingControl: null },
+    { chatId: other.id, processing: true, runningBotIds: [writer.id], pendingControl: null },
+  ]
+  group.source.set({ phase: 'ready', snapshot: { ...saved, chats: [group.chat, other], activities } })
+  const directory = createSnapshotStore<TeamView>({ phase: 'ready', catalog: null, snapshot: {
+    revision: 1, mainBotId: 'main' as BotId, bots: [writer, reviewer], groups: [],
+    modelCapabilities: { override: true, followGlobal: false },
+  } })
+  const statuses = createSnapshotStore<SessionStatusSnapshot>(new Map())
+  const questions = createGroupQuestions(statuses, group.source, createSnapshotStore('connected' as const), () => {})
+  const props = { sessionId: group.chat.rootSessionId, useChats: group.useGroupDirectory,
+    useDirectory: bindSnapshotSelector(directory), useSessionStatus: bindSnapshotSelector(statuses),
+    useGroupQuestions: bindSnapshotSelector(questions.source), t: makeTranslate(en) } as React.ComponentProps<typeof ConversationMemberRail>
+  try {
+    const view = render(<ConversationMemberRail {...props} />)
+    expect(screen.getByRole('complementary', { name: 'Team members' })).toBeTruthy()
+    expect(screen.getAllByRole('listitem').map(row => row.textContent)).toEqual(['Reviewer', 'Writer'])
+    expect(screen.getByRole('img', { name: 'Working' }).closest('li')?.textContent).toBe('Reviewer')
+    expect(screen.getByRole('img', { name: 'Working' }).querySelector('[data-running-dots]')?.children).toHaveLength(3)
+    expect(screen.getAllByRole('listitem').map(row => row.querySelector('svg')?.getAttribute('data-head'))).toEqual(['classic', 'classic'])
+    const [reviewerRow, writerRow] = screen.getAllByRole('listitem') as HTMLLIElement[]
+    const destination = view.container.querySelector('[data-member-destination]')!
+    const space = vi.spyOn(destination, 'getBoundingClientRect').mockReturnValue(new DOMRect(148, 90, 180, 136))
+    vi.spyOn(screen.getByRole('list'), 'getBoundingClientRect').mockReturnValue(new DOMRect(8, 100, 132, 114))
+    vi.spyOn(reviewerRow!, 'getBoundingClientRect').mockReturnValue(new DOMRect(12, 104, 124, 54))
+    vi.spyOn(writerRow!, 'getBoundingClientRect').mockReturnValue(new DOMRect(12, 161, 124, 54))
+    view.rerender(<ConversationMemberRail {...props} />)
+    expect(reviewerRow?.style.getPropertyValue('--member-position')).toBe('136px 26px')
+    expect(writerRow?.style.getPropertyValue('--member-position')).toBe('')
+    space.mockReturnValue(new DOMRect(148, 90, 80, 136))
+    view.rerender(<ConversationMemberRail {...props} />)
+    expect(reviewerRow?.style.getPropertyValue('--member-position')).toBe('')
+    space.mockReturnValue(new DOMRect(148, 90, 180, 136))
+    view.rerender(<ConversationMemberRail {...props} />)
+    expect(reviewerRow?.style.getPropertyValue('--member-position')).toBe('136px 26px')
+    act(() => {
+      group.source.set({ phase: 'ready', snapshot: { ...saved, chats: [group.chat, other], activities: activities.slice(1) } })
+    })
+    expect(screen.getAllByRole('listitem').map(row => row.textContent)).toEqual(['Reviewer', 'Writer'])
+    expect(reviewerRow?.style.getPropertyValue('--member-position')).toBe('')
+    expect(screen.queryByRole('img', { name: 'Working' })).toBeNull()
+    view.rerender(<ConversationMemberRail {...props} sessionId={other.rootSessionId} />)
+    expect(screen.getByRole('listitem').textContent).toBe('Writer')
+    expect(screen.getByRole('img', { name: 'Working' }).closest('li')?.textContent).toBe('Writer')
+    view.rerender(<ConversationMemberRail {...props} sessionId={writer.sessionId} />)
+    expect(screen.queryByRole('list')).toBeNull()
+  } finally { questions.dispose() }
+})
+
+it('shows names for ordinary private Bots and work indicators for the selected private Session', () => {
+  const main: TeamBot = { ...writer, id: 'main' as BotId, kind: 'main', name: '小兢会计', sessionId: 'main-private' as SessionId }
+  const jingjing: TeamBot = { ...writer, id: ledgerSetupBotId, sessionId: 'jingjing-private' as SessionId }
+  const yeye: TeamBot = { ...writer, id: odooAccessBotId, sessionId: 'yeye-private' as SessionId }
+  const group = presentationDirectory()
+  const directory = createSnapshotStore<TeamView>({ phase: 'ready', catalog: null, snapshot: {
+    revision: 1, mainBotId: main.id, bots: [main, jingjing, yeye, writer], groups: [],
+    modelCapabilities: { override: true, followGlobal: false },
+  } })
+  const statuses = createSnapshotStore<SessionStatusSnapshot>(new Map())
+  const questions = createGroupQuestions(statuses, group.source, createSnapshotStore('connected' as const), () => {})
+  const props = { sessionId: main.sessionId, useChats: group.useGroupDirectory, useDirectory: bindSnapshotSelector(directory),
+    useSessionStatus: bindSnapshotSelector(statuses), useGroupQuestions: bindSnapshotSelector(questions.source),
+    t: makeTranslate(zh) } as React.ComponentProps<typeof ConversationMemberRail>
+  try {
+    const view = render(<ConversationMemberRail {...props} />)
+    expect(view.container.querySelector('img[data-xiaojing-main-avatar]')?.getAttribute('width')).toBe('120')
+    expect(view.container.textContent).toBe('')
+    for (const [bot, source] of [[jingjing, './xiaojing-jingjing-rail.png'], [yeye, './xiaojing-yeye-rail.png']] as const) {
+      view.rerender(<ConversationMemberRail {...props} sessionId={bot.sessionId} />)
+      const portrait = view.container.querySelector('img')
+      expect(portrait?.dataset.xiaojingAssistantAvatar).toBe(bot.id)
+      expect(portrait?.getAttribute('width')).toBe('120')
+      expect(portrait?.getAttribute('src')).toBe(source)
+      expect(view.container.textContent).toBe('')
+    }
+    for (const bot of [main, jingjing, yeye]) {
+      view.rerender(<ConversationMemberRail {...props} sessionId={bot.sessionId} />)
+      act(() => { statuses.set(new Map([[bot.sessionId, { running: true, pendingInteraction: undefined, completionUnread: false }]])) })
+      expect(view.container.textContent).toBe('')
+      expect(view.container.querySelector('[data-large-portrait] > [role="img"] > [data-running-dots]')?.children).toHaveLength(3)
+    }
+    view.rerender(<ConversationMemberRail {...props} sessionId={writer.sessionId} />)
+    expect(view.container.querySelector('img')).toBeNull()
+    expect(view.container.querySelector('svg[data-head]')?.getAttribute('width')).toBe('64')
+    expect(view.container.querySelector('[data-member-destination]')).toBeNull()
+    expect(screen.getByText(writer.name)).toBeTruthy()
+    act(() => { statuses.set(new Map([[main.sessionId, { running: true, pendingInteraction: undefined, completionUnread: false }]])) })
+    expect(view.container.querySelector('[data-running-dots]')).toBeNull()
+    act(() => { statuses.set(new Map([[writer.sessionId, { running: true, pendingInteraction: undefined, completionUnread: false }]])) })
+    expect(screen.getByText(writer.name).nextElementSibling?.querySelector('[data-running-dots]')?.children).toHaveLength(3)
+    act(() => { statuses.set(new Map()) })
+    expect(view.container.querySelector('[data-running-dots]')).toBeNull()
+  } finally { questions.dispose() }
+})
 
 describe('compact live group status', () => {
   it.each([zh, en])('shows the original executor waiting for an answer and clears the wait after settlement', async (dictionary) => {
