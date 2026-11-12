@@ -5,7 +5,7 @@ export interface DesktopElectronBuilderConfig {
   readonly appId: string
   readonly productName: string
   readonly artifactName: string
-  readonly protocols: readonly [{ readonly name: '小兢会计团队版'; readonly schemes: readonly ['xiaojing-accounting-team'] }]
+  readonly protocols: readonly [{ readonly name: '小兢财务'; readonly schemes: readonly ['xiaojing-accounting-team'] }]
   readonly directories: {
     readonly output: string
   }

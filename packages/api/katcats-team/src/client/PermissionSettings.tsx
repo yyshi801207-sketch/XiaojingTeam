@@ -1,5 +1,5 @@
 /** Reuse the public permission selector within exact member Session scopes. */
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { SessionReference } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { PropsLocale, PropsRenderFactories, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
@@ -11,6 +11,7 @@ import { GroupMemberAvatar } from './GroupMemberAvatar.tsx'
 import { BotIdentityAvatar } from './BotIdentityAvatar.tsx'
 import type { GroupPermissionBatch, GroupPermissionBatchView } from './group-permission-batch.ts'
 import css from './permission-settings.module.css'
+import settingsCss from './settings.module.css'
 
 /** Captured group membership and its exact group-local execution Session. */
 export interface PermissionMemberTarget {
@@ -77,7 +78,6 @@ export function GroupPermissionSettings({
   chat, bots, selectedMemberIds, enabled, locked, dirty, batch, activateBatch, applyBatch, cancelBatch,
   retainPermissionSession, renderFactorySlot, renderSlot, SessionProvider, t,
 }: GroupPermissionSettingsProps) {
-  const id = useId()
   const batchEnabled = enabled && !locked && !dirty
   useEffect(() => {
     if (!batchEnabled) return
@@ -86,20 +86,21 @@ export function GroupPermissionSettings({
     return () => { controller.abort() }
   }, [batchEnabled, activateBatch])
   const members = bots.filter(bot => chat.memberIds.includes(bot.id) && selectedMemberIds.includes(bot.id))
-  return <section className={css.section} aria-labelledby={id}>
-    <h3 id={id} className={css.title}>{t('permissions.members')}</h3>
+  return <div className={css.section}>
     <p className={css.hint}>{t('permissions.groupHint')}</p>
     <div className={css.batch} role="group" aria-label={t('permissions.batch')}>
       <h4 className={css.batchTitle}>{t('permissions.batch')}</h4>
       <p className={css.hint}>{t('permissions.batchHint')}</p>
-      {renderFactorySlot('permission.select-batch', {
-        locked: !batchEnabled || !batch.ready || batch.busy,
-        currentValue: batch.currentValue,
-        targetKey: `${batch.targetKey}:${batchEnabled ? 'enabled' : 'locked'}`,
-        targetCount: batch.targets.length, targetLabel: batch.targetLabel,
-        allowNoApproval: batchEnabled && batch.ready && batch.allowNoApproval,
-        onSelect: preset => applyBatch(preset, batch.targetKey),
-      })}
+      <div className={settingsCss.selectedControl} data-selected={batch.currentValue !== null}>
+        {renderFactorySlot('permission.select-batch', {
+          locked: !batchEnabled || !batch.ready || batch.busy,
+          currentValue: batch.currentValue,
+          targetKey: `${batch.targetKey}:${batchEnabled ? 'enabled' : 'locked'}`,
+          targetCount: batch.targets.length, targetLabel: batch.targetLabel,
+          allowNoApproval: batchEnabled && batch.ready && batch.allowNoApproval,
+          onSelect: preset => applyBatch(preset, batch.targetKey),
+        })}
+      </div>
       {dirty && <p className={css.hint}>{t('permissions.batchSaveFirst')}</p>}
       {!dirty && !batch.ready && <p className={css.hint}>{t('permissions.unavailable')}</p>}
       {batch.busy && <button type="button" className={css.cancel} onClick={cancelBatch}>{t('permissions.batchCancel')}</button>}
@@ -129,7 +130,7 @@ export function GroupPermissionSettings({
       </div>
     })}
     {members.length === 0 && <p className={css.hint}>{t('permissions.noMembers')}</p>}
-  </section>
+  </div>
 }
 
 function RetainedPermissionPicker({

@@ -1,12 +1,12 @@
-# 小兢Bot Windows 桌面端
+# 小兢财务 Windows 桌面端
 
-小兢Bot V1.0.2 的产品版本为 `1.0.2`，应用标识为 `ai.xiaojing.accounting.team.desktop`，安装目录为 `XiaojingAccountingTeam-desktop`，并使用独立文档工作区。它不覆盖升级 Katcat.AI，也不导入 Katcat.AI 或小兢会计数据。本地未签名 Windows 包在 `.env.windows` 使用 `DSH_DESKTOP_APP_ID=ai.xiaojing.accounting.team.desktop`，不嵌入强制更新策略和更新源；本产品不嵌入更新源或远程强制更新策略，继承的发布配置不能选择其他产品的服务。
+小兢财务 V1.1.0 的产品版本为 `1.1.0`，应用标识为 `ai.xiaojing.accounting.team.desktop`，安装目录为 `XiaojingAccountingTeam-desktop`，并使用独立文档工作区。它不覆盖升级 Katcat.AI，也不导入 Katcat.AI 或小兢会计数据。本地未签名 Windows 包在 `.env.windows` 使用 `DSH_DESKTOP_APP_ID=ai.xiaojing.accounting.team.desktop`，不嵌入强制更新策略和更新源；本产品不嵌入更新源或远程强制更新策略，继承的发布配置不能选择其他产品的服务。
 
 [English](README.md) | 中文
 
 全新安装默认进入 `%LOCALAPPDATA%\Programs\XiaojingAccountingTeam-desktop`，只有团队版 GUID 登记的安装可以覆盖升级。安装页底部保留 `installer-company-source.png` 中的基线字标。每次成功安装或重装都会初始化一次浅色主题，详见[用户数据路径](#permanent-user-data-paths)。Katcat.AI 安装、工作区和会话路径保持不变，新默认工作区为 `Documents\XiaojingAccountingTeam_Home`。
 
-“小兢Bot”的私有 Electron 部署应用。它通过 Windows 安装包而不是 npm 分发，启动随包提供的 Node 运行时和 Web profile，将 renderer 与 Node 隔离，并在一个 Windows 桌面窗口中呈现本地 Host。
+“小兢财务”的私有 Electron 部署应用。它通过 Windows 安装包而不是 npm 分发，启动随包提供的 Node 运行时和 Web profile，将 renderer 与 Node 隔离，并在一个 Windows 桌面窗口中呈现本地 Host。
 
 应用文档、随包资源以及顶层 PNG、SVG、ICO 和 Web manifest 文件在 Host 启动前由随包前端目录提供。API 请求、插件代码和事件流仅在已认证的 Host 就绪后转发；就绪前返回 503，不会被当作这些静态资源处理。每次文档启动都通过私有 IPC 获取运行中 Host 的当前注入表，HMR 重新构建后刷新 renderer 会使用当前插件代码版本。请求失败或读取期间 Host 被替换时，启动直接报错，不复用首次启动的注入表。
 
@@ -14,7 +14,7 @@
 
 自动化任务已内置于 Desktop 承载的 Web 应用。新 profile 只选择随包提供的 Web 组合，不再加入退役的实验性 Schedule bundle。升级时由 Host 的标准 profile 加载器移除该退役声明，并保留其它组合包选择、已安装依赖、用户元数据和显式插件覆盖。既有任务保持不变；全新安装本身不会创建或执行任务。
 
-独立 小兢Bot 副本的原生应用菜单、关于面板、窗口标题、托盘入口和本地化对话框统一显示 小兢Bot。Windows 主程序和安装器的文件描述及商标元数据均标识团队版产品。产品显示名称和快捷方式为“小兢Bot”；既有团队版的 App ID、NSIS GUID、可执行文件、安装目录、URI 协议和永久数据路径固定不变，支持覆盖升级。开发进程继续使用独立的 小兢Bot Dev 身份。
+独立 小兢财务 副本的原生应用菜单、关于面板、窗口标题、托盘入口和本地化对话框统一显示 小兢财务。Windows 主程序和安装器的文件描述及商标元数据均标识团队版产品。产品显示名称和快捷方式为“小兢财务”；既有团队版的 App ID、NSIS GUID、可执行文件、安装目录、URI 协议和永久数据路径固定不变，支持覆盖升级。开发进程继续使用独立的 小兢财务 Dev 身份。
 
 <a id="permanent-installer-identity"></a>
 ## 永久安装器身份
@@ -28,17 +28,17 @@
 | NSIS GUID | `c8462347-245f-49dd-8195-e1174bb7e3ef` |
 | 安装目录 | `XiaojingAccountingTeam-desktop` |
 | 可执行文件 | `XiaojingAccountingTeam.exe` |
-| 产品名称 | `小兢Bot` |
+| 产品名称 | `小兢财务` |
 | 安装范围 | 当前 Windows 用户 |
-| 快捷方式 | `小兢Bot` |
+| 快捷方式 | `小兢财务` |
 | 打包应用名称 | `xiaojing-accounting-team-desktop` |
 | URI 协议 | `xiaojing-accounting-team` |
 
 本产品不提供共享的“管理 dsh 命令”菜单，也不注册全局 `dsh` 命令。打包时，Windows 可执行文件名取自 `identity.json.executableName`，macOS 可执行文件名取自 `identity.json.productName`。仅含 ASCII 的 Windows 批处理命令通过随包 primary Node 运行时，将参数和继承的标准流转交给 Electron Node mode，不改变控制台代码页；它等待 CLI 完成控制台中断退出，并保留退出码。CLI 仅在未附着控制台时连接父进程的控制台；父进程没有控制台也不会阻止后台命令执行。
 
-全新安装使用两阶段品牌安装流程。欢迎页显示小兢标识、数豆绿色安装操作和可选的行内父目录选择器，并自动补齐 `XiaojingAccountingTeam-desktop`；安装页继续显示小兢图片，隐藏 NSIS 默认详情区域，显示真实文件进度，完成后直接启动应用，不再显示单独的完成页。欢迎页包含安装许可提示，内部使用说明、完整的上游许可和第三方声明仍随包保存在 `resources/legal`。全新安装到原本不存在的目标目录时，关闭或取消进度页会显示原生确认提示。确认取消会启动外部清理程序并以 `1602` 退出；安装器进程停止后，清理程序校验固定安装目录名，只删除部分应用、当前用户安装记录和快捷方式。目标目录在安装前已存在时禁用取消。覆盖升级在开始替换文件前仍可从欢迎页退出；文件安装一旦开始，为保护原版本将禁用取消。用户数据路径不参与任何清理。具有相同身份的新版安装器会从固定的当前用户 GUID 精确读取 `InstallLocation`、隐藏路径选择、请求已安装应用为升级退出，并且只处理可执行文件位于该安装根目录内的进程。调用旧卸载器前，同一个固定根目录辅助程序只清理绝对路径超过旧式 Win32 限制的旧版程序项，避免深层解包依赖被误报为应用关闭失败。随后标准更新流程替换应用文件并刷新快捷方式和卸载信息。无关进程和受保护的用户数据不会被扫描、终止或删除。迁移安装位置仍需卸载后重装。
+全新安装使用两阶段品牌安装流程。欢迎页显示小兢标识、数豆绿色安装操作和可选的行内父目录选择器，并自动补齐 `XiaojingAccountingTeam-desktop`；安装页继续显示小兢图片，隐藏 NSIS 默认详情区域，显示安装进度，完成后直接启动应用。安装载荷由受监督的 7-Zip 进程解包，安装工作线程成功返回后再由图形界面启动应用。欢迎页包含安装许可提示，内部使用说明、完整的上游许可和第三方声明仍随包保存在 `resources/legal`。全新安装到原本不存在的目标目录时，关闭或取消进度页会显示原生确认提示。确认取消会启动外部清理程序并以 `1602` 退出；安装器进程停止后，清理程序校验固定安装目录名，只删除部分应用、当前用户安装记录和快捷方式。目标目录在安装前已存在时禁用取消。覆盖升级在开始替换文件前仍可从欢迎页退出；文件安装一旦开始，为保护原版本将禁用取消。用户数据路径不参与任何清理。具有相同身份的新版安装器会从固定的当前用户 GUID 精确读取 `InstallLocation`、隐藏路径选择、请求已安装应用为升级退出，并且只处理可执行文件位于该安装根目录内的进程。调用旧卸载器前，同一个固定根目录辅助程序只清理绝对路径超过旧式 Win32 限制的旧版程序项，避免深层解包依赖被误报为应用关闭失败。随后标准更新流程替换应用文件并刷新快捷方式和卸载信息。无关进程和受保护的用户数据不会被扫描、终止或删除。迁移安装位置仍需卸载后重装。
 
-品牌安装界面显示小兢Bot和用户指定的财务团队插画，在 820×680 白底窗口中以最高 640×360 像素显示。短屏幕会同步缩小窗口和插画，保留标题、安装操作和底部说明。完整的 1536×1024 PNG 原样保存在 `build/installer-robot-source.png`；位图生成器在白底上按原比例居中，不裁切或拉伸人物。用户提供的四色数豆科技字标单独保存在 `build/installer-company-source.png`，以 180×58 像素显示在页脚。`prepare:icons` 一并生成欢迎页、小图、页眉、侧栏、底部品牌位图与原生图标。卸载侧栏使用相同的团队插画。
+品牌安装界面显示小兢财务和用户指定的财务团队插画，在 820×680 白底窗口中以最高 640×360 像素显示。短屏幕会同步缩小窗口和插画，保留标题、安装操作和底部说明。完整的 1536×1024 PNG 原样保存在 `build/installer-robot-source.png`；位图生成器在白底上按原比例居中，不裁切或拉伸人物。用户提供的四色数豆科技字标单独保存在 `build/installer-company-source.png`，以 180×58 像素显示在页脚。`prepare:icons` 一并生成欢迎页、小图、页眉、侧栏、底部品牌位图与原生图标。卸载侧栏使用相同的团队插画。
 
 用户指定的白色应用 PNG `应用程序图标.png` 原样保存在 `build/installer-icon-source.png`，保留透明边缘与金色装饰。`scripts/prepare-windows-icon.ps1` 校验 SHA-256 与 1254×1254 尺寸后，原样复制到桌面 PNG 别名、产品关于页图标、浏览器标签和下载页图标，并保留独立的安装页底部字标。`node apps/desktop/scripts/prepare-installer-icon.mjs` 使用现有 electron-builder 图标工具生成多尺寸 `build/installer-runtime-icon.ico` 与 macOS `build/app-icon.icns`。Windows 程序、安装、卸载、内容寻址快捷方式和退出对话框使用该 ICO；打包对话框读取其相同副本 `resources/tray.ico`。原生窗口、任务栏和托盘使用 `assets/windows-icon.png`，Linux 与原生关于对话框使用相同的应用 PNG。这些准备命令不会安装或发布应用。应用直接打开 Team 工作区，由产品插件显示首次使用的 API Key 说明，不提供 DeepSeek 账号登录或原生认证欢迎窗口。
 

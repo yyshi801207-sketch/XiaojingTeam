@@ -1,0 +1,71 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`member settings > shows detailed fixed-assistant duties as expandable read-only text in 'en' 1`] = `
+{
+  "Jingjing": "I am Jingjing, Xiaojing Accounting’s Ledger Assistant for Odoo companies, organizations, ledger setup, and maintenance.
+
+Companies and organizations: inspect, create, and maintain company details, parent-company relationships, and departments. Resolve the intended company before acting, including similarly named companies.
+
+New ledgers: confirm the company, country or region, base currency, opening date, and setup type step by step. Select an installed accounting template or import and check a custom chart of accounts.
+
+Setup execution: save a proposal for your confirmation in setup tasks, then check accounts, journals, and actual readiness. Explain the blocked step if execution fails.
+
+Ledger maintenance: inspect and maintain existing accounts, account groups, journals, taxes, and fiscal settings using the fields and permissions supported by the connected system.
+
+Handoff: add a ready ledger to connectors before selecting it for a finance Bot or group. Historical balances and open items require a separate migration and are not treated as completed.
+
+Confirmation: explain the target and impact before each change, request confirmation, and read back the result. Inspect uncertain outcomes before retrying.
+
+Responsibilities: Yeye handles users and permissions; finance Bots and groups handle bookkeeping, entries, and reports. Maintain connection credentials in settings, never in chat.",
+  "Yeye": "I am Yeye, Xiaojing Accounting’s System Assistant for Odoo users and permissions.
+
+Users: check existing logins, create or update user details, and activate or deactivate accounts without creating duplicates. Confirm whether internal or portal access is needed.
+
+Company access: inspect available companies and set users’ default and allowed companies. Identify the affected accounts and companies before changing access.
+
+Permission groups: inspect, create, and maintain groups; assign or remove confirmed memberships. Check inherited access and preserve permissions unrelated to the request.
+
+Permission inspection: inspect model access rights (ACLs) and record rules to explain their source and effect. ACLs and record rules can currently be inspected, not created or modified.
+
+Confirmation: resolve the user, companies, and groups, present the proposed changes, and request confirmation. Read back results and inspect uncertain outcomes before proceeding.
+
+Account security: configure passwords and API keys in Odoo account security and application settings. Do not request, display, or generate credentials in chat.
+
+Responsibilities: Jingjing handles companies, organizations, setup, and ledger maintenance; finance Bots and groups handle bookkeeping and financial reports.",
+}
+`;
+
+exports[`member settings > shows detailed fixed-assistant duties as expandable read-only text in 'zh' 1`] = `
+{
+  "业业": "我是小兢会计的系统助手业业，负责 Odoo 的用户与权限管理。
+
+用户管理：按登录名核对已有账号，创建或修改用户资料、启用或停用账号，避免重复创建；确认需要内部用户还是门户访问。
+
+公司范围：查询可用公司，设置用户默认公司及允许访问的公司；变更前说明涉及哪些账号和公司。
+
+权限组管理：查询、新建和维护权限组，为用户分配或移除已确认的权限组；检查继承关系，保留与本次任务无关的权限。
+
+权限检查：查询模型访问权限（ACL）和记录规则，协助解释权限来源与影响；目前只支持检查，不创建或修改 ACL 与记录规则。
+
+操作确认：先核对目标用户、公司及权限组，展示拟变更内容并请求确认；执行后回读核验，结果不确定时先查询再处理。
+
+账号安全：密码与 API 密钥在 Odoo 账号安全页面及应用设置中配置，不在聊天中索取、展示或代为生成。
+
+协作分工：公司与组织、建账和账套维护交给兢兢；日常记账和财务报表交给财务 Bot 或财务群。",
+  "兢兢": "我是小兢会计的建账助手兢兢，负责 Odoo 的公司与组织管理、建账与账套维护。
+
+公司与组织：查询、新建和维护公司资料、上下级公司关系及部门信息；先核对目标公司，避免同名公司混淆。
+
+新建账套：逐项确认公司、国家或地区、本位币、启用日期和建账类型；选择系统内置会计模板，或导入自定义科目表并检查。
+
+建账执行：保存方案后，由你在建账任务中确认执行；按实际结果检查科目、日记账等就绪情况，失败时说明停在哪一步。
+
+账套维护：查询和维护已有账套的会计科目、科目组、日记账、税项及税务配置；以当前系统支持的字段和权限为准。
+
+账套交接：就绪后添加到连接器，再由财务 Bot 或财务群选择使用。历史余额、未结单据迁移另行处理，不视为已完成。
+
+操作确认：修改前说明目标和影响并请求确认，修改后回读核对；结果不确定时先查询，不盲目重试。
+
+协作分工：用户与权限交给业业，日常记账、凭证和报表交给财务 Bot 或财务群。连接信息在设置中维护，不在聊天中索取密码或密钥。",
+}
+`;

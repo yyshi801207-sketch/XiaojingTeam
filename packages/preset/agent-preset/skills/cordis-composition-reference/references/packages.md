@@ -120,12 +120,12 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-client-ui-trajectory` | no | Trajectory event ledger with an interactive timing overview: pure-consumer plugin registering into the conversation ViewMap (no service) |
 | `@deepseek-ai/dsh-client-ui-usage-accounting` | no | Sidebar daily usage summary and current-month usage calendar |
 | `@deepseek-ai/dsh-client-ui-user-questions` | no | Web ask_user_question composer takeover and plan-review presentation UI |
-| `@deepseek-ai/dsh-client-ui-weixin-channel` | no | Katcats settings page for the local Weixin iLink channel |
+| `@deepseek-ai/dsh-client-ui-weixin-channel` | no | Xiaojing Accounting settings page for the local Weixin iLink channel |
 | `@deepseek-ai/dsh-client-ui-workflow-run` | no | Durable workflow-run Conversation Node and nested member disclosure for dsh web |
 | `@deepseek-ai/dsh-client-ui-workspace` | no | Workspace picker plugin: one WorkspacePicker registered into the sidebar and empty-state workspace slots |
-| `@deepseek-ai/dsh-client-ui-xiaojing-browser-control` | no | Katcats settings for controlling existing Chrome and Edge tabs |
-| `@deepseek-ai/dsh-client-ui-xiaojing-finance-clients` | no | Katcats Finance client management and immutable session-context surfaces |
-| `@deepseek-ai/dsh-client-xiaojing-product` | no | Katcats product branding, onboarding, theme, and default persona |
+| `@deepseek-ai/dsh-client-ui-xiaojing-browser-control` | no | Xiaojing Accounting settings for controlling existing Chrome and Edge tabs |
+| `@deepseek-ai/dsh-client-ui-xiaojing-finance-clients` | no | Xiaojing Accounting Finance client management and immutable session-context surfaces |
+| `@deepseek-ai/dsh-client-xiaojing-product` | no | Xiaojing Finance product branding, onboarding, theme, and default persona |
 
 ## compaction
 
@@ -531,4 +531,4 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-xiaojing-finance-domain` | yes | Local finance client records and immutable per-session client context for Katcats |
 | `@deepseek-ai/dsh-xiaojing-finance-evidence` | yes | Official-source finance and tax evidence retrieval for Katcats Finance mode |
 | `@deepseek-ai/dsh-xiaojing-visualize` | yes | Katcats isolated visualization cards with the original dsh-visualize palette. |
-| `@deepseek-ai/dsh-xiaojing-weixin-channel` | yes | Katcats Weixin iLink channel, durable Agent session bridge, and encrypted image/document transfer |
+| `@deepseek-ai/dsh-xiaojing-weixin-channel` | yes | Xiaojing Accounting Weixin iLink channel, durable Agent session bridge, and encrypted image/document transfer |

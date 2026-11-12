@@ -1,18 +1,22 @@
 /** Member settings inside the existing per-Session right sidebar. */
-import { useId, useState } from 'react'
-import { Button, IconClockOutlineRegular, Input, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
+import { useId, useRef, useState } from 'react'
+import { Button, IconClockOutlineRegular, Input, Tag, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRenderFactories, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import type { ConnectionState } from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-client-ui-permission-presets/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
-import type { TeamBot, TeamGroup, UpdateBotRequest } from '../types.ts'
+import { isOdooAdminBot, ledgerSetupBotId, type BotId, type TeamBot, type TeamGroup, type UpdateBotRequest } from '../types.ts'
 import type { ModelCatalog } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { TeamView } from './model.ts'
 import { AppearancePicker } from './avatars.tsx'
 import { BotIdentityAvatar } from './BotIdentityAvatar.tsx'
 import { Choice } from './Choice.tsx'
+import { FinanceBinding, type FinanceBindingActions } from './FinanceBinding.tsx'
+import type { FinanceSetupView } from './FinanceLedgerSetup.tsx'
+import { LedgerSetupDatabaseSettings, type LedgerSetupDatabaseControls } from './LedgerSetupDatabaseSettings.tsx'
+import { ResponsibilityField } from './ResponsibilityField.tsx'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
 import css from './team.module.css'
 import settingsCss from './settings.module.css'
@@ -23,7 +27,10 @@ export interface BotSettingsInjected {
   readonly hooks: {
     readonly directory: ObservableSnapshot<TeamView>
     readonly connection: ObservableSnapshot<ConnectionState | undefined>
+    readonly financeSetup: ObservableSnapshot<FinanceSetupView>
   }
+  readonly finance?: FinanceBindingActions<BotId>
+  readonly setupDatabase: LedgerSetupDatabaseControls | null
   readonly save: (request: UpdateBotRequest) => Promise<void>
   readonly openMemory: () => void
   readonly openSchedules: (sessionId: TeamBot['sessionId']) => void
@@ -38,11 +45,12 @@ export type BotSettingsProps = PropsRuntime<'sidebar.right.pane.tab'> & PropsLoc
  * @param props - Framework Session identity and directory hook.
  * @returns Settings for the scoped member or its unavailable state.
  */
-export function BotSettings({ sessionId, useDirectory, useProjection, useConnection, useTabInfo, renderFactorySlot,
-  save, openMemory, openSchedules, t }: BotSettingsProps) {
+export function BotSettings({ sessionId, useDirectory, useProjection, useConnection, useFinanceSetup, useTabInfo, renderFactorySlot,
+  save, openMemory, openSchedules, finance, setupDatabase, t }: BotSettingsProps) {
   const view = useDirectory(value => value)
   const selection = useProjection('modelSelection')
   const connected = useConnection(value => value === 'connected')
+  const setupView = useFinanceSetup(value => value)
   const visible = useTabInfo().tab.visible
   const bot = view.snapshot?.bots.find(item => item.sessionId === sessionId)
   if (bot === undefined || view.snapshot === null) return <p className={css.empty}>{t('bot.missing')}</p>
@@ -50,11 +58,12 @@ export function BotSettings({ sessionId, useDirectory, useProjection, useConnect
     sessionChoice={selection?.next ?? selection?.lastUsed ?? undefined} lastUsedModel={selection?.lastUsed ?? undefined}
     overrideEnabled={view.snapshot.modelCapabilities.override} followEnabled={view.snapshot.modelCapabilities.followGlobal}
     permissionsEnabled={view.phase === 'ready' && connected && visible} renderFactorySlot={renderFactorySlot}
-    save={save} openMemory={openMemory} openSchedules={openSchedules} t={t} />
+    ledgerSetup={isOdooAdminBot(bot.id) && setupDatabase !== null ? { view: setupView, controls: setupDatabase } : null}
+    save={save} openMemory={openMemory} openSchedules={openSchedules} finance={finance} t={t} />
 }
 
 function SettingsForm({ bot, groups, catalog, sessionChoice, lastUsedModel, overrideEnabled, followEnabled, permissionsEnabled,
-  renderFactorySlot, save, openMemory, openSchedules, t }: PropsRenderFactories & {
+  renderFactorySlot, save, openMemory, openSchedules, finance, ledgerSetup, t }: PropsRenderFactories & {
     readonly bot: TeamBot
     readonly groups: readonly TeamGroup[]
     readonly catalog: ModelCatalog | null
@@ -63,14 +72,19 @@ function SettingsForm({ bot, groups, catalog, sessionChoice, lastUsedModel, over
     readonly overrideEnabled: boolean
     readonly followEnabled: boolean
     readonly permissionsEnabled: boolean
+    readonly finance: FinanceBindingActions<BotId> | undefined
+    readonly ledgerSetup: { readonly view: FinanceSetupView; readonly controls: LedgerSetupDatabaseControls } | null
     readonly save: (request: UpdateBotRequest) => Promise<void>
     readonly openMemory: () => void
     readonly openSchedules: BotSettingsInjected['openSchedules']
     readonly t: TranslateNS<'katcats.team'>
   }) {
-  const [draft, setDraft] = useState<Partial<Pick<TeamBot, 'name' | 'role' | 'avatar' | 'model' | 'groupId'>> | null>(null)
+  const [draft, setDraft] = useState<Partial<Pick<TeamBot, 'name' | 'avatar' | 'model' | 'groupId'>> | null>(null)
   const value = { ...bot, ...draft }
+  const dedicatedFinance = bot.financePreset !== undefined
+  const fixedAssistant = isOdooAdminBot(bot.id)
   const [busy, setBusy] = useState(false)
+  const savingGate = useRef(false)
   const [saved, setSaved] = useState(false)
   const [modelChanged, setModelChanged] = useState(false)
   const id = useId()
@@ -85,38 +99,55 @@ function SettingsForm({ bot, groups, catalog, sessionChoice, lastUsedModel, over
   const modelKnown = options.some(option => option.key === selected)
   const modelEnabled = overrideEnabled || followEnabled
   const modelLabel = (model: TeamBot['model']) => model.kind === 'follow-global' ? t('bot.followGlobal') : `${model.provider} / ${model.model}`
+  const saveSettings = async (request: UpdateBotRequest): Promise<void> => {
+    if (savingGate.current) throw new Error('Bot settings are already being saved.')
+    savingGate.current = true
+    setBusy(true)
+    try { await save(request) }
+    finally { savingGate.current = false; setBusy(false) }
+  }
   return <form className={[css.settings, settingsCss.scroll].join(' ')} aria-busy={busy} onSubmit={(event) => {
     event.preventDefault()
-    if (busy || draft === null || value.name.trim() === '') return
-    setBusy(true)
+    if (savingGate.current || busy || draft === null || value.name.trim() === '') return
     const request: UpdateBotRequest = {
       id: bot.id,
       ...(draft.name === undefined ? {} : { name: draft.name.trim() }),
-      ...(draft.role === undefined ? {} : { role: draft.role }),
       ...(draft.avatar === undefined ? {} : { avatar: draft.avatar }),
       ...(modelChanged && (value.model.kind === 'override' ? overrideEnabled : followEnabled) ? { model: value.model } : {}),
       ...(bot.kind === 'main' || draft.groupId === undefined || draft.groupId === null ? {} : { groupId: draft.groupId }),
     }
-    void save(request).then(
+    void saveSettings(request).then(
       () => { setDraft(null); setModelChanged(false); setSaved(true) },
       () => { /* The frame-owned toast reports the failure; retain this draft. */ },
-    ).finally(() => { setBusy(false) })
+    )
   }}>
     <div className={[css.settingsIdentity, settingsCss.identity].join(' ')}>
       <BotIdentityAvatar bot={value} size={60} /><h2>{bot.name}</h2>
+      {dedicatedFinance && <Tag>{t('bot.financeBadge')}</Tag>}
       <Tooltip label={t('team.automations')}><button type="button" className={settingsCss.automation}
         aria-label={t('team.automations')} onClick={() => { openSchedules(bot.sessionId) }}>
         <IconClockOutlineRegular size={18} />
       </button></Tooltip>
     </div>
-    <label className={css.label} htmlFor={`${id}-name`}>{t('bot.name')}</label>
-    <Input id={`${id}-name`} value={value.name} maxLength={40} disabled={busy}
-      onChange={(event) => { set({ name: event.target.value }) }} />
-    <label className={css.label} htmlFor={`${id}-role`}>{t('bot.role')}</label>
-    <textarea id={`${id}-role`} className={css.textarea} value={value.role} disabled={busy}
-      placeholder={t('bot.rolePlaceholder')} onChange={(event) => { set({ role: event.target.value }) }} />
-    {bot.kind !== 'main' && <AppearancePicker value={value.avatar} onChange={(avatar) => { set({ avatar }) }} t={t} disabled={busy} />}
-    {bot.kind !== 'main' && <><label className={css.label} htmlFor={`${id}-group`}>{t('bot.group')}</label>
+    {fixedAssistant ? <>
+      <p className={css.hint}>{t(bot.id === ledgerSetupBotId ? 'team.ledgerAssistantRole' : 'team.accessAssistantRole')}</p>
+      <ResponsibilityField id={`${id}-role`} label={t('bot.role')}
+        value={t(bot.id === ledgerSetupBotId ? 'team.ledgerAssistantResponsibilities' : 'team.accessAssistantResponsibilities')}
+        placeholder={t('bot.rolePlaceholder')} disabled={false} t={t} />
+    </> : <>
+      <label className={css.label} htmlFor={`${id}-name`}>{t('bot.name')}</label>
+      <Input id={`${id}-name`} value={value.name} maxLength={40} disabled={busy}
+        onChange={(event) => { set({ name: event.target.value }) }} />
+      <ResponsibilityField id={`${id}-role`} label={t('bot.role')} value={bot.role}
+        placeholder={t('bot.rolePlaceholder')} disabled={busy || !permissionsEnabled} t={t}
+        save={role => saveSettings({ id: bot.id, role })} />
+    </>}
+    {dedicatedFinance && !fixedAssistant && finance !== undefined && <FinanceBinding ownerId={bot.id} scope="bot" active={permissionsEnabled}
+      busy={busy} actions={finance} t={t} />}
+    {ledgerSetup !== null && <LedgerSetupDatabaseSettings view={ledgerSetup.view} controls={ledgerSetup.controls}
+      enabled={permissionsEnabled && !busy} />}
+    {bot.kind !== 'main' && !fixedAssistant && <AppearancePicker value={value.avatar} onChange={(avatar) => { set({ avatar }) }} t={t} disabled={busy} />}
+    {bot.kind !== 'main' && !fixedAssistant && <><label className={css.label} htmlFor={`${id}-group`}>{t('bot.group')}</label>
       <Choice id={`${id}-group`} label={t('bot.group')} value={value.groupId ?? ''} disabled={busy}
         options={groups.filter(group => group.kind === 'bots').map(group => ({ value: group.id, label: group.system ? t('team.bots') : group.name }))}
         onChange={(next) => {
@@ -153,7 +184,7 @@ function SettingsForm({ bot, groups, catalog, sessionChoice, lastUsedModel, over
     </div>}
     {catalog !== null && catalog.groups.length === 0 && sessionChoice === undefined && <p className={css.hint}>{t('bot.noModel')}</p>}
     <section className={permissionCss.section} aria-labelledby={`${id}-permissions`}>
-      <h3 id={`${id}-permissions`} className={permissionCss.title}>{t('permissions.bot')}</h3>
+      <h3 id={`${id}-permissions`} className={css.label}>{t('permissions.bot')}</h3>
       <p className={permissionCss.hint}>{t('permissions.botHint')}</p>
       {permissionsEnabled ? renderFactorySlot('permission.select', { locked: busy })
         : <p className={permissionCss.hint}>{t('permissions.unavailable')}</p>}

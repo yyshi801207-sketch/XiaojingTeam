@@ -232,6 +232,7 @@ describe('group task record', () => {
       sendMessage: unused, cancelSession: unused, snapshot: async () => ({ ok: true, value: saved }),
       async *follow() { yield { type: 'snapshot', value: saved } },
       createChat: unused, deleteChat: unused, pause: unused, resume: unused, stop: unused,
+      continueTask: unused, completeTask: unused,
       updateChat: async (request) => {
         const chat = { ...saved.chats[0]!, showHandoffRecords: request.showHandoffRecords !== false }
         saved = { ...saved, revision: saved.revision + 1, chats: [chat] }
@@ -587,6 +588,26 @@ describe('group task record', () => {
     const { props, view } = renderTask(taskNodes(assembler)[0]!)
     view.rerender(<GroupTaskLifecycle {...props} sessionId={sessionId as SessionId} />)
     expect(view.container.textContent).toBe('')
+  })
+
+  it.each([taskZh, taskEn])('shows an incomplete review and next step even when handoff records are hidden', (locale) => {
+    const assembler = engine()
+    const error = { code: 'KATCATS_CHAT_REVIEW_INCOMPLETE', message: 'The reviewer requested changes.' }
+    assembler.replaceWindow([stage(1, 'queued'), stage(2, 'failed', { error })], false)
+    const { props, view } = renderTask(taskNodes(assembler)[0]!, locale)
+    expect(screen.getByText(locale['task.reviewIncomplete'])).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toBe(locale['task.reviewNextStep'])
+    expect(screen.getByText(error.message).closest('details')?.open).toBe(false)
+    expect(screen.queryByText(locale['state.completed'])).toBeNull()
+
+    const hidden = presentationDirectory({ showHandoffRecords: false })
+    view.rerender(<GroupTaskLifecycle {...props} useGroupDirectory={hidden.useGroupDirectory} />)
+    expect(screen.getByRole('status').textContent).toContain(locale['task.reviewIncomplete'])
+    expect(screen.getByRole('status').textContent).toContain(locale['task.reviewNextStep'])
+    expect(screen.queryByRole('article')).toBeNull()
+    expect(screen.queryByText(error.message)).toBeNull()
+    view.rerender(<GroupTaskLifecycle {...props} useGroupDirectory={hidden.useGroupDirectory} sessionId={'writer-private' as SessionId} />)
+    expect(screen.queryByRole('status')).toBeNull()
   })
 
   it('localizes historical initiators and removed members without reading their private histories', () => {

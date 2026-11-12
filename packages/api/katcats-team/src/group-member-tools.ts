@@ -11,6 +11,7 @@ import type { GroupHistoryQuery, GroupHistoryResult } from './group-context.ts'
 import { createGroupHistoryTool } from './group-history-tool.ts'
 import { createGroupTicketTool } from './group-ticket-tool.ts'
 import type { GroupTicket, RecordGroupTicket } from './group-tickets.ts'
+import { createGroupSemanticAcceptanceTool, type GroupSemanticAcceptanceRequest } from './group-semantic-acceptance.ts'
 
 const reviewPolicy = { type: 'object', additionalProperties: false, properties: {
   reason: { type: 'string', enum: ['none', 'financial-conclusion', 'data-change', 'explicit-review'], required: true },
@@ -21,6 +22,14 @@ const reviewCandidate = { type: 'object', additionalProperties: false, propertie
   files: { type: 'array', required: true, items: { type: 'object', additionalProperties: false, properties: {
     path: { type: 'string', required: true }, sha256: { type: 'string', required: true },
   } } },
+  sources: { type: 'array', items: { type: 'object', additionalProperties: false, properties: {
+    deliveryId: { type: 'string', required: true }, botId: { type: 'string', required: true },
+  } } },
+  odooOperation: { type: 'object', additionalProperties: false, properties: {
+    connectorId: { type: 'string', required: true }, companyId: { type: 'number', required: true },
+    baseUrl: { type: 'string', required: true }, database: { type: 'string', required: true },
+    model: { type: 'string', required: true }, method: { type: 'string', required: true }, parametersJson: { type: 'string', required: true },
+  } },
 } } as const
 const reviewReceipt = { type: 'object', additionalProperties: false, properties: {
   parentDeliveryId: { type: 'string', required: true }, deliveryId: { type: 'string', required: true },
@@ -31,6 +40,8 @@ const reviewReceipt = { type: 'object', additionalProperties: false, properties:
 
 /** Runtime-owned authorization and group mutations for the exact currently executing member. */
 export interface GroupMemberToolActions {
+  /** Apply the owner's clear acceptance to an exact previously published task revision. */
+  acceptTask?(request: GroupSemanticAcceptanceRequest, exec: ToolRunContext): Promise<GroupTicket>
   /** Search saved task descriptions inside this group; omitted only for legacy registrations. */
   findTickets?(query: string, exec: ToolRunContext): Promise<string>
   /** Classify direct owner messages; omitted only for legacy tool registrations. */
@@ -44,6 +55,8 @@ export interface GroupMemberToolActions {
     chat_id: string
     own_task: string
     assignments: { bot_id: string; message: string }[]
+    task_id?: string
+    acceptance_missing?: boolean
     review?: { reason: 'none' | 'financial-conclusion' | 'data-change' | 'explicit-review'; reviewer_bot_id?: string }
   }>
   /** Save only the group settings explicitly requested by the owner in this group's conversation. */
@@ -154,6 +167,7 @@ export function registerGroupMemberTools(agent: Agent, actions: GroupMemberToolA
       schema: { type: 'object', additionalProperties: false, properties: {
         chat_id: { type: 'string', required: true }, own_task: { type: 'string', required: true },
         review: reviewPolicy,
+        task_id: { type: 'string' }, acceptance_missing: { type: 'boolean' },
         assignments: { type: 'array', required: true, items: {
           type: 'object', additionalProperties: false, properties: {
             bot_id: { type: 'string', required: true }, message: { type: 'string', required: true },
@@ -221,8 +235,13 @@ export function registerGroupMemberTools(agent: Agent, actions: GroupMemberToolA
     parameters: {
       bot_id: { type: 'string', required: true, description: 'Member identity from list_group_members.' },
       message: { type: 'string', required: true, description: 'Concrete question or task for that member.' },
-      review_candidate: { type: 'object', additionalProperties: false, description: 'For independent review only: exact draft text and/or existing files inside this group working directory.', properties: {
+      review_candidate: { type: 'object', additionalProperties: false, description: 'For independent review only: exact draft text/files or a pending Odoo write. Declare source_delivery_ids for delegated work; its maker cannot review it. A review result does not complete the reviewer’s separate business assignment. After an approved write, read back and separately review the resulting final deliverable.', properties: {
         text: { type: 'string' }, files: { type: 'array', items: { type: 'string' } },
+        source_delivery_ids: { type: 'array', items: { type: 'string' }, description: 'Saved completed child delivery IDs whose work is included. Omit only for your own original candidate.' },
+        odoo_operation: { type: 'object', additionalProperties: false, properties: {
+          model: { type: 'string', required: true }, method: { type: 'string', required: true },
+          parameters_json: { type: 'string', required: true, description: 'Exact parameters_json intended for call_group_odoo_orm; the host captures the bound destination and company.' },
+        } },
       } },
     },
     output: {
@@ -247,11 +266,18 @@ export function registerGroupMemberTools(agent: Agent, actions: GroupMemberToolA
       const result = await actions.request(text(args.bot_id), text(args.message), exec, candidate === undefined ? undefined : {
         ...(candidate.text === undefined ? {} : { text: candidate.text }),
         ...(candidate.files === undefined ? {} : { files: candidate.files.map(text) }),
+        ...(candidate.source_delivery_ids === undefined ? {} : { sourceDeliveryIds: candidate.source_delivery_ids.map(value => brandString<ChatDeliveryId>(text(value))) }),
+        ...(candidate.odoo_operation === undefined ? {} : { odooOperation: {
+          model: text(candidate.odoo_operation.model), method: text(candidate.odoo_operation.method),
+          parametersJson: text(candidate.odoo_operation.parameters_json),
+        } }),
       })
       const { review_candidate: savedCandidate, ...rest } = result
-      return { ...rest, ...(savedCandidate === undefined ? {} : { review_candidate: {
-        ...savedCandidate, files: savedCandidate.files.map(file => ({ ...file })),
-      } }) }
+      if (savedCandidate === undefined) return rest
+      const { sources, files, ...saved } = savedCandidate
+      return { ...rest, review_candidate: { ...saved, files: files.map(file => ({ ...file })),
+        ...(sources === undefined ? {} : { sources: sources.map(source => ({ ...source })) }),
+      } }
     },
     presentCall: () => ({ card: 'generic', title: 'Request group member', kind: 'edit' }),
     presentResult: (_args, result) => ({ card: 'generic', title: result.isError ? 'Member result was not confirmed' : 'Member result received', content: result.content }),
@@ -305,10 +331,12 @@ export function registerGroupMemberTools(agent: Agent, actions: GroupMemberToolA
   if (history !== undefined) definitions.push(createGroupHistoryTool(admit, history))
   const recordTicket = actions.recordTicket?.bind(actions)
   if (recordTicket !== undefined) definitions.push(createGroupTicketTool(admit, recordTicket))
+  const acceptTask = actions.acceptTask?.bind(actions)
+  if (acceptTask !== undefined) definitions.push(createGroupSemanticAcceptanceTool(admit, acceptTask))
   const findTickets = actions.findTickets?.bind(actions)
   if (findTickets !== undefined) definitions.push(defineTool({
     name: 'find_group_tasks',
-    description: 'Find saved business tasks in this group by task ID or goal keyword. Empty query returns the most recently updated tasks. Results are bounded by the configured history page size; narrow the query when more matches remain. Use original message IDs with read_group_history to verify facts, not task descriptions alone.',
+    description: 'Find saved business tasks in this group and current ledger by task ID or goal keyword. Empty query returns the most recently updated tasks. Results are bounded by the configured history page size. Use read_group_history with original message IDs to verify facts from the task descriptions. Tasks whose recorded owner left the group require an explicitly confirmed transfer to the current group manager using record_group_task with take_over_owner and the full owner_transfer_quote; never silently choose a new owner.',
     parameters: { query: { type: 'string', required: true } },
     output: { schema: { type: 'object', additionalProperties: false, properties: { result: { type: 'string', required: true } } },
       render: (_args, value) => [{ type: 'text', text: value.result }], presentationMeta: (_args, value) => value },

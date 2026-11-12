@@ -6,6 +6,7 @@ import { finalResponse, validatedSessionEvent } from '../src/api.ts'
 
 const fixture = new URL('../../../api/katcats-team/tests/expected/sdk-group-task-event.json', import.meta.url)
 const contextFixture = new URL('../../../api/katcats-team/tests/expected/sdk-group-context-events.json', import.meta.url)
+const welcomeFixture = new URL('../../../api/katcats-team/tests/expected/sdk-group-finance-welcome.json', import.meta.url)
 
 describe('Katcats group activity in the TypeScript SDK', () => {
   it('preserves the complete event without producing an assistant reply', () => {
@@ -21,8 +22,21 @@ describe('Katcats group activity in the TypeScript SDK', () => {
     const events = expected.map(validatedSessionEvent)
     expect(events).toEqual(expected)
     expect(finalResponse(events)).toBe('')
-    expect(events.map(event => event.type)).toEqual(['user/message', 'user/message'])
+    expect(events.map(event => event.type)).toEqual(['user/message', 'user/message', 'user/message'])
+    expect(events[2]?.data).toMatchObject({ source: { reviewRequest: { candidate: {
+      sources: [{ deliveryId: 'sdk-author-delivery', botId: 'maker' }],
+      odooOperation: { connectorId: 'sdk-finance', companyId: 7, model: 'account.move', method: 'create' },
+    } } } })
     const restored = Session.create(SessionId('sdk-group-reviewer'), events)
     expect(restored.deriveMessages()).toEqual(events.map(event => event.data))
+  })
+
+  it('retains a finance welcome as a connection notice', () => {
+    const expected: unknown = JSON.parse(readFileSync(welcomeFixture, 'utf8'))
+    const event = validatedSessionEvent(expected)
+    expect(event).toEqual(expected)
+    expect(finalResponse([event])).toBe('')
+    const restored = Session.create(SessionId('sdk-group-root'), [event])
+    expect(restored.deriveMessages()).toEqual([event.data])
   })
 })

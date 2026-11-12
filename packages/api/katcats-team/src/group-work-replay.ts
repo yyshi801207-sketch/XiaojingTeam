@@ -7,6 +7,7 @@ import type { ChatDelivery, ChatDeliveryId } from './chats-types.ts'
 import type { BotId } from './types.ts'
 import { GroupWorkGate } from './group-work.ts'
 import { groupReviewCandidateSchema, groupReviewReceiptSchema } from './group-review.ts'
+import { FINANCE_ORM_UNKNOWN_OUTCOME } from './finance-orm-tool.ts'
 
 const policy = z.object({ reason: z.enum(['none', 'financial-conclusion', 'data-change', 'explicit-review']),
   reviewer_bot_id: z.string().min(1).optional() }).strict()
@@ -48,6 +49,9 @@ export function restoreGroupWorkGate(
         if (typeof args === 'object' && args !== null && 'review_candidate' in args) gate.invalidateReview()
       }
     }
+    if (event.type === 'tool/result' && event.data.turn === ownedTurn && event.data.error?.code === FINANCE_ORM_UNKNOWN_OUTCOME) {
+      gate.markUnknownOperation()
+    }
     if (event.type !== 'tool/result' || event.data.turn !== ownedTurn || event.data.message.isError === true) continue
     const name = calls.get(event.data.message.source.callId)
     if (name === 'plan_group_work') {
@@ -69,7 +73,8 @@ export function restoreGroupWorkGate(
       && item.state === 'completed' && item.receipt !== null && item.source.kind === 'tool'
       && item.source.parentDeliveryId === deliveryId && item.source.callId === event.data.message.source.callId)
     if (child === undefined) throw new HarnessError('The actual group member receipt is missing or unconfirmed.', 'KATCATS_CHAT_REVIEW_UNCONFIRMED')
-    gate.receive(child.botId)
+    // A review child is not the member's separately assigned business result.
+    if (result.review_candidate === undefined && result.review === undefined) gate.receive(child.botId)
     if (result.review_candidate !== undefined) gate.beginReview(child.botId, result.review_candidate)
     if (result.review !== undefined) {
       if (result.review.deliveryId !== child.id || result.review.reviewerId !== child.botId) {

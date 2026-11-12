@@ -13,6 +13,7 @@ flowchart LR
   svc_katcatsTeam["ctx.katcatsTeam<br/>Katcats member directory"]
   svc_katcatsChats["ctx.katcatsChats<br/>Katcats group collaboration"]
   svc_katcatsMemory["ctx.katcatsMemory<br/>Katcats scoped memories"]
+  svc_xiaojingLedgerSetup["ctx.xiaojingLedgerSetup<br/>Xiaojing ledger setup and administration"]
   pkg_usage_accounting["usage-accounting"]
   svc_usageAccounting["ctx.usageAccounting<br/>Local request-time usage accounting"]
   pkg_client_ui_usage_accounting["client-ui-usage-accounting"]
@@ -350,6 +351,7 @@ flowchart LR
   pkg_client_katcats_team --> svc_katcatsChats
   pkg_client_katcats_team --> svc_katcatsMemory
   pkg_client_katcats_team --> svc_katcatsTeam
+  pkg_client_katcats_team --> svc_xiaojingLedgerSetup
   pkg_client_modules --> svc_clientModules
   pkg_client_product_analytics --> svc_productAnalytics
   pkg_client_ui_plugin_manager --> svc_pluginRegistryProbe
@@ -659,6 +661,7 @@ flowchart LR
   svc_xiaojingFinanceDomain --> pkg_xiaojing_finance_documents
   svc_xiaojingFinanceDomain --> pkg_xiaojing_finance_evidence
   svc_xiaojingFinanceEvidence --> pkg_xiaojing_finance_evidence
+  svc_xiaojingLedgerSetup --> pkg_client_katcats_team
   svc_xiaojingNativeBrowserSettings --> pkg_xiaojing_browser_control
   svc_xiaojingWeixinChannel --> pkg_client_ui_weixin_channel
   svc_fs -. event gate .-> pkg_fs_observation_policy
@@ -669,6 +672,7 @@ flowchart LR
 | `ctx.katcatsTeam` | `service` | [`client-katcats-team`](../packages/api/katcats-team) | - | [`client-katcats-team`](../packages/api/katcats-team) | - | 在独立产品组合中负责持久化 Bot 身份、逻辑分组、私聊 Session 绑定及仅所有者可用的成员设置。 |
 | `ctx.katcatsChats` | `service` | [`client-katcats-team`](../packages/api/katcats-team) | - | [`client-katcats-team`](../packages/api/katcats-team) | - | 在独立产品组合中负责群成员、独立的成员执行 Session、持久化回复，以及暂停、继续和停止控制。 |
 | `ctx.katcatsMemory` | `service` | [`client-katcats-team`](../packages/api/katcats-team) | - | [`client-katcats-team`](../packages/api/katcats-team) | - | 在独立产品组合中负责 Bot、群及团队事实，以及所有者选择的分享和按会话作用域访问的模型记忆。 |
+| `ctx.xiaojingLedgerSetup` | `service` | [`client-katcats-team`](../packages/api/katcats-team) | - | [`client-katcats-team`](../packages/api/katcats-team) | - | 负责固定财务助手的数据库连接、持久化的公司建账方案、初始化检查点和管理工具。 |
 | `ctx.usageAccounting` | `core` | [`usage-accounting`](../packages/llm/usage-accounting) | - | [`client-ui-usage-accounting`](../packages/client/ui-usage-accounting) | - | 按实际请求凭据身份结算提供方报告的用量，并提供脱敏的当前 Key 月度汇总。 |
 | `ctx.xiaojingBrowserControl` | `core` | [`xiaojing-browser-control`](../packages/xiaojing/xiaojing-browser-control) | - | [`xiaojing-browser-control`](../packages/xiaojing/xiaojing-browser-control) | - | 负责已配置产品浏览器的操作及其审批策略。 |
 | `ctx.xiaojingNativeBrowserSettings` | `core` | [`xiaojing-browser-control`](../packages/xiaojing/xiaojing-browser-control) | - | [`xiaojing-browser-control`](../packages/xiaojing/xiaojing-browser-control) | - | 负责各浏览器的权限、已观察连接状态及经验证的设置页导航。 |

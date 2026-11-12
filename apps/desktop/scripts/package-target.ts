@@ -556,7 +556,7 @@ export async function packageTarget(
     const source = join(artifactsRoot, `${PRODUCT_EXECUTABLE_NAME}-${version}-win-x64${invocation.unsigned ? '-unsigned' : ''}.exe`)
     const delivery = await copyWindowsInstallerDelivery(source,
       join(REPOSITORY_ROOT, 'output', 'releases', 'windows', version), version, createdAt)
-    console.log(`小兢会计团队版 installer: ${delivery}`)
+    console.log(`小兢财务 installer: ${delivery}`)
   }
   if (!invocation.directory && !invocation.unsigned && !invocation.skipNotarization) {
     writeReleaseRecord(target, electronBuilderEnv, buildPaths.artifacts)

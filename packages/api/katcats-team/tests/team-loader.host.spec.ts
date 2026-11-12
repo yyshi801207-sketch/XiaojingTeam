@@ -284,46 +284,64 @@ function malformedHandoff(): StreamChunk[] {
 }
 
 describe('Katcats directory through the real Loader and owner Remote', () => {
-  it('creates a complete team and group from the main conversation with replayable saved receipts', async () => {
+  it('asks where to place a team, then saves new members and their chat in the selected folder', async () => {
     const root = await mkdtemp(join(tmpdir(), 'katcats-create-team-'))
     roots.push(root)
     let ctx: Context
     const h = await loadComposition(root, [
-      toolCallResponse('create-team-members', 'create_bots', { bots: [
-        { name: 'Accountant', role: 'Prepare accounts.' }, { name: 'CFO', role: 'Review and coordinate finance.' },
-      ] }),
+      toolCallResponse('inspect-team-folders', 'list_bots', {}),
+      textResponse('Should I use an existing folder, create a new folder, or leave this team ungrouped?'),
+      toolCallResponse('create-team-folder', 'create_bot_folder', { name: 'Finance operations' }),
       () => {
-        const bots = teamStateSchema.parse(ctx.storageDomain.get('katcats_team')!.global.get()).bots.filter(bot => bot.kind === 'ordinary')
+        const folder = teamStateSchema.parse(ctx.storageDomain.get('katcats_team')!.global.get()).groups.find(group => group.name === 'Finance operations')!
+        return toolCallResponse('create-team-members', 'create_bots', { bots: [
+          { name: 'Accountant', role: 'Prepare accounts.', group_id: folder.id },
+          { name: 'CFO', role: 'Review and coordinate finance.', group_id: folder.id },
+        ] })
+      },
+      () => {
+        const team = teamStateSchema.parse(ctx.storageDomain.get('katcats_team')!.global.get())
+        const folder = team.groups.find(group => group.name === 'Finance operations')!
+        const bots = team.bots.filter(bot => bot.groupId === folder.id)
         return toolCallResponse('create-team-chat', 'create_group_chat', {
-          name: 'Finance', member_ids: bots.map(bot => bot.id), manager_id: bots.find(bot => bot.name === 'CFO')!.id,
+          name: 'Finance', group_id: folder.id, member_ids: bots.map(bot => bot.id), manager_id: bots.find(bot => bot.name === 'CFO')!.id,
         })
       },
       toolCallResponse('inspect-team-chat', 'list_group_chats', {}),
       textResponse('Accountant and CFO are saved. Finance is ready in the sidebar, with CFO as manager.'),
     ], true)
     ctx = h.ctx
+    const priorFolder = (await ctx.katcatsTeam.createGroup({ name: 'Editorial' })).group
+    const priorBot = (await ctx.katcatsTeam.createBot({ name: 'Writer', groupId: priorFolder.id })).bot
     const main = (await ctx.katcatsTeam.snapshot()).bots.find(bot => bot.id === mainBotId)!
     await send(requireAgent(ctx, main), 'Create an Accountant and CFO with their roles, then put them in Finance with CFO managing.')
-    const bots = (await ctx.katcatsTeam.snapshot()).bots.filter(bot => bot.kind === 'ordinary')
+    expect((await ctx.katcatsTeam.snapshot()).bots).toHaveLength(2)
+    expect((await ctx.katcatsChats.snapshot()).chats).toEqual([])
+    await send(requireAgent(ctx, main), 'Create a new sidebar folder called Finance operations for the new members and chat.')
+    const team = await ctx.katcatsTeam.snapshot()
+    const folder = team.groups.find(group => group.name === 'Finance operations')!
+    const bots = team.bots.filter(bot => bot.groupId === folder.id)
     const saved = await ctx.katcatsChats.snapshot()
+    expect(team.bots.find(bot => bot.id === priorBot.id)).toEqual(priorBot)
     expect(bots).toHaveLength(2)
     expect(saved.chats).toHaveLength(1)
-    expect(saved.chats[0]).toMatchObject({ name: 'Finance', memberIds: bots.map(bot => bot.id),
+    expect(saved.chats[0]).toMatchObject({ name: 'Finance', groupId: folder.id, memberIds: bots.map(bot => bot.id),
       managerId: bots.find(bot => bot.name === 'CFO')!.id, run: null })
-    expect(h.adapter.requests).toHaveLength(4)
+    expect(h.adapter.requests).toHaveLength(7)
     expect(h.adapter.requests.every(request => request.sessionId === main.sessionId)).toBe(true)
     const log = await ctx.sessionController.inspect(main.sessionId)
     const results = log.events.flatMap(event => event.type === 'tool/result' ? [event.data] : [])
-    expect(results).toHaveLength(3)
+    expect(results).toHaveLength(5)
     expect(results.every(result => !result.message.isError)).toBe(true)
     const transcript = results.map(result => ({ callId: result.message.toolCallId, content: result.message.content, meta: result.meta }))
-    const stable = bots.reduce((text, bot) => text.replaceAll(bot.id, `<${bot.name}>`), JSON.stringify(transcript, null, 2))
-      .replaceAll(saved.chats[0]!.id, '<finance-chat>')
+    const stable = [...bots, priorBot].reduce((text, bot) => text.replaceAll(bot.id, `<${bot.name}>`), JSON.stringify(transcript, null, 2))
+      .replaceAll(saved.chats[0]!.id, '<finance-chat>').replaceAll(folder.id, '<finance-folder>').replaceAll(priorFolder.id, '<editorial-folder>')
     expect(stable).toMatchSnapshot()
     await ctx.fiber.dispose()
     contexts.delete(ctx)
     const reopened = await loadComposition(root, [], true)
     expect((await reopened.ctx.katcatsChats.snapshot()).chats).toEqual(saved.chats)
+    expect((await reopened.ctx.katcatsTeam.snapshot()).bots).toEqual(team.bots)
     expect(reopened.adapter.requests).toEqual([])
   })
 

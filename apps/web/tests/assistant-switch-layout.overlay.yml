@@ -1,0 +1,7 @@
+- id: katcats-team
+  config:
+    workspaceRoot: !!js process.cwd()
+    financeConnectors: true
+- id: katcats-chats
+  config:
+    workspaceRoot: !!js process.cwd()

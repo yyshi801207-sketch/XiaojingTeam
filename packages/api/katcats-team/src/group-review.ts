@@ -6,6 +6,7 @@ import { HarnessError } from '@deepseek-ai/dsh-llm'
 import { z } from 'zod'
 import type { ChatDeliveryId } from './chats-types.ts'
 import type { BotId } from './types.ts'
+import type { FinanceConnectorId } from './finance-types.ts'
 
 import type { GroupReviewCandidate, GroupReviewCandidateRequest, GroupReviewVersion } from './group-review-types.ts'
 
@@ -14,7 +15,28 @@ export const groupReviewCandidateSchema = z.object({
   version: z.string().regex(/^[a-f0-9]{64}$/).transform(value => brandString<GroupReviewVersion>(value)),
   text: z.string().nullable(),
   files: z.array(z.object({ path: z.string().min(1), sha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict()),
-}).strict()
+  sources: z.array(z.object({
+    deliveryId: z.string().min(1).transform(value => brandString<ChatDeliveryId>(value)),
+    botId: z.string().min(1).transform(value => brandString<BotId>(value)),
+  }).strict()).optional(),
+  odooOperation: z.object({
+    connectorId: z.string().min(1).transform(value => brandString<FinanceConnectorId>(value)),
+    companyId: z.number().int().positive(), baseUrl: z.string().min(1), database: z.string().min(1),
+    model: z.string().min(1), method: z.string().min(1), parametersJson: z.string().min(1),
+  }).strict().optional(),
+}).strict().transform(({ sources, odooOperation, ...candidate }) => ({ ...candidate,
+  ...(sources === undefined ? {} : { sources }), ...(odooOperation === undefined ? {} : { odooOperation }),
+}))
+
+/**
+ * Serialize JSON with stable object-key order; array order remains significant.
+ * @param value - Validated ORM arguments or other JSON values.
+ * @returns The canonical JSON used to compare an approved operation with dispatch.
+ */
+export function groupReviewJson(value: unknown): string {
+  return JSON.stringify(value, (_key, item: unknown) => item !== null && typeof item === 'object' && !Array.isArray(item)
+    ? Object.fromEntries(Object.entries(item).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)) : item)
+}
 
 /** Validate a persisted review receipt before granting completion. */
 export const groupReviewReceiptSchema = z.object({
@@ -32,17 +54,21 @@ export const groupReviewReceiptSchema = z.object({
  * @param request - original candidate text and paths; at least one must be nonempty.
  * @param signal - cancellation covering all filesystem operations.
  * @param maxBytes - configured cumulative byte budget; excess fails without truncation.
+ * @param context - host-verified source deliveries and external operation, when provided.
  * @returns stable content identity and canonical file references.
  */
 export async function captureGroupReviewCandidate(
   fs: FileSystem, cwd: string, request: GroupReviewCandidateRequest, signal: AbortSignal, maxBytes: number,
+  context: Pick<GroupReviewCandidate, 'sources' | 'odooOperation'> = {},
 ): Promise<GroupReviewCandidate> {
   signal.throwIfAborted()
   const text = request.text ?? null
-  if ((text === null || text.trim().length === 0) && (request.files === undefined || request.files.length === 0)) {
+  if ((text === null || text.trim().length === 0) && (request.files === undefined || request.files.length === 0)
+    && context.odooOperation === undefined) {
     throw new HarnessError('Provide the draft text or existing files to review.', 'KATCATS_CHAT_INVALID_REVIEW')
   }
   let remaining = maxBytes - Buffer.byteLength(text ?? '', 'utf8')
+    - (Object.keys(context).length === 0 ? 0 : Buffer.byteLength(JSON.stringify(context), 'utf8'))
   if (remaining < 0) throw new HarnessError('The review candidate exceeds the configured byte limit.', 'KATCATS_CHAT_REVIEW_TOO_LARGE')
   const root = await fs.resolve(cwd, { signal })
   const files: { path: string; sha256: string }[] = []
@@ -71,8 +97,9 @@ export async function captureGroupReviewCandidate(
   }
   files.sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0)
   signal.throwIfAborted()
-  const version = brandString<GroupReviewVersion>(createHash('sha256').update(JSON.stringify({ text, files })).digest('hex'))
-  return { version, text, files }
+  const content = { text, files, ...context }
+  const version = brandString<GroupReviewVersion>(createHash('sha256').update(JSON.stringify(content)).digest('hex'))
+  return { version, ...content }
 }
 
 /**
@@ -91,7 +118,10 @@ export async function verifyGroupReviewCandidate(
   try {
     current = await captureGroupReviewCandidate(fs, cwd, {
       ...(candidate.text === null ? {} : { text: candidate.text }), files: candidate.files.map(file => file.path),
-    }, signal, maxBytes)
+    }, signal, maxBytes, {
+      ...(candidate.sources === undefined ? {} : { sources: candidate.sources }),
+      ...(candidate.odooOperation === undefined ? {} : { odooOperation: candidate.odooOperation }),
+    })
   } catch (error) {
     if (error instanceof HarnessError && ['KATCATS_CHAT_INVALID_REVIEW', 'KATCATS_CHAT_REVIEW_CHANGED',
       'KATCATS_CHAT_REVIEW_TOO_LARGE', 'FS_NOT_FOUND', 'FS_NOT_REGULAR_FILE', 'FS_TOO_LARGE'].includes(error.code)) return false

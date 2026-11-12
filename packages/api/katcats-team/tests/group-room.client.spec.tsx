@@ -73,7 +73,7 @@ describe('group room action', () => {
     const h = setup()
     fireEvent.click(screen.getByRole('button', { name: '调度室' }))
     await screen.findByTestId('room-scene')
-    fireEvent.click(screen.getByRole('button', { name: '任务档案' }))
+    fireEvent.click(screen.getByRole('button', { name: '任务详情' }))
     expect(screen.getByText('还没有任务档案')).toBeTruthy()
     const ticket: GroupTicket = { version: 1, id: 'task-a' as GroupTicketId, ownerId: 'owner' as BotId,
       goal: '核对资料', acceptance: ['检查原文'], stage: '核验中', nextStep: '读取凭证',

@@ -4,7 +4,8 @@ import { isAbsolute } from 'node:path'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import { defineDomain } from '@deepseek-ai/dsh-storage-domain'
-import type { BotId, BotModel, GroupId, TeamBot, TeamGroup } from './types.ts'
+import { financeBotPresets, type BotId, type BotModel, type GroupId, type TeamBot, type TeamGroup } from './types.ts'
+import { financeTeamTemplates, type FinanceTeamCreation } from './finance-team-templates.ts'
 
 /** Stable product identities, independent of names and conversation ids. */
 export const mainBotId = brandString<BotId>('main')
@@ -40,6 +41,7 @@ const modelSchema = z.discriminatedUnion('kind', [
 const memberSchema = z.object({
   id: botId,
   kind: z.enum(['main', 'ordinary']),
+  financePreset: z.enum(financeBotPresets).optional(),
   name: z.string().trim().min(1),
   role: z.string(),
   avatar: avatarSchema,
@@ -47,7 +49,8 @@ const memberSchema = z.object({
   workDir: z.string().refine(isAbsolute, 'working directory must be absolute'),
   groupId: groupId.nullable(),
   sessionId,
-})
+}).transform(({ financePreset, ...member }): TeamBot => financePreset === undefined
+  ? member : { ...member, financePreset })
 
 const groupSchema = z.object({
   id: groupId,
@@ -64,6 +67,8 @@ export interface TeamState {
   readonly pendingBot: TeamBot | null
   /** Historical field name retained for complete title/model setting targets. */
   readonly pendingRename: TeamBot | null
+  /** Versioned team member allocations survive partial creation and preserve later member edits. */
+  readonly financeTeams?: readonly FinanceTeamCreation[]
 }
 
 /** Reject unexplained missing identities instead of resetting authoritative data. */
@@ -73,11 +78,21 @@ export const teamStateSchema: z.ZodType<TeamState> = z.object({
   groups: z.array(groupSchema),
   pendingBot: memberSchema.nullable(),
   pendingRename: memberSchema.nullable(),
-}).superRefine((state, issue) => {
+  financeTeams: z.array(z.object({
+    template: z.enum(financeTeamTemplates), name: z.string().trim().min(1), groupId,
+    memberIds: z.array(botId).min(4), completed: z.boolean(),
+  }).refine(team => team.memberIds.length === (team.template === 'compact-v1' || team.template === 'compact-v2' ? 4 : 8)
+    && new Set(team.memberIds).size === team.memberIds.length, 'invalid finance team positions')).optional(),
+}).transform(({ financeTeams, ...state }) => ({ ...state, ...(financeTeams === undefined ? {} : { financeTeams }) }))
+  .superRefine((state, issue) => {
   const fail = (message: string) => { issue.addIssue({ code: 'custom', message }) }
   if (new Set(state.bots.map(bot => bot.id)).size !== state.bots.length) fail('duplicate member identity')
   if (new Set(state.bots.map(bot => bot.sessionId)).size !== state.bots.length) fail('duplicate private Session')
   if (new Set(state.groups.map(group => group.id)).size !== state.groups.length) fail('duplicate group identity')
+  const teams = state.financeTeams ?? []
+  if (new Set(teams.map(team => JSON.stringify([team.groupId, team.name]))).size !== teams.length) fail('duplicate finance team allocation')
+  const allocated = teams.flatMap(team => team.memberIds)
+  if (new Set(allocated).size !== allocated.length) fail('finance team member belongs to multiple allocations')
   if (state.groups.length > 0 && (!state.groups.some(group => group.id === ordinaryGroupId && group.system && group.kind === 'bots')
     || !state.groups.some(group => group.id === chatGroupId && group.system && group.kind === 'chats'))) fail('missing system group')
   const members = state.pendingBot === null ? state.bots : [...state.bots, state.pendingBot]
@@ -85,7 +100,7 @@ export const teamStateSchema: z.ZodType<TeamState> = z.object({
   if (new Set(members.map(bot => bot.sessionId)).size !== members.length) fail('pending private Session already exists')
   for (const bot of members) {
     if (bot.kind === 'main') {
-      if (bot.id !== mainBotId || bot.groupId !== null) fail('invalid main member')
+      if (bot.id !== mainBotId || bot.groupId !== null || bot.financePreset !== undefined) fail('invalid main member')
     } else if (bot.id === mainBotId || !state.groups.some(group => group.id === bot.groupId && group.kind === 'bots')) {
       fail('ordinary member requires an ordinary group')
     }
@@ -98,7 +113,8 @@ export const teamStateSchema: z.ZodType<TeamState> = z.object({
     if (state.pendingBot !== null || previous === undefined
       || previous.sessionId !== next.sessionId
       || previous.workDir !== next.workDir
-      || previous.kind !== next.kind) fail('invalid pending rename')
+      || previous.kind !== next.kind || previous.financePreset !== next.financePreset
+      || (previous.financePreset !== undefined && previous.role !== next.role)) fail('invalid pending rename')
     if (next.kind === 'main' ? next.groupId !== null
       : !state.groups.some(group => group.id === next.groupId && group.kind === 'bots')) fail('invalid pending rename group')
   }

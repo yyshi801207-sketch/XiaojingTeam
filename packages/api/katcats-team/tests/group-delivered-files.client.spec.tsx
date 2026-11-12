@@ -7,10 +7,11 @@ import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { UiConversation } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { apply, inject } from '@deepseek-ai/dsh-client-ui-deliverables/client'
+import { apply as applyVisualize, inject as injectVisualize } from '@deepseek-ai/dsh-xiaojing-visualize/client'
 import type { PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionLiveEventEntry } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { ConnectionGeneration, ConnectionState } from '@deepseek-ai/dsh-client-connection/client'
-import type { MessageId, MessageSourceMap } from '@deepseek-ai/dsh-llm'
+import { createToolResultMessage, type MessageId, type MessageSourceMap, type ToolCallId } from '@deepseek-ai/dsh-llm'
 import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session/types'
 import { registerConversationNodes } from '../../../client/ui-chat/src/client/conversation-nodes/register.ts'
 import { EMPTY_CHAT_SNAPSHOT } from '../../../client/ui-chat/src/client/contract/snapshot.ts'
@@ -37,10 +38,24 @@ const target: GroupFilesTarget = { rootSessionId: 'editorial-root' as SessionId,
 
 function at(seq: number, type: string, data: unknown): SessionLiveEventEntry {
   return { type: 'event', event: { seq, time: seq * 1000, type, data,
-    ...type === 'user/message' || type === 'assistant/message' ? { surfaceOp: 'append' } : {} } as SessionEvent }
+    ...type === 'user/message' || type === 'assistant/message' || type === 'tool/result' ? { surfaceOp: 'append' } : {} } as SessionEvent }
 }
 
-function history(options: { presented?: boolean; completed?: boolean; closing?: MessageId } = {}): SessionLiveEventEntry[] {
+function chart(seq: number, title: string, path: string, isError = false): SessionLiveEventEntry[] {
+  const callId = ('visualize-' + seq) as ToolCallId
+  return [at(seq, 'tool/call', { turn: 1, step: 1, callId, name: 'visualize', arguments: '{}' }),
+    at(seq + 1, 'tool/result', { turn: 1, step: 1,
+      message: createToolResultMessage({ callId, isError, content: [] }),
+      meta: { kind: 'visualize', title, path, mode: 'inline', fragment: '<button>' + title + '</button>' },
+    })]
+}
+
+function history(options: { presented?: boolean; completed?: boolean; closing?: MessageId; charts?: boolean } = {}): SessionLiveEventEntry[] {
+  const charts = options.charts ? [
+    ...chart(6, 'Earlier draft', '/synthetic/editorial/viz/chart.html'),
+    ...chart(8, 'Saved voucher analysis', '/synthetic/editorial/viz/chart.html'),
+    ...chart(10, 'Failed chart', '/synthetic/editorial/viz/failed.html', true),
+  ] : []
   return [
     at(1, 'turn/start', { turn: 1 }),
     at(2, 'user/message', { id: source.inputMessageId, role: 'user', content: [{ type: 'text', text: 'Make a report' }],
@@ -56,13 +71,14 @@ function history(options: { presented?: boolean; completed?: boolean; closing?: 
       { path: '/synthetic/editorial/final.pdf', description: 'Actual registered PDF' },
       { path: '/synthetic/editorial/final.md', description: 'Latest report description' },
     ] })],
-    at(6, 'step/end', { turn: 1, step: 1 }),
-    at(7, 'step/start', { turn: 1, step: 2 }),
-    at(8, 'assistant/message', { turn: 1, step: 2, stream: [], message: { id: options.closing ?? output,
+    ...charts,
+    at(6 + charts.length, 'step/end', { turn: 1, step: 1 }),
+    at(7 + charts.length, 'step/start', { turn: 1, step: 2 }),
+    at(8 + charts.length, 'assistant/message', { turn: 1, step: 2, stream: [], message: { id: options.closing ?? output,
       source: { kind: 'model', provider: 'fixture', model: 'fixture' },
       role: 'assistant', content: [{ type: 'text', text: 'Registered the requested final files.' }] } }),
-    at(9, 'step/end', { turn: 1, step: 2 }),
-    ...options.completed === false ? [] : [at(10, 'turn/end', { turn: 1, reason: { kind: 'completed' } })],
+    at(9 + charts.length, 'step/end', { turn: 1, step: 2 }),
+    ...options.completed === false ? [] : [at(10 + charts.length, 'turn/end', { turn: 1, reason: { kind: 'completed' } })],
   ]
 }
 
@@ -125,7 +141,10 @@ async function setup(options: { events?: SessionLiveEventEntry[]; pending?: bool
       deliveryConnection: connected, deliveryGeneration: generation }, retainFiles }),
   }, GroupDeliveredFiles)
   runtime.slots.register({ name: 'katcats.group.delivered-cards' }, GroupDeliveredCards)
-  await runtime.mount({ inject: [...inject], apply })
+  await runtime.mount({ inject: [...new Set([...inject, ...injectVisualize])], apply: (ctx) => {
+    apply(ctx)
+    applyVisualize(ctx)
+  } })
   runtime.slots.inject('deliverables.files.actions', () => runtime.slots.register({ name: 'deliverables.files.actions', id: 'native-test' },
     ({ actionUrl, onAction, available, pending }: PropsRuntime<'deliverables.files.actions'>) =>
       <button data-native-route={actionUrl} disabled={!available || pending} onClick={() => { void onAction('open') }}>Native file action</button>))
@@ -157,6 +176,18 @@ describe('original delivery Factory inside a verified group worker Session', () 
     expect(b.view.container.querySelectorAll('[data-presented-file]')).toHaveLength(2)
     b.view.unmount()
     expect(b.retained()).toBe(0)
+  })
+
+  it('restores the latest successful group chart in the original sandboxed frame', async () => {
+    const b = await setup({ events: history({ charts: true, presented: false }) })
+    const frame = await screen.findByTitle<HTMLIFrameElement>('Saved voucher analysis')
+    expect(frame.getAttribute('sandbox')).toBe('allow-scripts')
+    expect(frame.getAttribute('referrerpolicy')).toBe('no-referrer')
+    expect(frame.srcdoc).toContain('<button>Saved voucher analysis</button>')
+    expect(b.view.container.querySelectorAll('iframe')).toHaveLength(1)
+    expect(screen.queryByTitle('Earlier draft')).toBeNull()
+    expect(screen.queryByTitle('Failed chart')).toBeNull()
+    expect(b.view.container.querySelector('[data-presented-file]')).toBeNull()
   })
 
   it('pages the actual claim before showing a cold final result', async () => {

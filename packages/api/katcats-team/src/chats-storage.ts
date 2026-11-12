@@ -20,6 +20,7 @@ const callId = z.string().min(1).transform(value => brandString<ToolCallId>(valu
 const deliveryId = z.string().min(1).transform(value => brandString<ChatDeliveryId>(value))
 const requestId = z.string().min(1).transform(value => brandString<SessionRequestId>(value))
 const runId = z.string().min(1).transform(value => brandString<ChatRunId>(value))
+const taskId = z.string().min(1).transform(value => brandString<GroupTicketId>(value))
 const failure = z.object({ code: z.string().min(1), message: z.string().min(1) })
 const attachmentId = z.string().min(1).transform(value => brandString<AttachmentIdType>(value))
 const dimensions = z.object({ width: z.number().int().positive(), height: z.number().int().positive() }).loose()
@@ -46,12 +47,32 @@ const contentSchema = z.discriminatedUnion('type', [
 /** Durable group parsing preserves fixed Session identities and assigned group directories. */
 export const chatSchema: z.ZodType<TeamChat> = z.object({
   tickets: z.array(z.object({
-    version: z.literal(1), id: z.string().min(1).transform(value => brandString<GroupTicketId>(value)),
+    version: z.literal(1), id: taskId,
     ownerId: botId, goal: z.string().trim().min(1), acceptance: z.array(z.string().trim().min(1)),
     stage: z.string().trim().min(1), nextStep: z.string().trim().min(1),
-    state: z.enum(['open', 'blocked']), blocker: z.string().nullable(),
+    state: z.enum(['open', 'blocked', 'delivered', 'completed']), blocker: z.string().nullable(),
+    financeScope: z.string().min(1).nullable().optional(), financeLabel: z.string().min(1).optional(),
+    pendingDeliveryId: deliveryId.optional(),
+    delivery: z.object({ deliveryId, outputMessageId: messageId, relayMessageId: messageId }).optional(),
+    completedAt: z.number().int().positive().optional(),
+    completionKind: z.enum(['criteria', 'owner']).optional(),
+    humanReviewRequired: z.literal(true).optional(),
     artifacts: z.array(z.string().trim().min(1)), messageIds: z.array(messageId).min(1), revision: z.number().int().positive(),
-  })).optional(),
+  }).refine(task => (task.state === 'delivered' || task.state === 'completed') === (task.delivery !== undefined)
+    && (task.state === 'completed') === (task.completedAt !== undefined)
+    && (task.completionKind === undefined || task.state === 'completed')
+    && (task.completionKind !== 'criteria' || task.humanReviewRequired !== true && task.acceptance.length > 0)
+    && (task.pendingDeliveryId === undefined || task.state === 'open'), 'invalid business task delivery state')
+    .transform(({ financeScope, financeLabel, pendingDeliveryId, delivery, completedAt, completionKind, humanReviewRequired, ...task }) => ({
+      ...task,
+      ...(financeScope === undefined ? {} : { financeScope }),
+      ...(financeLabel === undefined ? {} : { financeLabel }),
+      ...(pendingDeliveryId === undefined ? {} : { pendingDeliveryId }),
+      ...(delivery === undefined ? {} : { delivery }),
+      ...(completedAt === undefined ? {} : { completedAt }),
+      ...(completionKind === undefined ? {} : { completionKind }),
+      ...(humanReviewRequired === undefined ? {} : { humanReviewRequired }),
+    }))).optional(),
   id: chatId,
   name: z.string().trim().min(1),
   groupId: z.string().regex(/^[a-z0-9-]+$/).transform(value => brandString<GroupId>(value)),
@@ -104,15 +125,30 @@ const userMessageSchema: z.ZodType<UserMessage> = z.object({
 const inboundSchema: z.ZodType<ChatInbound> = z.object({
   requestId, chatId, runId,
   requestDigest: z.string().regex(/^[a-f0-9]{64}$/),
-  generation: z.number().int().positive(),
+  generation: z.number().int().nonnegative(),
   userMessage: userMessageSchema,
-  recipients: z.array(botId).min(1),
+  recipients: z.array(botId),
   addressing: z.enum(['explicit', 'broadcast']),
   collaborationVersion: z.literal(1).optional(),
   coordinationVersion: z.literal(1).optional(),
+  financeScope: z.string().min(1).nullable().optional(),
+  taskAcceptance: z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('completed'), taskId, goal: z.string().min(1) }),
+    z.object({ kind: z.literal('choose'), chatId, candidates: z.array(z.object({
+      taskId, goal: z.string().min(1), revision: z.number().int().positive(),
+    })).min(1) }),
+    z.object({ kind: z.literal('none') }),
+  ]).optional(),
   state: z.enum(['accepted', 'published']),
-}).loose().transform(({ collaborationVersion, coordinationVersion, ...input }) => ({ ...input,
+}).loose().refine(input => input.taskAcceptance === undefined
+  ? input.recipients.length > 0 && input.generation > 0
+  : input.recipients.length === 0
+    ? input.taskAcceptance.kind !== 'choose' || input.taskAcceptance.chatId === input.chatId
+    : input.coordinationVersion === 1 && input.generation > 0 && input.state === 'published' && input.taskAcceptance.kind === 'completed',
+  'group acceptance requires a transcript-only input or a published coordinated execution').transform(({ collaborationVersion, coordinationVersion, financeScope, taskAcceptance, ...input }) => ({ ...input,
   ...(coordinationVersion === undefined ? {} : { coordinationVersion }),
+  ...(financeScope === undefined ? {} : { financeScope }),
+  ...(taskAcceptance === undefined ? {} : { taskAcceptance }),
   ...(collaborationVersion === undefined ? {} : { collaborationVersion }) }))
 
 const deliveryBase = z.object({
@@ -174,10 +210,12 @@ const deliverySchema: z.ZodType<ChatDelivery> = z.union([currentDeliverySchema, 
     if (delivery.receipt !== null && delivery.receipt.sender.botId !== delivery.botId) issue.addIssue({ code: 'custom', message: 'receipt sender does not match its delegation' })
   })
 
-/** A complete create/settings target remains pending until Workspace and Session titles are durable. */
+/** A complete create/settings target remains pending until Workspace, Session titles and requested pin are durable. */
 export interface PendingChat {
   readonly kind: 'create' | 'settings'
   readonly chat: TeamChat
+  /** New template groups pin once; completed groups retain later user pin choices. */
+  readonly pinOnCreate?: true
 }
 
 /** Atomic owner record; P1 member data and Session generations remain unchanged. */
@@ -195,7 +233,8 @@ export const chatsStateSchema: z.ZodType<ChatsState> = z.object({
   chats: z.array(chatSchema),
   inbounds: z.array(inboundSchema).default([]),
   deliveries: z.array(deliverySchema),
-  pendingChat: z.object({ kind: z.enum(['create', 'settings']), chat: chatSchema }).nullable(),
+  pendingChat: z.object({ kind: z.enum(['create', 'settings']), chat: chatSchema, pinOnCreate: z.literal(true).optional() })
+    .transform(({ pinOnCreate, ...pending }) => ({ ...pending, ...(pinOnCreate === undefined ? {} : { pinOnCreate }) })).nullable(),
 }).loose().superRefine((state, issue) => {
   const fail = (message: string) => { issue.addIssue({ code: 'custom', message }) }
   const allChats = state.pendingChat?.kind === 'create' ? [...state.chats, state.pendingChat.chat] : state.chats
@@ -217,10 +256,23 @@ export const chatsStateSchema: z.ZodType<ChatsState> = z.object({
   if (new Set(messageIds).size !== messageIds.length) fail('duplicate delegation message identity')
   const requests = state.inbounds.map(inbound => JSON.stringify([inbound.chatId, inbound.requestId]))
   if (new Set(requests).size !== requests.length) fail('duplicate group request identity')
+  const deliveriesById = new Map(state.deliveries.map(delivery => [delivery.id, delivery]))
   for (const chat of state.chats) {
-    if (chat.tickets?.some(task => task.messageIds.some(id => !state.inbounds
-      .some(input => input.chatId === chat.id && input.userMessage.id === id)))) {
-      fail('business task requires its own group owner messages')
+    for (const task of chat.tickets ?? []) {
+      if (task.messageIds.some(id => !state.inbounds.some(input => input.chatId === chat.id && input.userMessage.id === id))) {
+        fail('business task requires its own group owner messages')
+      }
+      const evidence = task.delivery
+      const submittedId = evidence?.deliveryId ?? task.pendingDeliveryId
+      if (submittedId === undefined) continue
+      const delivery = deliveriesById.get(submittedId)
+      if (delivery === undefined || delivery.chatId !== chat.id || delivery.botId !== task.ownerId
+        || delivery.recoveryOf !== undefined || delivery.source.kind !== 'owner-message'
+        || !task.messageIds.includes(delivery.source.messageId)
+        || (evidence !== undefined && (delivery.state !== 'completed' || !delivery.relayed
+          || delivery.receipt?.outputMessageId !== evidence.outputMessageId || delivery.relayMessageId !== evidence.relayMessageId))) {
+        fail('business task delivery requires its own group owner receipt')
+      }
     }
   }
   for (const inbound of state.inbounds) {

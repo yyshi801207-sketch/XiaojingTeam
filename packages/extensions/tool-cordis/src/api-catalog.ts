@@ -1489,10 +1489,39 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the owner directory and current public Agent activity.',
       },
       {
-        signature: '@Remote async sendMessage(request: SessionPromptRequest, signal: AbortSignal): Promise<SessionPromptValue>',
+        signature: '@Remote async completeTask(chatId: ChatId, taskId: GroupTicketId, expectedRevision: number, acceptanceRequestId?: SessionRequestId): Promise<ChatMutationValue>',
+        description: 'Accept an archive task after the owner inspects its published result.',
+        parameters: [{ name: 'chatId', description: 'Group owning the task.' }, { name: 'taskId', description: 'Task chosen in the archive.' }, { name: 'expectedRevision', description: 'Exact delivered revision shown to the owner.' }, { name: 'acceptanceRequestId', description: 'Saved ambiguous chat instruction resolved by this choice, if any.' }],
+        returns: 'The group and directory after acceptance.',
+      },
+      {
+        signature: '@Remote async financeBinding(chatId: ChatId): Promise<FinanceConnectorId | null>',
+        description: 'Read the verified accounting connection selected in this group\'s settings.',
+        parameters: [{ name: 'chatId', description: 'Existing group identity.' }],
+        returns: 'The binding identity, or null when the group has no enabled connection.',
+      },
+      {
+        signature: '@Remote async bindFinance(chatId: ChatId, connectorId: FinanceConnectorId | null, expectedBinding?: FinanceConnectorId | null): Promise<void>',
+        description: 'Change the group\'s verified accounting connection while the group has no saved run.',
+        parameters: [{ name: 'chatId', description: 'Existing group identity.' }, { name: 'connectorId', description: 'Verified connection or null to remove access.' }, { name: 'expectedBinding', description: 'The prior binding a prepared handoff may replace. Omit for a direct settings change.' }],
+      },
+      {
+        signature: '@Remote async connectFinance(chatId: ChatId, connectorId: FinanceConnectorId, signal: AbortSignal): Promise<FinanceConnector>',
+        description: 'Verify this group’s bound ledger and publish the main Bot’s welcome on success.',
+        parameters: [{ name: 'chatId', description: 'Group containing the bound ledger.' }, { name: 'connectorId', description: 'Connection selected in the group’s settings.' }, { name: 'signal', description: 'Cancels verification before the welcome is accepted.' }],
+        returns: 'The verified connector or its recorded failure.',
+      },
+      {
+        signature: '@Remote async sendMessage(request: SessionPromptRequest, signal: AbortSignal): Promise<ChatPromptValue>',
         description: 'Admit the original composer\'s message into a pure group transcript and schedule actual members. Identical request retries reuse the durable input; a changed retry is rejected before resolving uploads. Queue requests preserve active work and pauses; stopped groups start a new run. Steering replaces the run and drains its old work.',
         parameters: [{ name: 'request', description: 'owner message targeting the group\'s exact transcript Session.' }, { name: 'signal', description: 'cancellation before durable input acceptance.' }],
         returns: 'confirmation after the owner message is flushed and any interrupted work settles; member replies arrive separately.',
+      },
+      {
+        signature: '@Remote async continueTask(request: ContinueGroupTaskRequest, signal: AbortSignal): Promise<ChatMutationValue>',
+        description: 'Continue the explicitly selected archived task. A paused matching run resumes its saved work. An idle group admits a new owner instruction bound to the original task and responsible member.',
+        parameters: [{ name: 'request', description: 'Exact task revision, group run, and retry identity shown to the owner.' }, { name: 'signal', description: 'Cancels the request before the continuation is accepted.' }],
+        returns: 'The saved group and current archive activity.',
       },
       {
         signature: '@Remote async cancelSession(request: SessionCancelRequest): Promise<SessionCancelValue>',
@@ -1509,7 +1538,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       {
         signature: '@Remote async createChat(request: CreateChatRequest): Promise<ChatMutationValue>',
         description: 'Create an isolated group and one persistent execution Session per selected ordinary member. Newly created groups precede existing groups in the durable directory.',
-        parameters: [{ name: 'request', description: 'name, ordinary members, and optional positive dispatch limit.' }],
+        parameters: [{ name: 'request', description: 'name, ordinary members, and optional sidebar folder and positive dispatch limit.' }],
         returns: 'the fully committed group and replacement directory.',
       },
       {
@@ -1593,6 +1622,11 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'Team metadata and private Sessions, with durable interrupted-creation recovery.',
     methods: [
       {
+        signature: 'readonly finance: FinanceConnections | undefined',
+        description: 'Optional product finance connectors and group bindings.',
+        parameters: [],
+      },
+      {
         signature: 'readonly organization: GroupOrganization = new GroupOrganization()',
         description: 'Product mutation ordering shared with the group directory; never acquired by snapshots.',
         parameters: [],
@@ -1602,6 +1636,52 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Read the complete product directory, finishing accepted creation and Session-setting intents first.',
         parameters: [],
         returns: 'the persisted member and group snapshot.',
+      },
+      {
+        signature: '@Remote async financeSnapshot(): Promise<FinanceConnectorSnapshot | null>',
+        description: 'Read the finance connector directory for the product owner.',
+        parameters: [],
+        returns: 'the redacted directory, or null when the deployment disables finance connectors.',
+      },
+      {
+        signature: '@Remote({ mode: \'stream\' }) async *followFinance(signal: AbortSignal): AsyncIterable<FinanceConnectorSnapshot | null>',
+        description: 'Follow the owner’s finance connector catalog and observed access status.',
+        parameters: [{ name: 'signal', description: 'Cancels delivery when the client disconnects.' }],
+        returns: 'The baseline catalog and later replacements, or null when finance connectors are disabled.',
+      },
+      {
+        signature: '@Remote async discoverFinanceCompanies(input: FinanceConnectionDraft, signal: AbortSignal): Promise<readonly FinanceCompany[]>',
+        description: 'Discover companies accessible to an Odoo credential.',
+        parameters: [{ name: 'input', description: 'proposed destination and credential.' }, { name: 'signal', description: 'cancels discovery if the owner leaves the page.' }],
+        returns: 'the companies available for selection.',
+      },
+      {
+        signature: '@Remote async saveFinanceConnector(input: SaveFinanceConnectorRequest, signal: AbortSignal): Promise<FinanceConnector>',
+        description: 'Verify and persist a finance connector with its selected access mode.',
+        parameters: [{ name: 'input', description: 'configuration and selected company.' }, { name: 'signal', description: 'cancels verification before the accepted save.' }],
+        returns: 'the saved configuration with its key omitted.',
+      },
+      {
+        signature: '@Remote async testFinanceConnector(id: FinanceConnectorId, signal: AbortSignal): Promise<FinanceConnector>',
+        description: 'Test an existing connector against its stored company.',
+        parameters: [{ name: 'id', description: 'the connector to test.' }, { name: 'signal', description: 'cancels the test without replacing its last result.' }],
+        returns: 'the updated public test status.',
+      },
+      {
+        signature: '@Remote async deleteFinanceConnector(id: FinanceConnectorId): Promise<void>',
+        description: 'Delete an unbound finance connector.',
+        parameters: [{ name: 'id', description: 'the connector to remove.' }],
+      },
+      {
+        signature: '@Remote async financeBotBinding(botId: BotId): Promise<FinanceConnectorId | null>',
+        description: 'Read the ledger bound to a dedicated finance Bot\'s private conversation.',
+        parameters: [{ name: 'botId', description: 'Existing dedicated finance Bot identity.' }],
+        returns: 'Its verified connection identity, or null when unbound.',
+      },
+      {
+        signature: '@Remote async bindFinanceBot(botId: BotId, connectorId: FinanceConnectorId | null): Promise<void>',
+        description: 'Bind one verified ledger for a dedicated finance Bot\'s private queries.',
+        parameters: [{ name: 'botId', description: 'Existing dedicated finance Bot identity.' }, { name: 'connectorId', description: 'Verified connection, or null to unbind.' }],
       },
       {
         signature: '@Remote({ mode: \'stream\' }) async *follow(signal: AbortSignal): AsyncIterable<TeamFrame>',
@@ -1626,6 +1706,24 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Create a general member and a durable ordinary private Session. New members precede existing ordinary members; an omitted group uses 未分组. A retry matching a still-pending name, group, avatar, and empty role returns that recovered member.',
         parameters: [{ name: 'request', description: 'member name, optional explicit group, and optional approved avatar.' }],
         returns: 'the committed member and replacement snapshot.',
+      },
+      {
+        signature: 'async ensureOdooAdminBots(): Promise<void>',
+        description: 'Provision the private Odoo administration Bots for the ledger setup plugin. Existing private Sessions are retained while their fixed identities are synchronized.',
+        parameters: [],
+        returns: 'Once both private Bot records and their Sessions are saved.',
+      },
+      {
+        signature: 'async ensureLedgerSetupBot(agent: Agent, signal: AbortSignal): Promise<TeamBot>',
+        description: 'Resolve the original creator tool to the already provisioned ledger Bot.',
+        parameters: [{ name: 'agent', description: 'Live main Bot authorized to locate the fixed ledger assistant.' }, { name: 'signal', description: 'Cancels the lookup.' }],
+        returns: 'The saved ledger Bot and its private Session.',
+      },
+      {
+        signature: 'async createFinanceTeamMembers(agent: Agent, template: FinanceTeamTemplate, name: string, groupId: GroupId | undefined, signal: AbortSignal): Promise<readonly TeamBot[]>',
+        description: 'Save a versioned finance roster once, resuming its allocated identities after interruption. Existing saved roles, model selections and names remain editable and are not reset by a retry.',
+        parameters: [{ name: 'agent', description: 'Live main Bot requesting the team.' }, { name: 'template', description: 'Fixed compact or standard definition.' }, { name: 'name', description: 'Requested group name identifying this creation within its sidebar folder.' }, { name: 'groupId', description: 'Selected custom folder, or undefined for default member/chat placement.' }, { name: 'signal', description: 'Cancels before the next durable member is accepted.' }],
+        returns: 'Saved ordered members, with the finance manager first.',
       },
       {
         signature: '@Remote async updateBot(request: UpdateBotRequest): Promise<BotMutationValue>',
@@ -4788,6 +4886,73 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'xiaojingLedgerSetup',
+    summary: 'Stores setup plans before Odoo writes and checkpoints the confirmed company ID before initialization.',
+    description: 'Stores setup plans before Odoo writes and checkpoints the confirmed company ID before initialization.',
+    methods: [
+      {
+        signature: '@Remote async snapshot(): Promise<LedgerSetupSnapshot>',
+        description: 'Read redacted setup configuration and plans.',
+        parameters: [],
+        returns: 'The database status and saved setup plans.',
+      },
+      {
+        signature: '@Remote({ mode: \'stream\' }) async *follow(signal: AbortSignal): AsyncIterable<LedgerSetupSnapshot>',
+        description: 'Follow saved setup changes after the initial snapshot.',
+        parameters: [{ name: 'signal', description: 'Client connection lifetime.' }],
+        returns: 'Redacted snapshots of the setup database and plans.',
+      },
+      {
+        signature: '@Remote async saveConnection(request: LedgerSetupConnectionInput, signal: AbortSignal): Promise<LedgerSetupSnapshot>',
+        description: 'Verify and save a database-level setup credential without selecting a company.',
+        parameters: [{ name: 'request', description: 'Address, database and an optional replacement key for the same destination.' }, { name: 'signal', description: 'Cancels verification before settings are committed.' }],
+        returns: 'The redacted setup snapshot.',
+      },
+      {
+        signature: 'choices(request: { countryCode: string; currencyCode: string }, signal: AbortSignal): Promise<OdooSetupChoices>',
+        description: 'Resolve the available Odoo template choices without changing server data.',
+        parameters: [{ name: 'request', description: 'Country and currency codes confirmed for this proposed plan.' }, { name: 'signal', description: 'Tool execution lifetime.' }],
+        returns: 'The matching Odoo country, currency and installed templates.',
+      },
+      {
+        signature: 'adminCompanies(signal: AbortSignal): Promise<{ readonly database: string; readonly companies: readonly FinanceCompany[] }>',
+        description: 'Discover the companies accessible to the saved administration account.',
+        parameters: [{ name: 'signal', description: 'Tool execution lifetime.' }],
+        returns: 'The verified database name and accessible company summaries.',
+      },
+      {
+        signature: 'adminCall(role: \'ledger\' | \'access\', request: FinanceOrmCallRequest & { readonly companyId?: number }, confirm: (details: Readonly<Record<string, unknown>>, signal: AbortSignal) => Promise<void>, signal: AbortSignal): Promise<{ readonly database: string; readonly company: FinanceCompany | null; readonly model: string; readonly method: string; readonly data: FinanceOrmJsonValue }>',
+        description: 'Call a role-scoped Odoo administration method after confirming its exact write target and arguments.',
+        parameters: [{ name: 'role', description: 'Fixed Bot responsibility derived from the private Session.' }, { name: 'request', description: 'Odoo model, method, arguments and optional selected company.' }, { name: 'confirm', description: 'Obtains explicit user approval before a mutation is sent.' }, { name: 'signal', description: 'Tool execution lifetime.' }],
+        returns: 'The verified database and company scope with the Odoo response.',
+      },
+      {
+        signature: 'propose(request: LedgerSetupDraftInput, signal: AbortSignal): Promise<LedgerSetupPlan>',
+        description: 'Save a reviewable draft from the dedicated assistant without changing Odoo.',
+        parameters: [{ name: 'request', description: 'Proposed company settings and template selection.' }, { name: 'signal', description: 'Tool execution lifetime.' }],
+        returns: 'The persisted draft or identical existing plan.',
+      },
+      {
+        signature: '@Remote async uploadChart(id: LedgerSetupPlanId, expectedRevision: number, fileName: string, workbookBase64: string): Promise<LedgerSetupSnapshot>',
+        description: 'Validate an uploaded chart and save its normalized rows on the expected draft.',
+        parameters: [{ name: 'id', description: 'Setup plan that receives the workbook.' }, { name: 'expectedRevision', description: 'Plan revision reviewed before the upload.' }, { name: 'fileName', description: 'Workbook label displayed on the approval.' }, { name: 'workbookBase64', description: 'XLSX bytes encoded by the owner UI.' }],
+        returns: 'The redacted snapshot after the workbook is accepted.',
+      },
+      {
+        signature: '@Remote async execute(id: LedgerSetupPlanId, expectedRevision: number, signal: AbortSignal): Promise<LedgerSetupSnapshot>',
+        description: 'Execute the owner-approved plan and durably record the resulting company and readiness.',
+        parameters: [{ name: 'id', description: 'Plan to execute.' }, { name: 'expectedRevision', description: 'Exact revision presented for confirmation.' }, { name: 'signal', description: 'Cancels work before writes or leaves the dispatched step for reconciliation.' }],
+        returns: 'The current snapshot including the plan\'s settled status.',
+      },
+      {
+        signature: '@Remote async addConnector(id: LedgerSetupPlanId, request: LedgerSetupConnectorInput, signal: AbortSignal): Promise<LedgerSetupSnapshot>',
+        description: 'Verify a separate bookkeeping account and publish its company in finance connectors.',
+        parameters: [{ name: 'id', description: 'Ready plan to add.' }, { name: 'request', description: 'Access mode and bookkeeping account key.' }, { name: 'signal', description: 'Cancels account verification before the connector save is accepted.' }],
+        returns: 'The redacted snapshot with registration confirmed after the connector is saved.',
+      },
+    ],
+  },
+  {
     key: 'xiaojingNativeBrowserSettings',
     summary: 'Product settings consumed by the native browser runtime.',
     description: 'Product settings consumed by the native browser runtime.',
@@ -6032,7 +6197,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ChatActivity',
-    declaration: 'export interface ChatActivity {\n    readonly chatId: ChatId;\n    readonly processing: boolean;\n    readonly runningBotIds: readonly BotId[];\n    readonly pendingControl: \'pause\' | \'resume\' | \'stop\' | null;\n}',
+    declaration: 'export interface ChatActivity {\n    readonly chatId: ChatId;\n    readonly processing: boolean;\n    readonly runningBotIds: readonly BotId[];\n    readonly pendingControl: \'pause\' | \'resume\' | \'stop\' | null;\n    readonly currentTaskId?: GroupTicketId;\n    readonly taskContinuation?: Readonly<Record<string, \'resume\' | \'start\' | \'busy\' | \'unknown\' | \'scope\' | \'owner-missing\'>>;\n}',
   },
   {
     name: 'ChatControlRequest',
@@ -6067,6 +6232,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type ChatId = Branded<\'KatcatsChatId\'>;',
   },
   {
+    name: 'ChatInbound',
+    declaration: 'export interface ChatInbound {\n    readonly requestId: SessionRequestId;\n    readonly requestDigest: string;\n    readonly chatId: ChatId;\n    readonly runId: ChatRunId;\n    readonly generation: number;\n    readonly userMessage: UserMessage;\n    readonly recipients: readonly BotId[];\n    readonly addressing: \'explicit\' | \'broadcast\';\n    readonly collaborationVersion?: 1;\n    readonly coordinationVersion?: 1;\n    readonly financeScope?: string | null;\n    readonly taskAcceptance?: GroupTaskAcceptance;\n    readonly state: \'accepted\' | \'published\';\n}',
+  },
+  {
     name: 'ChatMemberRole',
     declaration: 'export interface ChatMemberRole {\n    readonly botId: BotId;\n    readonly role: string;\n}',
   },
@@ -6077,6 +6246,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ChatPass',
     declaration: 'export interface ChatPass {\n    readonly turn: number;\n    readonly callId: ToolCallId;\n}',
+  },
+  {
+    name: 'ChatPromptValue',
+    declaration: 'export interface ChatPromptValue extends SessionPromptValue {\n    readonly taskAcceptance?: GroupTaskAcceptance;\n}',
   },
   {
     name: 'ChatReceipt',
@@ -6096,7 +6269,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ChatSnapshot',
-    declaration: 'export interface ChatSnapshot {\n    readonly revision: number;\n    readonly chats: readonly TeamChat[];\n    readonly deliveries: readonly ChatDelivery[];\n    readonly relayLimit: number;\n    readonly activities: readonly ChatActivity[];\n}',
+    declaration: 'export interface ChatSnapshot {\n    readonly revision: number;\n    readonly chats: readonly TeamChat[];\n    readonly deliveries: readonly ChatDelivery[];\n    readonly relayLimit: number;\n    readonly financeChatIds?: readonly ChatId[];\n    readonly activities: readonly ChatActivity[];\n}',
   },
   {
     name: 'ClientArtifactBaseline',
@@ -6315,6 +6488,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ContinuableCreateSpec {\n    readonly seed?: readonly SessionEvent[];\n}',
   },
   {
+    name: 'ContinueGroupTaskRequest',
+    declaration: 'export interface ContinueGroupTaskRequest {\n    readonly chatId: ChatId;\n    readonly taskId: GroupTicketId;\n    readonly expectedRevision: number;\n    readonly expectedRunId: ChatRunId | null;\n    readonly expectedGeneration: number;\n    readonly requestId: ChatInbound[\'requestId\'];\n}',
+  },
+  {
     name: 'CordisDynamicPackageId',
     declaration: 'export type CordisDynamicPackageId = Branded<\'CordisDynamicPackageId\'>;',
   },
@@ -6400,7 +6577,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'CreateChatRequest',
-    declaration: 'export interface CreateChatRequest {\n    readonly name: string;\n    readonly memberIds: readonly BotId[];\n    readonly managerId?: BotId | null;\n    readonly relayLimit?: number;\n}',
+    declaration: 'export interface CreateChatRequest {\n    readonly name: string;\n    readonly groupId?: GroupId;\n    readonly memberIds: readonly BotId[];\n    readonly managerId?: BotId | null;\n    readonly relayLimit?: number;\n}',
   },
   {
     name: 'CreatedWorktree',
@@ -6441,6 +6618,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CredentialKey',
     declaration: 'export type CredentialKey = Branded<\'CredentialKey\'>;',
+  },
+  {
+    name: 'CredentialProvider',
+    declaration: 'export abstract class CredentialProvider extends Service {\n    constructor(ctx: Context);\n    abstract resolve(ref: CredentialRef): Promise<ResolvedCredential | undefined>;\n    abstract describe(ref: CredentialRef): Promise<CredentialInfo>;\n    abstract set(ref: CredentialRef, value: string): Promise<void>;\n    abstract unset(ref: CredentialRef): Promise<void>;\n    abstract readRecord(key: CredentialKey): Promise<CredentialRecord | undefined>;\n    abstract describeRecord(key: CredentialKey): Promise<CredentialRecordInfo>;\n    abstract listRecords(): Promise<readonly CredentialRecordEntry[]>;\n    abstract modifyRecord(key: CredentialKey, mutate: (current: CredentialRecord | undefined) => Promise<CredentialRecord | undefined>): Promise<CredentialRecord | undefined>;\n    abstract deleteRecord(key: CredentialKey): Promise<void>;\n}',
   },
   {
     name: 'CredentialRecord',
@@ -6707,6 +6888,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface FinanceAttachmentUpload {\n    name: string;\n    objectKey: string;\n    size: number;\n    expiresAt: number;\n    downloadUrl: string;\n}',
   },
   {
+    name: 'FinanceBotPreset',
+    declaration: 'export type FinanceBotPreset = typeof financeBotPresets[number];',
+  },
+  {
     name: 'FinanceCalculationKind',
     declaration: 'export type FinanceCalculationKind = \'vat\' | \'vat-surcharges\' | \'enterprise-income-tax\' | \'salary-iit\';',
   },
@@ -6729,6 +6914,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'FinanceCalculationValue',
     declaration: 'export interface FinanceCalculationValue {\n    name: string;\n    label: string;\n    value: string;\n    unit: \'元\' | \'%\' | \'月\' | \'人\' | \'布尔\' | \'文本\';\n    source: \'request\' | \'client\' | \'rule\';\n}',
+  },
+  {
+    name: 'FinanceCapability',
+    declaration: 'export type FinanceCapability = \'accounts\' | \'journals\' | \'moves\' | \'move-lines\' | \'entries\' | \'turnover\';',
   },
   {
     name: 'FinanceChartMapping',
@@ -6787,12 +6976,40 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type FinanceClientWorkspaceEntry = FinanceWorkspaceBase & {\n    kind: \'client\';\n    clientId: FinanceClientId;\n    connection?: FinanceConnectionStatus;\n};',
   },
   {
+    name: 'FinanceCompany',
+    declaration: 'export interface FinanceCompany {\n    readonly id: number;\n    readonly name: string;\n    readonly currency: string;\n}',
+  },
+  {
+    name: 'FinanceConnectionDraft',
+    declaration: 'export interface FinanceConnectionDraft extends FinanceEndpoint {\n    readonly id?: FinanceConnectorId;\n    readonly apiKey?: string;\n    readonly accessMode?: FinanceOrmAccessMode;\n}',
+  },
+  {
     name: 'FinanceConnectionFailure',
     declaration: 'export type FinanceConnectionFailure = \'credentials-missing\' | \'authentication\' | \'ip-not-allowed\' | \'account-query\' | \'account-unavailable\' | \'network\' | \'timeout\' | \'access-denied\' | \'invalid-response\';',
   },
   {
+    name: 'FinanceConnections',
+    declaration: 'export class FinanceConnections {\n    readonly ready: Promise<void>;\n    constructor(ctx: Context, private readonly credentials: CredentialProvider, private readonly timeoutMs: number);\n    snapshot(): Promise<FinanceConnectorSnapshot>;\n    async *follow(signal: AbortSignal): AsyncIterable<FinanceConnectorSnapshot>;\n    discover(draft: FinanceConnectionDraft, signal?: AbortSignal): Promise<readonly FinanceCompany[]>;\n    save(request: SaveFinanceConnectorRequest, signal?: AbortSignal, reservation?: {\n        readonly id: FinanceConnectorId;\n        readonly databaseUuid: string;\n    }): Promise<FinanceConnector>;\n    test(id: FinanceConnectorId, signal?: AbortSignal): Promise<FinanceConnector>;\n    remove(id: FinanceConnectorId): Promise<void>;\n    boundChatIds(): readonly ChatId[];\n    getBinding(chatId: ChatId): Promise<FinanceConnectorId | null>;\n    groupTaskScope(chatId: ChatId): {\n        readonly key: string;\n        readonly label: string;\n    } | null;\n    bind(chatId: ChatId, id: FinanceConnectorId | null): Promise<void>;\n    pruneBindings(activeChatIds: readonly ChatId[]): Promise<void>;\n    getBotBinding(botId: BotId): Promise<FinanceConnectorId | null>;\n    groupPrompt(chatId: ChatId): string;\n    botPrompt(botId: BotId): string;\n    bindBot(botId: BotId, id: FinanceConnectorId | null): Promise<void>;\n    pruneBotBindings(activeBotIds: readonly BotId[]): Promise<void>;\n    query(chatId: ChatId, query: FinanceQuery, signal?: AbortSignal): Promise<GroupFinanceQuery /* …truncated — full shape in source */',
+  },
+  {
     name: 'FinanceConnectionStatus',
     declaration: 'export interface FinanceConnectionStatus {\n    state: \'unverified\' | \'checking\' | \'connected\' | \'failed\';\n    accountId: string;\n    accountName?: string;\n    checkedAt?: number;\n    failure?: FinanceConnectionFailure;\n}',
+  },
+  {
+    name: 'FinanceConnector',
+    declaration: 'export interface FinanceConnector extends FinanceEndpoint {\n    readonly id: FinanceConnectorId;\n    readonly name: string;\n    readonly type: \'odoo\';\n    readonly company: FinanceCompany;\n    readonly lastTestAt: string;\n    readonly failure: FinanceFailureReason | null;\n    readonly capabilities: readonly FinanceCapability[];\n    readonly accessMode?: FinanceOrmAccessMode;\n    readonly accessHealth?: FinanceConnectorAccessHealth;\n    readonly account?: FinanceOdooAccount;\n}',
+  },
+  {
+    name: 'FinanceConnectorAccessHealth',
+    declaration: 'export interface FinanceConnectorAccessHealth {\n    readonly checkedAt: string;\n    readonly outcome: \'reachable\' | \'unreachable\';\n}',
+  },
+  {
+    name: 'FinanceConnectorId',
+    declaration: 'export type FinanceConnectorId = Branded<\'XiaojingFinanceConnectorId\'>;',
+  },
+  {
+    name: 'FinanceConnectorSnapshot',
+    declaration: 'export interface FinanceConnectorSnapshot {\n    readonly connectors: readonly FinanceConnector[];\n}',
   },
   {
     name: 'FinanceConsultationFile',
@@ -6833,6 +7050,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'FinanceDocumentVisualReadResult',
     declaration: 'export type FinanceDocumentVisualReadResult = DocumentVisualReadResult<FinanceManagedFileId>;',
+  },
+  {
+    name: 'FinanceEndpoint',
+    declaration: 'export interface FinanceEndpoint {\n    readonly url: string;\n    readonly database: string;\n}',
   },
   {
     name: 'FinanceEvidenceApplicability',
@@ -6879,6 +7100,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface FinanceExternalSystemRef {\n    system: \'youcheng\' | \'sdoo\';\n    tenantId?: string;\n    companyId?: string;\n    accountSetId?: string;\n}',
   },
   {
+    name: 'FinanceFailureReason',
+    declaration: 'export type FinanceFailureReason = typeof financeFailureReasons[number];',
+  },
+  {
     name: 'FinanceFileAction',
     declaration: 'export type FinanceFileAction = \'import\' | \'publish\' | \'archive\';',
   },
@@ -6907,6 +7132,26 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type FinanceManagedFileId = Branded<\'FinanceManagedFileId\'>;',
   },
   {
+    name: 'FinanceOdooAccount',
+    declaration: 'export interface FinanceOdooAccount {\n    readonly login?: string;\n}',
+  },
+  {
+    name: 'FinanceOrmAccessMode',
+    declaration: 'export type FinanceOrmAccessMode = \'read-only\' | \'full\';',
+  },
+  {
+    name: 'FinanceOrmCallRequest',
+    declaration: 'export interface FinanceOrmCallRequest {\n    readonly model: string;\n    readonly method: string;\n    readonly params: unknown;\n}',
+  },
+  {
+    name: 'FinanceOrmJsonValue',
+    declaration: 'export type FinanceOrmJsonValue = JsonValue;',
+  },
+  {
+    name: 'FinanceQuery',
+    declaration: 'export type FinanceQuery = FinanceLookup & {\n    readonly offset?: number;\n    readonly limit?: number;\n};',
+  },
+  {
     name: 'FinanceSessionContextView',
     declaration: 'export type FinanceSessionContextView = {\n    state: \'not-finance\';\n    locked: true;\n} | {\n    state: \'general\';\n    locked: false;\n} | {\n    state: \'ready\';\n    locked: false;\n    clientId: FinanceClientId;\n    clientName: string;\n} | {\n    state: \'bound\';\n    locked: true;\n    clientName: string;\n};',
   },
@@ -6925,6 +7170,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'FinanceTaxpayerType',
     declaration: 'export type FinanceTaxpayerType = \'general-vat\' | \'small-scale-vat\' | \'other\';',
+  },
+  {
+    name: 'FinanceTeamTemplate',
+    declaration: 'export type FinanceTeamTemplate = typeof financeTeamTemplates[number];',
   },
   {
     name: 'FinanceWorkspaceEntry',
@@ -7087,8 +7336,16 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface GroupOrganizationParticipant {\n    memberships(botId: BotId): Promise<readonly ChatId[]>;\n    moveGroup(groupId: GroupId): Promise<void>;\n}',
   },
   {
+    name: 'GroupTaskAcceptance',
+    declaration: 'export type GroupTaskAcceptance = {\n    readonly kind: \'completed\';\n    readonly taskId: GroupTicketId;\n    readonly goal: string;\n} | {\n    readonly kind: \'choose\';\n    readonly chatId: ChatId;\n    readonly candidates: readonly {\n        readonly taskId: GroupTicketId;\n        readonly goal: string;\n        readonly revision: number;\n    }[];\n} | {\n    readonly kind: \'none\';\n};',
+  },
+  {
     name: 'GroupTicket',
-    declaration: 'export interface GroupTicket {\n    readonly version: 1;\n    readonly id: GroupTicketId;\n    readonly ownerId: BotId;\n    readonly goal: string;\n    readonly acceptance: readonly string[];\n    readonly stage: string;\n    readonly nextStep: string;\n    readonly state: \'open\' | \'blocked\';\n    readonly blocker: string | null;\n    readonly artifacts: readonly string[];\n    readonly messageIds: readonly MessageId[];\n    readonly revision: number;\n}',
+    declaration: 'export interface GroupTicket {\n    readonly version: 1;\n    readonly id: GroupTicketId;\n    readonly ownerId: BotId;\n    readonly goal: string;\n    readonly acceptance: readonly string[];\n    readonly stage: string;\n    readonly nextStep: string;\n    readonly state: \'open\' | \'blocked\' | \'delivered\' | \'completed\';\n    readonly blocker: string | null;\n    readonly financeScope?: string | null;\n    readonly financeLabel?: string;\n    readonly pendingDeliveryId?: ChatDeliveryId;\n    readonly delivery?: GroupTicketDelivery;\n    readonly completedAt?: number;\n    readonly completionKind?: \'criteria\' | \'owner\';\n    readonly humanReviewRequired?: true;\n    readonly artifacts: readonly string[];\n    readonly messageIds: readonly MessageId[];\n    readonly revision: number;\n}',
+  },
+  {
+    name: 'GroupTicketDelivery',
+    declaration: 'export interface GroupTicketDelivery {\n    readonly deliveryId: ChatDeliveryId;\n    readonly outputMessageId: MessageId;\n    readonly relayMessageId: MessageId;\n}',
   },
   {
     name: 'GroupTicketId',
@@ -7409,6 +7666,38 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'KvUnitDescriptor',
     declaration: 'export interface KvUnitDescriptor {\n    readonly name: string;\n    readonly version: number;\n    readonly tables: readonly string[];\n    readonly hasGlobal: boolean;\n    readonly layout?: \'single\' | \'per-record\';\n    readonly compatibleVersions?: readonly number[];\n}',
+  },
+  {
+    name: 'LedgerSetupConnectionInput',
+    declaration: 'export interface LedgerSetupConnectionInput extends FinanceEndpoint {\n    readonly apiKey?: string;\n}',
+  },
+  {
+    name: 'LedgerSetupConnectorInput',
+    declaration: 'export interface LedgerSetupConnectorInput {\n    readonly accessMode: FinanceOrmAccessMode;\n    readonly apiKey: string;\n}',
+  },
+  {
+    name: 'LedgerSetupDraftInput',
+    declaration: 'export interface LedgerSetupDraftInput {\n    readonly name: string;\n    readonly taxId?: string;\n    readonly countryCode: string;\n    readonly currencyCode: string;\n    readonly templateCode: string;\n    readonly openingDate: string;\n    readonly mode: LedgerSetupMode;\n}',
+  },
+  {
+    name: 'LedgerSetupMode',
+    declaration: 'export type LedgerSetupMode = \'odoo-template\' | \'custom-chart\';',
+  },
+  {
+    name: 'LedgerSetupPlan',
+    declaration: 'export interface LedgerSetupPlan extends LedgerSetupDraftInput {\n    readonly id: LedgerSetupPlanId;\n    readonly revision: number;\n    readonly templateName: string;\n    readonly createdAt: string;\n    readonly status: LedgerSetupStatus;\n    readonly customAccountCount: number;\n    readonly customChartEditable?: boolean;\n    readonly customChart?: {\n        readonly name: string;\n        readonly sha256: string;\n    };\n    readonly companyId?: number;\n    readonly company?: FinanceCompany;\n    readonly accountCount?: number;\n    readonly journalCount?: number;\n    readonly failure?: FinanceFailureReason;\n    readonly chatId?: ChatId;\n}',
+  },
+  {
+    name: 'LedgerSetupPlanId',
+    declaration: 'export type LedgerSetupPlanId = Branded<\'XiaojingLedgerSetupPlanId\'>;',
+  },
+  {
+    name: 'LedgerSetupSnapshot',
+    declaration: 'export interface LedgerSetupSnapshot {\n    readonly connection: (FinanceEndpoint & {\n        readonly verifiedAt: string;\n        readonly account?: FinanceOdooAccount;\n    }) | null;\n    readonly plans: readonly LedgerSetupPlan[];\n}',
+  },
+  {
+    name: 'LedgerSetupStatus',
+    declaration: 'export type LedgerSetupStatus = \'draft\' | \'running\' | \'blocked\' | \'uncertain\' | \'ready\' | \'handed-off\';',
   },
   {
     name: 'ListFinanceYouchengAccountsRequest',
@@ -7881,6 +8170,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ObjectJsonSchema',
     declaration: 'export type ObjectJsonSchema = JsonSchemaNode & {\n    type: \'object\';\n};',
+  },
+  {
+    name: 'OdooSetupChoices',
+    declaration: 'export interface OdooSetupChoices {\n    readonly country: {\n        readonly id: number;\n        readonly code: string;\n        readonly name: string;\n    };\n    readonly currency: {\n        readonly id: number;\n        readonly code: string;\n    };\n    readonly templates: readonly OdooSetupTemplate[];\n}',
+  },
+  {
+    name: 'OdooSetupTemplate',
+    declaration: 'export interface OdooSetupTemplate {\n    readonly code: string;\n    readonly name: string;\n}',
   },
   {
     name: 'OfficeExtension',
@@ -8549,6 +8846,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SaveFileStreamAttachment',
     declaration: 'export interface SaveFileStreamAttachment {\n    data: AsyncIterable<Uint8Array>;\n    signal?: AbortSignal;\n    name?: string;\n}',
+  },
+  {
+    name: 'SaveFinanceConnectorRequest',
+    declaration: 'export interface SaveFinanceConnectorRequest extends FinanceConnectionDraft {\n    readonly name: string;\n    readonly companyId: number;\n}',
   },
   {
     name: 'SaveImageAttachment',
@@ -9720,7 +10021,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'TeamBot',
-    declaration: 'export interface TeamBot {\n    readonly id: BotId;\n    readonly kind: \'main\' | \'ordinary\';\n    readonly name: string;\n    readonly role: string;\n    readonly avatar: BotAvatar;\n    readonly model: BotModel;\n    readonly workDir: string;\n    readonly groupId: GroupId | null;\n    readonly sessionId: SessionId;\n}',
+    declaration: 'export interface TeamBot {\n    readonly id: BotId;\n    readonly kind: \'main\' | \'ordinary\';\n    readonly financePreset?: FinanceBotPreset;\n    readonly name: string;\n    readonly role: string;\n    readonly avatar: BotAvatar;\n    readonly model: BotModel;\n    readonly workDir: string;\n    readonly groupId: GroupId | null;\n    readonly sessionId: SessionId;\n}',
   },
   {
     name: 'TeamChat',
@@ -10264,7 +10565,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'UpdateChatRequest',
-    declaration: 'export interface UpdateChatRequest {\n    readonly id: ChatId;\n    readonly groupId?: GroupId;\n    readonly name?: string;\n    readonly memberIds?: readonly BotId[];\n    readonly managerId?: BotId | null;\n    readonly memberRoles?: readonly ChatMemberRole[];\n    readonly relayLimit?: number;\n    readonly showHandoffRecords?: boolean;\n}',
+    declaration: 'export interface UpdateChatRequest {\n    readonly id: ChatId;\n    readonly groupId?: GroupId;\n    readonly name?: string;\n    readonly memberIds?: readonly BotId[];\n    readonly managerId?: BotId | null;\n    readonly memberRoles?: readonly ChatMemberRole[];\n    readonly memberRole?: ChatMemberRole;\n    readonly relayLimit?: number;\n    readonly showHandoffRecords?: boolean;\n}',
   },
   {
     name: 'UpdateFinanceClientRequest',

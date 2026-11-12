@@ -19,7 +19,7 @@ describe('Finance capability inventory', () => {
   })
 
   it('defines a concise product-positioned introduction independently of detailed support boundaries', () => {
-    expect(FINANCE_POSITIONING.identity).toBe('Katcats，您的AI财务助手')
+    expect(FINANCE_POSITIONING.identity).toBe('小兢会计，您的AI财务助手')
     expect(FINANCE_POSITIONING.areas.map(([title]) => title)).toEqual([
       '财务资料处理',
       '日常账务协助',
@@ -35,7 +35,7 @@ describe('Finance capability inventory', () => {
     expect(prompt).toContain('回答产品能力问题的唯一真源')
     expect(prompt).toContain('当前会话是通用财务咨询，未绑定客户')
     expect(prompt).toContain('对外定位概述（用于一般能力介绍）')
-    expect(prompt).toContain('Katcats，您的AI财务助手')
+    expect(prompt).toContain('小兢会计，您的AI财务助手')
     expect(prompt).toContain('财务分析与成果输出')
     expect(prompt).toContain('详细支持边界（仅用于具体能力判断、完整清单请求和执行前核验')
     expect(prompt).toContain('[有限支持] 凭证查询与受控维护（适用范围：当前有成财务接入）')

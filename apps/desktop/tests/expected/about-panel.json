@@ -2,7 +2,7 @@
   "darwin:en-US": {
     "menu": [
       {
-        "label": "About 小兢Bot",
+        "label": "About 小兢财务",
         "role": "about"
       },
       {
@@ -10,7 +10,7 @@
       }
     ],
     "options": {
-      "applicationName": "小兢Bot",
+      "applicationName": "小兢财务",
       "applicationVersion": "1.0.0",
       "version": "",
       "copyright": "",
@@ -20,7 +20,7 @@
   "darwin:zh-CN": {
     "menu": [
       {
-        "label": "关于 小兢Bot",
+        "label": "关于 小兢财务",
         "role": "about"
       },
       {
@@ -28,7 +28,7 @@
       }
     ],
     "options": {
-      "applicationName": "小兢Bot",
+      "applicationName": "小兢财务",
       "applicationVersion": "1.0.0",
       "version": "",
       "copyright": "",
@@ -38,14 +38,14 @@
   "win32:zh-CN": {
     "menu": [
       {
-        "label": "关于 小兢Bot"
+        "label": "关于 小兢财务"
       },
       {
         "type": "separator"
       }
     ],
     "options": {
-      "applicationName": "小兢Bot",
+      "applicationName": "小兢财务",
       "applicationVersion": "1.0.0",
       "version": "",
       "copyright": "",
@@ -55,14 +55,14 @@
   "win32:en-US": {
     "menu": [
       {
-        "label": "About 小兢Bot"
+        "label": "About 小兢财务"
       },
       {
         "type": "separator"
       }
     ],
     "options": {
-      "applicationName": "小兢Bot",
+      "applicationName": "小兢财务",
       "applicationVersion": "1.0.0",
       "version": "",
       "copyright": "",

@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-desktop",
-  "description": "Xiaojing Accounting Team desktop application",
+  "description": "Xiaojing Finance desktop application",
   "version": "0.2.1-rc.2",
   "private": true,
   "license": "MIT",

@@ -1,7 +1,7 @@
-Katcats.AI
-Katcats.AI
+小兢财务
+小兢财务
 Add an API key to get started
-Configure official DeepSeek models to start using Katcats.AI
+Configure official DeepSeek models to start using 小兢财务
 Enter API key [password]
 Save and continue [disabled]
 Set up later

@@ -6,4 +6,4 @@ exports[`group room action > keeps visitors out of group personnel and supports 
 
 exports[`group room action > keeps visitors out of group personnel and supports searchable people and camera selection 2`] = `"查看成员详情复制名称"`;
 
-exports[`group room action > uses the current group name, removes the department strip and releases the scene on close 1`] = `"动态全部暂无执行动态任务与交接任务档案到顶部到底部操作说明回答问题、审批和查看交付文件，请返回群聊还没有任务记录"`;
+exports[`group room action > uses the current group name, removes the department strip and releases the scene on close 1`] = `"动态全部暂无执行动态任务与交接任务详情到顶部到底部操作说明回答问题、审批和查看交付文件，请返回群聊还没有任务记录"`;

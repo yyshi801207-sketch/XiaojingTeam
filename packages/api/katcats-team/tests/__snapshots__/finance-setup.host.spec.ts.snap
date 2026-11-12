@@ -1,0 +1,168 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`XiaojingLedgerSetup workflow > asks the owner to select the chart source before saving a 'custom-chart' draft 1`] = `
+{
+  "outcome": {
+    "countryCode": "CN",
+    "currencyCode": "CNY",
+    "customAccountCount": 0,
+    "id": "<plan-id>",
+    "mode": "custom-chart",
+    "name": "Synthetic Company",
+    "openingDate": "2026-02-01",
+    "status": "draft",
+    "templateName": "China - Small Business",
+  },
+  "questions": [
+    {
+      "header": "科目表来源",
+      "id": "ledger-chart-source",
+      "options": [
+        {
+          "description": "使用已安装的 Odoo 科目模板和默认科目。",
+          "label": "使用 Odoo 会计科目模板",
+        },
+        {
+          "description": "上传 Excel 并校验科目，在所选基础模板上导入。",
+          "label": "导入自定义科目表",
+        },
+      ],
+      "question": "请选择这套账的会计科目表来源。",
+    },
+  ],
+  "selected": "导入自定义科目表",
+}
+`;
+
+exports[`XiaojingLedgerSetup workflow > asks the owner to select the chart source before saving a 'odoo-template' draft 1`] = `
+{
+  "outcome": {
+    "countryCode": "CN",
+    "currencyCode": "CNY",
+    "customAccountCount": 0,
+    "id": "<plan-id>",
+    "mode": "odoo-template",
+    "name": "Synthetic Company",
+    "openingDate": "2026-02-01",
+    "status": "draft",
+    "templateName": "China - Small Business",
+  },
+  "questions": [
+    {
+      "header": "科目表来源",
+      "id": "ledger-chart-source",
+      "options": [
+        {
+          "description": "使用已安装的 Odoo 科目模板和默认科目。",
+          "label": "使用 Odoo 会计科目模板",
+        },
+        {
+          "description": "上传 Excel 并校验科目，在所选基础模板上导入。",
+          "label": "导入自定义科目表",
+        },
+      ],
+      "question": "请选择这套账的会计科目表来源。",
+    },
+  ],
+  "selected": "使用 Odoo 会计科目模板",
+}
+`;
+
+exports[`XiaojingLedgerSetup workflow > requires an explicit answer for each role-scoped Odoo administration write 1`] = `
+{
+  "question": {
+    "detail": "\`\`\`json
+{
+  "address": "https://test-ledger.example",
+  "database": "synthetic_ledger",
+  "company": null,
+  "model": "res.company",
+  "method": "write",
+  "parameters": {
+    "ids": [
+      12
+    ],
+    "vals": {
+      "name": "Updated company"
+    }
+  }
+}
+\`\`\`",
+    "header": "确认 Odoo 管理操作",
+    "id": "odoo-admin-write",
+    "options": [
+      {
+        "label": "确认执行",
+      },
+      {
+        "label": "取消",
+      },
+    ],
+    "question": "更改公司名称",
+  },
+  "result": {
+    "company": null,
+    "data": true,
+    "database": "synthetic_ledger",
+    "method": "write",
+    "model": "res.company",
+    "operation": {
+      "candidates": [],
+      "createdAt": Any<String>,
+      "database": "synthetic_ledger",
+      "id": Any<String>,
+      "method": "write",
+      "model": "res.company",
+      "records": [
+        {
+          "id": 12,
+          "name": "Updated company",
+        },
+      ],
+      "role": "ledger",
+      "status": "verified",
+      "updatedAt": Any<String>,
+    },
+  },
+}
+`;
+
+exports[`XiaojingLedgerSetup workflow > requires an explicit answer for each role-scoped Odoo administration write 2`] = `
+{
+  "detail": "\`\`\`json
+{
+  "address": "https://test-ledger.example",
+  "database": "synthetic_ledger",
+  "company": null,
+  "model": "res.users",
+  "method": "write",
+  "parameters": {
+    "ids": [
+      42
+    ],
+    "vals": {
+      "name": "Updated bookkeeper",
+      "group_ids": [
+        [
+          4,
+          7,
+          0
+        ]
+      ]
+    }
+  }
+}
+\`\`\`",
+  "header": "确认 Odoo 管理操作",
+  "id": "odoo-admin-write",
+  "options": [
+    {
+      "label": "确认执行",
+    },
+    {
+      "label": "取消",
+    },
+  ],
+  "question": "更新记账账号权限",
+}
+`;

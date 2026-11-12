@@ -1,6 +1,6 @@
 /** Real group delegation, file review, and completion gates with scripted external model responses. */
 import { readFile, unlink, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { brandString } from '@deepseek-ai/dsh-brand'
@@ -12,6 +12,7 @@ import ApprovalService, { type ApprovalAnswer } from '@deepseek-ai/dsh-user-appr
 import { FsError } from '@deepseek-ai/dsh-fs'
 import FsLocal from '@deepseek-ai/dsh-fs-local'
 import type {} from '@deepseek-ai/dsh-tool-present/types'
+import type { ChatDeliveryId } from '../src/chats-types.ts'
 import { restoreGroupWorkGate } from '../src/group-work-replay.ts'
 import { chatsDomainSpec, chatsStateSchema } from '../src/chats-storage.ts'
 import { memoryFixture } from './memory-fixture.ts'
@@ -45,10 +46,66 @@ async function fixture(script: Parameters<typeof memoryFixture>[0]) {
   return { ...h, author, reviewer, unused, chat, send }
 }
 
+function taskRecord(call: string, submit = false, artifacts: string[] = []) {
+  return toolCallResponse(call, 'record_group_task', { goal: 'Deliver the verified conclusion.',
+    acceptance: ['The exact conclusion is independently reviewed and final files are presented.'],
+    stage: submit ? 'delivered' : 'preparing', next_step: submit ? 'Finished.' : 'Prepare and review the conclusion.',
+    artifacts, ...(submit ? { submit_delivery: true } : {}) })
+}
+
+async function loseDeliveryAcknowledgement(root: string, deliveryId: ChatDeliveryId): Promise<void> {
+  const path = join(root, 'storage', `${chatsDomainSpec.name}.json`)
+  const journal = z.object({ unit: z.unknown(), global: chatsStateSchema, tables: z.unknown() })
+    .parse(JSON.parse(await readFile(path, 'utf8')))
+  await writeFile(path, JSON.stringify({ ...journal, global: { ...journal.global,
+    chats: journal.global.chats.map(chat => ({ ...chat, ...(chat.tickets === undefined ? {} : {
+      tickets: chat.tickets.map(task => {
+        if (task.delivery?.deliveryId !== deliveryId) return task
+        const { delivery: _delivery, completedAt: _completedAt, completionKind: _completionKind, ...record } = task
+        return { ...record, state: 'open', pendingDeliveryId: deliveryId }
+      }),
+    }) })),
+    deliveries: journal.global.deliveries.map(delivery => delivery.id === deliveryId
+      ? { ...delivery, state: 'running', receipt: null, relayed: false } : delivery),
+  } }))
+}
+
 describe('independent group review workflow', () => {
+  it('does not count a review reply as the same member’s separately assigned business task, including replay', async () => {
+    let reviewerId = ''
+    const h = await fixture([
+      () => toolCallResponse('plan-distinct', 'plan_group_work', { own_task: 'Prepare the conclusion.',
+        assignments: [{ bot_id: reviewerId, message: 'First collect the underlying records.' }],
+        review: { reason: 'financial-conclusion', reviewer_bot_id: reviewerId } }),
+      () => toolCallResponse('review-only', 'request_group_member', { bot_id: reviewerId, message: 'Review this draft.',
+        review_candidate: { text: 'Draft conclusion.' } }),
+      toolCallResponse('approve-only', 'submit_group_review', { verdict: 'approved', findings: 'Draft checked.' }),
+      textResponse('Review passed.'),
+      textResponse('Everything is delivered.'),
+      textResponse('Everything is delivered.'),
+    ])
+    reviewerId = h.reviewer.id
+    await h.send()
+    const state = await h.ctx.katcatsChats.snapshot()
+    const parent = state.deliveries[0]!
+    expect(parent.state).toBe('failed')
+    const history = await h.ctx.sessionController.inspect(parent.executorSessionId)
+    const restored = restoreGroupWorkGate(true, [h.reviewer.id], parent.id, parent.inputMessageId, history.events, state.deliveries)
+    expect(restored.completionDenial()).toContain('every assigned member result')
+    expect({ parent: parent.state, review: state.deliveries[1]?.state, verdict: restored.reviewReceipt?.verdict })
+      .toMatchInlineSnapshot(`
+        {
+          "parent": "failed",
+          "review": "completed",
+          "verdict": "approved",
+        }
+      `)
+  })
+
   it('creates a draft before review and delivers only after the reviewer reads it and approves its exact version', async () => {
     let reviewerId = ''
     const h = await fixture([
+      taskRecord('record-plan-financial-work'),
       () => toolCallResponse('plan-financial-work', 'plan_group_work', { own_task: 'Draft the conclusion.', assignments: [],
         review: { reason: 'financial-conclusion', reviewer_bot_id: reviewerId } }),
       toolCallResponse('write-draft', 'write', { file_path: 'conclusion.md', content: 'Rows 10 + 20 = total 30.' }),
@@ -63,6 +120,7 @@ describe('independent group review workflow', () => {
       },
       textResponse('Reviewed the saved conclusion; the sum is supported.'),
       toolCallResponse('approved-present', 'present', { files: [{ path: 'conclusion.md' }] }),
+      taskRecord('submit-financial-work', true, ['conclusion.md']),
       textResponse('The independently reviewed conclusion is delivered.'),
     ])
     reviewerId = h.reviewer.id
@@ -101,8 +159,12 @@ describe('independent group review workflow', () => {
       modelCalls: h.adapter.requests.length,
     }).toMatchInlineSnapshot(`
       {
-        "modelCalls": 9,
+        "modelCalls": 11,
         "parentToolResults": [
+          {
+            "call": "record-plan-financial-work",
+            "failed": false,
+          },
           {
             "call": "plan-financial-work",
             "failed": false,
@@ -123,6 +185,10 @@ describe('independent group review workflow', () => {
             "call": "approved-present",
             "failed": false,
           },
+          {
+            "call": "submit-financial-work",
+            "failed": false,
+          },
         ],
         "presentations": [
           "approved-present",
@@ -133,6 +199,56 @@ describe('independent group review workflow', () => {
         ],
       }
     `)
+  })
+
+  it('publishes the exact approved text and presented file when the model rewrites its final answer', async () => {
+    let reviewerId = ''
+    const approved = 'Verified total: 30.\n\nChecked inputs: 10 and 20.'
+    const paraphrase = 'The reviewed total is now 300.'
+    const h = await fixture([
+      taskRecord('record-plan-canonical'),
+      () => toolCallResponse('plan-canonical', 'plan_group_work', { own_task: 'Prepare the verified conclusion.', assignments: [],
+        review: { reason: 'financial-conclusion', reviewer_bot_id: reviewerId } }),
+      toolCallResponse('write-canonical', 'write', { file_path: 'canonical.md', content: approved }),
+      () => toolCallResponse('review-canonical', 'request_group_member', { bot_id: reviewerId,
+        message: 'Check the exact text and saved file.', review_candidate: { text: approved, files: ['canonical.md'] } }),
+      toolCallResponse('read-canonical', 'read', { file_path: 'canonical.md' }),
+      toolCallResponse('approve-canonical', 'submit_group_review', { verdict: 'approved', findings: 'Confirmed the total is 30.' }),
+      textResponse('The draft and file are verified.'),
+      toolCallResponse('present-canonical', 'present', { files: [{ path: 'canonical.md' }] }),
+      taskRecord('submit-canonical', true, ['canonical.md']),
+      textResponse(paraphrase),
+      textResponse('The reviewed total is now 3,000.'),
+    ])
+    reviewerId = h.reviewer.id
+    await h.send()
+    const state = await h.ctx.katcatsChats.snapshot()
+    expect(state.chats[0]).toMatchObject({ status: 'active', run: null, error: null })
+    expect(state.deliveries.map(delivery => delivery.state)).toEqual(['completed', 'completed'])
+    const parent = state.deliveries[0]!
+    expect(parent).toMatchObject({ relayed: true, receipt: { text: approved } })
+    const history = await h.ctx.sessionController.inspect(parent.executorSessionId)
+    expect(history.events.flatMap(event => event.type === 'deliverables/presented'
+      ? [{ callId: event.data.callId, files: event.data.files.map(file => basename(file.path)) }] : []))
+      .toEqual([{ callId: 'present-canonical', files: ['canonical.md'] }])
+    expect(await readFile(join(h.chat.workDir, 'canonical.md'), 'utf8')).toBe(approved)
+    expect(history.events.filter(event => event.type === 'user/message'
+      && event.data.source.kind === 'katcats-group-review-notice')).toEqual([])
+    const root = await h.ctx.sessionController.inspect(h.chat.rootSessionId)
+    expect(root.events.find(event => event.type === 'user/message' && event.data.id === parent.relayMessageId))
+      .toMatchObject({ data: { content: [{ type: 'text', text: approved }] } })
+    expect(JSON.stringify(root.events)).not.toContain(paraphrase)
+    expect(h.adapter.requests).toHaveLength(10)
+
+    await h.close()
+    await loseDeliveryAcknowledgement(h.root, parent.id)
+    const cold = await memoryFixture([], h.root)
+    const restored = await cold.ctx.katcatsChats.snapshot()
+    expect(restored.deliveries[0]).toMatchObject({ state: 'completed', relayed: true, receipt: parent.receipt })
+    const restoredRoot = await cold.ctx.sessionController.inspect(h.chat.rootSessionId)
+    expect(restoredRoot.events.filter(event => event.type === 'user/message' && event.data.id === parent.relayMessageId))
+      .toEqual(root.events.filter(event => event.type === 'user/message' && event.data.id === parent.relayMessageId))
+    expect(cold.adapter.requests).toEqual([])
   })
 
   it('withholds a claimed final answer when review never happened and corrects the model only once', async () => {
@@ -159,6 +275,7 @@ describe('independent group review workflow', () => {
   it('requires a revised candidate to pass after the reviewer requests changes', async () => {
     let reviewerId = ''
     const h = await fixture([
+      taskRecord('record-plan-revision'),
       () => toolCallResponse('plan-revision', 'plan_group_work', { own_task: 'Compute the total.', assignments: [],
         review: { reason: 'financial-conclusion', reviewer_bot_id: reviewerId } }),
       () => toolCallResponse('request-first-review', 'request_group_member', { bot_id: reviewerId,
@@ -175,6 +292,7 @@ describe('independent group review workflow', () => {
       toolCallResponse('approve-revised-review', 'submit_group_review',
         { verdict: 'approved', findings: 'Recomputed both inputs and confirmed 30.' }),
       textResponse('The revised total is verified.'),
+      taskRecord('submit-revision', true),
       textResponse('10 + 20 = 30.'),
     ])
     reviewerId = h.reviewer.id
@@ -186,7 +304,8 @@ describe('independent group review workflow', () => {
     const history = await h.ctx.sessionController.inspect(parent.executorSessionId)
     const gate = restoreGroupWorkGate(true, [h.reviewer.id], parent.id, parent.inputMessageId, history.events, state.deliveries)
     expect(gate.reviewReceipt).toMatchObject({ verdict: 'approved', deliveryId: state.deliveries[2]!.id })
-    expect(gate.completionDenial('10 + 20 = 30.')).toBeUndefined()
+    expect(gate.completionDenial()).toBeUndefined()
+    expect(gate.reviewCandidate?.text).toBe('10 + 20 = 30.')
     expect(history.events.filter(event => event.type === 'user/message'
       && event.data.source.kind === 'katcats-group-review-notice')).toHaveLength(1)
   })
@@ -241,6 +360,7 @@ describe('independent group review workflow', () => {
     'rechecks durable review evidence on restart when candidate is %s', async candidateState => {
     let reviewerId = ''
     const h = await fixture([
+      taskRecord('record-plan-before-restart'),
       () => toolCallResponse('plan-before-restart', 'plan_group_work', { own_task: 'Prepare a verified file.', assignments: [],
         review: { reason: 'explicit-review', reviewer_bot_id: reviewerId } }),
       toolCallResponse('write-before-restart', 'write', { file_path: 'restart.md', content: 'Checked total: 30.' }),
@@ -248,23 +368,18 @@ describe('independent group review workflow', () => {
         message: 'Verify the saved total.', review_candidate: { files: ['restart.md'] } }),
       toolCallResponse('approve-before-restart', 'submit_group_review', { verdict: 'approved', findings: 'The total is 30.' }),
       textResponse('The file is verified.'),
+      toolCallResponse('present-before-restart', 'present', { files: [{ path: 'restart.md' }] }),
+      taskRecord('submit-before-restart', true, ['restart.md']),
       textResponse('The reviewed file is ready.'),
     ])
     reviewerId = h.reviewer.id
     await h.send()
     const before = await h.ctx.katcatsChats.snapshot()
     const parent = before.deliveries[0]!
-    expect(parent.state).toBe('completed')
+    expect(parent).toMatchObject({ state: 'completed', receipt: { text: '' } })
     const other = (await h.ctx.katcatsChats.createChat({ name: 'Independent group', memberIds: [h.author.id] })).chat
     await h.close()
-    // Reproduce a persisted executor completion whose group-journal acknowledgement was lost.
-    const journalPath = join(h.root, 'storage', `${chatsDomainSpec.name}.json`)
-    const journal = z.object({ unit: z.unknown(), global: chatsStateSchema, tables: z.unknown() })
-      .parse(JSON.parse(await readFile(journalPath, 'utf8')))
-    await writeFile(journalPath, JSON.stringify({ ...journal, global: { ...journal.global,
-      deliveries: journal.global.deliveries.map(delivery => delivery.id === parent.id
-        ? { ...delivery, state: 'running', receipt: null, relayed: false } : delivery),
-    } }))
+    await loseDeliveryAcknowledgement(h.root, parent.id)
     if (candidateState === 'changed') await writeFile(join(h.chat.workDir, 'restart.md'), 'Unreviewed total: 300.')
     if (candidateState === 'missing') await unlink(join(h.chat.workDir, 'restart.md'))
     const fault = candidateState === 'io-error'
@@ -282,6 +397,35 @@ describe('independent group review workflow', () => {
       expect(JSON.stringify(restored)).not.toContain('SYNTHETIC_PRIVATE_IO_DETAIL')
       expect(cold.adapter.requests).toEqual([])
     } finally { fault?.mockRestore() }
+  })
+
+  it('corrects once and closes the task when an approved file was never presented', async () => {
+    let reviewerId = ''
+    const h = await fixture([
+      () => toolCallResponse('plan-missing-present', 'plan_group_work', { own_task: 'Prepare a reviewed file.', assignments: [],
+        review: { reason: 'explicit-review', reviewer_bot_id: reviewerId } }),
+      toolCallResponse('write-missing-present', 'write', { file_path: 'not-presented.md', content: 'Reviewed bytes.' }),
+      () => toolCallResponse('request-missing-present', 'request_group_member', { bot_id: reviewerId,
+        message: 'Check the file.', review_candidate: { files: ['not-presented.md'] } }),
+      toolCallResponse('approve-missing-present', 'submit_group_review', { verdict: 'approved', findings: 'Verified the saved bytes.' }),
+      textResponse('The file is verified.'),
+      textResponse('The file has been delivered.'),
+      request => {
+        expect(JSON.stringify(request.messages)).toContain('Use present to register all approved files')
+        return textResponse('The file is already delivered.')
+      },
+    ])
+    reviewerId = h.reviewer.id
+    await h.send()
+    const state = await h.ctx.katcatsChats.snapshot()
+    expect(state.chats[0]).toMatchObject({ status: 'active', run: null, error: null })
+    const parent = state.deliveries[0]!
+    expect(parent).toMatchObject({ state: 'failed', receipt: null, error: { code: 'KATCATS_CHAT_REVIEW_INCOMPLETE' } })
+    const history = await h.ctx.sessionController.inspect(parent.executorSessionId)
+    expect(history.events.filter(event => event.type === 'deliverables/presented')).toEqual([])
+    expect(history.events.filter(event => event.type === 'user/message'
+      && event.data.source.kind === 'katcats-group-review-notice')).toHaveLength(1)
+    expect(h.adapter.requests).toHaveLength(7)
   })
 
   it('rechecks reviewed file bytes after approval waiting and blocks an unreviewed replacement', async () => {

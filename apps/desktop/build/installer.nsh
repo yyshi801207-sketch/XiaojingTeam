@@ -6,6 +6,7 @@
 !include "${BUILD_RESOURCES_DIR}\installer-shortcuts.nsh"
 
 !ifndef BUILD_UNINSTALLER
+  !define /ifndef INSTALLER_BUILD_DIR "${__FILEDIR__}\..\.desktop-build\targets\win-x64\installer-ui"
   !include "${__FILEDIR__}\..\scripts\installer-directories.nsh"
   !include "${BUILD_RESOURCES_DIR}\installer-installation.nsh"
 !endif
@@ -28,6 +29,15 @@
   StrCpy $isForceCurrentInstall "1"
 !macroend
 
+!macro customInstallerExtract Archive
+  File /oname=$PLUGINSDIR\window-frame.dll "${INSTALLER_BUILD_DIR}\window-frame.dll"
+  System::Store /NOUNLOAD "S"
+  System::Call /NOUNLOAD '$PLUGINSDIR\window-frame.dll::InstallerExtract(p 0, w "$PLUGINSDIR\dsh-7za.exe", w "${Archive}", w "$INSTDIR", w "$PLUGINSDIR\extract.log") i.s ?c'
+  System::Store "L"
+  Pop $R0
+  StrCpy $R1 "$R0"
+!macroend
+
 !macro customCheckAppRunning
   !ifndef BUILD_UNINSTALLER
     ReadRegStr $R8 HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation
@@ -47,7 +57,7 @@ xiaojingAppCheckRetry:
   Pop $R0
   Pop $R1
   StrCmp $R0 "0" xiaojingAppCheckDone
-  MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "无法安全关闭旧版小兢Bot。请结束旧版进程后重试。" /SD IDCANCEL IDRETRY xiaojingAppCheckRetry
+  MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "无法安全关闭旧版小兢财务。请结束旧版进程后重试。" /SD IDCANCEL IDRETRY xiaojingAppCheckRetry
   Quit
 
 xiaojingAppCheckDone:
@@ -69,7 +79,7 @@ xiaojingRefreshShortcutsRetry:
     Quit
   ${EndIf}
   !insertmacro dshFinishDirectories
-  Call xiaojingFinalizeInstallSection
+  StrCpy $xiaojingInstallInProgress "0"
 !macroend
 
 !macro customPageAfterChangeDir
@@ -267,7 +277,7 @@ xiaojingRefreshShortcutsRetry:
       System::Call 'USER32::SetWindowPos(p $xiaojingWelcomeProductControl, p 0, i R0, i 8, i $xiaojingInstallerArtworkWidth, i $xiaojingInstallerArtworkHeight, i 0x0004)'
       ${NSD_SetStretchedImage} $xiaojingWelcomeProductControl "$PLUGINSDIR\xiaojing-product-logo.bmp" $xiaojingWelcomeProductBitmap
 
-      ${NSD_CreateLabel} 0u 0u 1u 1u "小兢Bot"
+      ${NSD_CreateLabel} 0u 0u 1u 1u "小兢财务"
       Pop $xiaojingWelcomeTitleControl
       ${NSD_AddStyle} $xiaojingWelcomeTitleControl ${SS_CENTER}|${SS_CENTERIMAGE}
       SetCtlColors $xiaojingWelcomeTitleControl "102A36" "FFFFFF"
@@ -376,11 +386,6 @@ xiaojingRefreshShortcutsRetry:
       Pop $0
     FunctionEnd
 
-    Function xiaojingFinalizeInstallSection
-      StrCpy $xiaojingInstallInProgress "0"
-      Call xiaojingAutoFinish
-    FunctionEnd
-
     Function xiaojingInstallerAbortRequested
       StrCmp $xiaojingInstallInProgress "1" 0 xiaojingAbortAllowed
 
@@ -409,6 +414,7 @@ xiaojingRefreshShortcutsRetry:
 
     Function xiaojingInstallFilesShow
       StrCpy $xiaojingInstallInProgress "1"
+      SetAutoClose true
       Call muiPageLoadFullWindow
       SetCtlColors $HWNDPARENT "" "FFFFFF"
       SetCtlColors $mui.InstFilesPage "" "FFFFFF"
@@ -436,7 +442,7 @@ xiaojingRefreshShortcutsRetry:
       IntOp $R0 $xiaojingInstallerPageWidth - 480
       IntOp $R0 $R0 / 2
       IntOp $R1 $xiaojingInstallerArtworkHeight + 22
-      System::Call 'USER32::CreateWindowExW(i 0, w "STATIC", w "正在安装小兢Bot，请稍候…", i 0x50000201, i R0, i R1, i 480, i 36, p $mui.InstFilesPage, p 0, p 0, p 0) p .r0'
+      System::Call 'USER32::CreateWindowExW(i 0, w "STATIC", w "正在安装小兢财务，请稍候…", i 0x50000201, i R0, i R1, i 480, i 36, p $mui.InstFilesPage, p 0, p 0, p 0) p .r0'
       StrCpy $xiaojingProgressTitleControl $0
       SetCtlColors $xiaojingProgressTitleControl "102A36" "FFFFFF"
       CreateFont $1 "Microsoft YaHei UI" "15" "600"

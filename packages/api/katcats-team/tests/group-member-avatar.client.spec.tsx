@@ -44,7 +44,7 @@ describe('group member appearance', () => {
   it('keeps all ten selected silhouettes and bright colors available to the shared hover behavior', () => {
     const view = render(<>{CAT_HEADS.map(head => <CatAvatar key={head.id} appearance={{ shape: head.id, color: '#9253FF' }} />)}</>)
     expect([...view.container.querySelectorAll('svg')].map(svg => svg.getAttribute('data-head'))).toEqual([
-      'classic', 'round', 'point', 'tilt', 'slim', 'fold', 'fluffy', 'wave', 'layered', 'ponytail',
+      'classic', 'round', 'point', 'tilt', 'slim', 'layered', 'fluffy', 'wave', 'fold', 'ponytail',
     ])
     expect([...view.container.querySelectorAll('svg')].map(svg => svg.style.getPropertyValue('--katcats-avatar-color')))
       .toEqual(Array.from({ length: 10 }, () => '#9253FF'))

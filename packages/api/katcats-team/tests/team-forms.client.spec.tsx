@@ -6,7 +6,8 @@ import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ConnectionState } from '@deepseek-ai/dsh-client-connection/client'
 import { createSidebarViewStore } from '../src/client/sidebar-view.ts'
 import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import type { BotId, GroupId, TeamBot, TeamSnapshot, UpdateBotRequest } from '../src/types.ts'
+import { ledgerSetupBotId, odooAccessBotId, type BotId, type GroupId, type TeamBot, type TeamSnapshot, type UpdateBotRequest } from '../src/types.ts'
+import type { FinanceConnector, FinanceConnectorId } from '../src/finance-types.ts'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceSnapshot } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import { CreateBot } from '../src/client/CreateBot.tsx'
@@ -17,6 +18,9 @@ import { TeamSidebar, type TeamSidebarProps } from '../src/client/TeamSidebar.ts
 import type { TeamView } from '../src/client/model.ts'
 import type { ChatView } from '../src/client/chat-model.ts'
 import { en, zh } from '../src/client/locales.ts'
+import { financeZh } from '../src/client/finance-locales.ts'
+import type { FinanceSetupView } from '../src/client/FinanceLedgerSetup.tsx'
+import type { LedgerSetupDatabaseControls } from '../src/client/LedgerSetupDatabaseSettings.tsx'
 
 afterEach(cleanup)
 const t = makeTranslate(zh)
@@ -34,6 +38,8 @@ const directory = () => createSnapshotStore<TeamView>({ phase: 'ready', snapshot
 const chatDirectory = () => createSnapshotStore<ChatView>({ phase: 'ready', snapshot: { revision: 0, chats: [], deliveries: [], relayLimit: 6, activities: [] } })
 const permissionDefaults = {
   useConnection: bindSnapshotSelector(createSnapshotStore<ConnectionState | undefined>('connected')),
+  useFinanceSetup: bindSnapshotSelector(createSnapshotStore<FinanceSetupView>({ kind: 'disabled' })),
+  setupDatabase: null,
   useTabInfo: () => ({ tab: { visible: true } }),
   renderFactorySlot: () => null,
 }
@@ -72,6 +78,201 @@ describe('quick member creation', () => {
 })
 
 describe('member settings', () => {
+  it.each([{ locale: 'zh', copy: zh }, { locale: 'en', copy: en }])('shows detailed fixed-assistant duties as expandable read-only text in $locale', ({ copy }) => {
+    const setupBot: TeamBot = { ...bot, id: ledgerSetupBotId, name: copy['team.ledgerAssistantNickname'], sessionId: 'setup-session' as SessionId }
+    const accessBot: TeamBot = { ...bot, id: odooAccessBotId, name: copy['team.accessAssistantNickname'], sessionId: 'access-session' as SessionId }
+    const source = directory()
+    source.set({ ...source.getSnapshot(), snapshot: { ...snapshot, bots: [main, bot, setupBot, accessBot] } })
+    const save = vi.fn(async () => {})
+    const props = { ...permissionDefaults, sessionId: setupBot.sessionId, useDirectory: bindSnapshotSelector(source),
+      useProjection: () => undefined, save, t: makeTranslate(copy),
+    } as BotSettingsProps
+    const computedStyle = window.getComputedStyle.bind(window)
+    const style = vi.spyOn(window, 'getComputedStyle').mockImplementation(element => {
+      const result = computedStyle(element)
+      if (element.tagName === 'P') result.lineHeight = '20px'
+      return result
+    })
+    const height = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.tagName === 'P' ? 400 : 0
+    })
+    try {
+      const view = render(<BotSettings {...props} />)
+      const duties: Record<string, string | null> = {}
+      for (const member of [setupBot, accessBot]) {
+        view.rerender(<BotSettings {...props} sessionId={member.sessionId} />)
+        const field = screen.getByRole('region', { name: copy['bot.role'] })
+        duties[member.name] = field.querySelector('p')!.textContent
+        expect(within(field).queryByRole('button', { name: copy['role.edit'] })).toBeNull()
+        expect(within(field).queryByRole('button', { name: copy['role.save'] })).toBeNull()
+        expect(within(field).queryByRole('textbox')).toBeNull()
+        const disclosure = within(field).getByRole('button', { name: copy['role.expand'] })
+        const preview = field.querySelector<HTMLElement>('[data-expanded]')!
+        expect(disclosure.getAttribute('aria-expanded')).toBe('false')
+        expect(preview.style.maxBlockSize).toBe('8lh')
+        fireEvent.click(disclosure)
+        expect(disclosure.getAttribute('aria-expanded')).toBe('true')
+        expect(preview.style.maxBlockSize).toBe('')
+        fireEvent.click(within(field).getByRole('button', { name: copy['role.collapse'] }))
+        expect(disclosure.getAttribute('aria-expanded')).toBe('false')
+        expect(preview.style.maxBlockSize).toBe('8lh')
+      }
+      expect(duties).toMatchSnapshot()
+      expect(save).not.toHaveBeenCalled()
+      view.rerender(<BotSettings {...props} sessionId={bot.sessionId} />)
+      fireEvent.click(screen.getByRole('button', { name: copy['role.edit'] }))
+      expect(screen.getByRole('textbox', { name: copy['bot.role'] })).toBeTruthy()
+    } finally {
+      style.mockRestore()
+      height.mockRestore()
+    }
+  })
+
+  it('shares the verified Odoo connection between fixed assistants and reopens a blank credential field', async () => {
+    const setupBot: TeamBot = { ...bot, id: ledgerSetupBotId, name: '建账助手', sessionId: 'setup-session' as SessionId }
+    const accessBot: TeamBot = { ...bot, id: odooAccessBotId, name: '系统助手', sessionId: 'access-session' as SessionId }
+    const source = directory()
+    source.set({ ...source.getSnapshot(), snapshot: { ...snapshot, bots: [main, bot, setupBot, accessBot] } })
+    const account = { login: 'odoo-admin@example.com' }
+    const connection = { url: 'https://odoo.example.com', database: 'ledger', verifiedAt: '2026-11-11T01:00:00Z', account }
+    const setup = createSnapshotStore<FinanceSetupView>({ kind: 'ready', revision: 1, snapshot: { connection: null, plans: [] } })
+    const connect = vi.fn<LedgerSetupDatabaseControls['connect']>().mockResolvedValue({ ok: true, value: { connection, plans: [] } })
+    const save = vi.fn(async () => {})
+    const props = { ...permissionDefaults, sessionId: bot.sessionId, useDirectory: bindSnapshotSelector(source),
+      useFinanceSetup: bindSnapshotSelector(setup), useProjection: () => undefined, save, t,
+      setupDatabase: { t: makeTranslate(financeZh), connect, reload: vi.fn() },
+    } as BotSettingsProps
+    const view = render(<BotSettings {...props} />)
+    expect(screen.queryByRole('region', { name: financeZh['setup.connection'] })).toBeNull()
+
+    view.rerender(<BotSettings {...props} sessionId={setupBot.sessionId} />)
+    const card = () => screen.getByRole('region', { name: financeZh['setup.connection'] })
+    const fields = () => within(card())
+    const button = () => fields().getByRole('button', { name: financeZh['setup.connect'] })
+    const openEditor = () => fireEvent.click(fields().getByRole('button', { name: financeZh.edit }))
+    const expandCard = () => {
+      const summary = card().querySelector('summary')!
+      expect(summary.parentElement).toHaveProperty('open', false)
+      expect(within(summary).getByText('财务系统连接')).toBeTruthy()
+      fireEvent.click(summary)
+      expect(summary.parentElement).toHaveProperty('open', true)
+    }
+    expandCard()
+    expect(button()).toHaveProperty('disabled', true)
+    expect(fields().queryByText(financeZh['editor.companyStep'])).toBeNull()
+    expect(screen.queryByLabelText(zh['bot.name'])).toBeNull()
+    expect(screen.queryByRole('textbox', { name: zh['bot.role'] })).toBeNull()
+    expect(screen.queryByLabelText(zh['bot.group'])).toBeNull()
+    expect(screen.getByLabelText(zh['bot.model'])).toBeTruthy()
+    fireEvent.change(fields().getByLabelText(financeZh['connection.address']), { target: { value: connection.url } })
+    fireEvent.change(fields().getByLabelText(financeZh.database), { target: { value: connection.database } })
+    fireEvent.change(fields().getByLabelText(financeZh['setup.adminKey']), { target: { value: 'setup-key' } })
+    await act(async () => { fireEvent.click(button()) })
+    expect(connect).toHaveBeenCalledExactlyOnceWith({ url: connection.url, database: connection.database, apiKey: 'setup-key' })
+    expect(save).not.toHaveBeenCalled()
+    expect(card().dataset.financeState).toBe('reachable')
+    expect(fields().getByText(financeZh['setup.connected'])).toBeTruthy()
+    expect(fields().getByText(connection.url)).toBeTruthy()
+    expect(fields().getByText(connection.database)).toBeTruthy()
+    const login = fields().getByText(financeZh['connection.login']).nextElementSibling
+    expect(login?.querySelector('bdi')?.textContent).toBe(account.login)
+    expect(login?.querySelector('small')?.textContent).toBe(financeZh['odoo.readWrite'])
+    expect(fields().queryByText('已验证权限')).toBeNull()
+    const verification = fields().getByText(financeZh.lastTest)
+    expect(verification.parentElement).toBe(verification.parentElement?.parentElement?.lastElementChild)
+    expect(verification.nextElementSibling?.querySelector('time')?.dateTime).toBe(connection.verifiedAt)
+    expect(fields().queryByLabelText(financeZh['setup.adminKey'])).toBeNull()
+
+    act(() => setup.set({ kind: 'ready', revision: 1, snapshot: { connection, plans: [] } }))
+    view.rerender(<BotSettings {...props} sessionId={accessBot.sessionId} />)
+    expect(screen.getByRole('heading', { name: accessBot.name })).toBeTruthy()
+    expect(screen.getByText(zh['team.accessAssistantRole'])).toBeTruthy()
+    expect(view.container.querySelector('img[data-xiaojing-assistant-avatar]')?.getAttribute('src')).toContain('odoo-yeye.png')
+    expandCard()
+    expect(fields().getByText(connection.database)).toBeTruthy()
+    expect(fields().getByText(account.login)).toBeTruthy()
+    expect(screen.queryByLabelText(zh['bot.group'])).toBeNull()
+    openEditor()
+    expect(fields().getByLabelText(financeZh['setup.adminKey'])).toHaveProperty('value', '')
+    expect(fields().getByLabelText(financeZh['setup.adminKey'])).toHaveProperty('placeholder', financeZh['editor.keySaved'])
+    expect(fields().getByText(financeZh['editor.keyExisting'])).toBeTruthy()
+    await act(async () => { fireEvent.click(button()) })
+    expect(connect).toHaveBeenLastCalledWith({ url: connection.url, database: connection.database })
+    expect(fields().queryByLabelText(financeZh['setup.adminKey'])).toBeNull()
+
+    openEditor()
+    const changed = 'https://second.example.com'
+    fireEvent.change(fields().getByLabelText(financeZh['connection.address']), { target: { value: changed } })
+    fireEvent.change(fields().getByLabelText(financeZh.database), { target: { value: 'other' } })
+    expect(fields().getByText(financeZh['setup.connectionChangedKey'])).toBeTruthy()
+    expect(fields().getByLabelText(financeZh['setup.adminKey'])).not.toHaveProperty('placeholder', financeZh['editor.keySaved'])
+    expect(button()).toHaveProperty('disabled', true)
+    fireEvent.change(fields().getByLabelText(financeZh['setup.adminKey']), { target: { value: 'new-key' } })
+    connect.mockResolvedValueOnce({ ok: false, key: 'error.authentication' })
+    await act(async () => { fireEvent.click(button()) })
+    expect(connect).toHaveBeenLastCalledWith({ url: changed, database: 'other', apiKey: 'new-key' })
+    expect(fields().getByRole('alert').textContent).toBe(financeZh['error.authentication'])
+    expect(fields().queryByText(financeZh['setup.connected'])).toBeNull()
+    expect(fields().getByLabelText(financeZh['connection.address'])).toHaveProperty('value', changed)
+    expect(fields().getByLabelText(financeZh.database)).toHaveProperty('value', 'other')
+    fireEvent.click(fields().getByRole('button', { name: financeZh['editor.cancel'] }))
+    expect(fields().getByText(connection.url)).toBeTruthy()
+    expect(fields().queryByLabelText(financeZh['setup.adminKey'])).toBeNull()
+
+    openEditor()
+    fireEvent.change(fields().getByLabelText(financeZh['setup.adminKey']), { target: { value: 'draft-key' } })
+    act(() => setup.set({ kind: 'ready', revision: 2, snapshot: { connection, plans: [] } }))
+    expect(fields().queryByLabelText(financeZh['setup.adminKey'])).toBeNull()
+    expandCard()
+    openEditor()
+    expect(fields().getByLabelText(financeZh['setup.adminKey'])).toHaveProperty('value', '')
+  })
+
+  it.each(['cashier', 'general-ledger'] as const)('edits a %s Bot’s role and keeps its private ledger controls separate from ordinary Bot settings', async (financePreset) => {
+    const financeBot: TeamBot = { ...bot, id: 'finance' as BotId, name: 'Finance member', role: 'Verify ledger entries.',
+      sessionId: 'finance-session' as SessionId, financePreset }
+    const source = directory()
+    source.set({ ...source.getSnapshot(), snapshot: { ...snapshot, bots: [main, { ...bot, role: 'Draft finance newsletters' }, financeBot] } })
+    const connector: FinanceConnector = {
+      id: 'verified-connector' as FinanceConnectorId, type: 'odoo', name: 'Odoo',
+      url: 'https://odoo.example', database: 'fixture', company: { id: 1, name: '测试账套', currency: 'CNY' },
+      lastTestAt: '2026-11-10T00:00:00Z', failure: null, capabilities: ['journals'],
+    }
+    const finance = {
+      load: vi.fn(async () => ({ connectors: [connector], connectorId: null })),
+      bind: vi.fn(async () => {}),
+      connect: vi.fn(async () => connector),
+    }
+    const save = vi.fn(async () => {})
+    const props = {
+      sessionId: bot.sessionId, useDirectory: bindSnapshotSelector(source), useProjection: () => undefined, save, finance, t,
+    } as BotSettingsProps
+    const view = render(<BotSettings {...permissionDefaults} {...props} />)
+    expect(screen.getByText('Draft finance newsletters')).toBeTruthy()
+    expect(screen.queryByRole('textbox', { name: zh['bot.role'] })).toBeNull()
+    expect(screen.queryByRole('region', { name: zh['chat.financeTitle'] })).toBeNull()
+    expect(finance.load).not.toHaveBeenCalled()
+
+    view.rerender(<BotSettings {...permissionDefaults} {...props} sessionId={financeBot.sessionId} />)
+    expect(screen.getByText(zh['bot.financeBadge'])).toBeTruthy()
+    expect(screen.getByText(financeBot.role)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: zh['role.edit'] }))
+    const role = screen.getByRole<HTMLTextAreaElement>('textbox', { name: zh['bot.role'] })
+    expect(role.value).toBe(financeBot.role)
+    const extended = role.value + '\nPrepare the monthly report.'
+    fireEvent.change(role, { target: { value: extended } })
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: zh['role.save'] })) })
+    expect(save).toHaveBeenCalledExactlyOnceWith({ id: financeBot.id, role: extended })
+    expect(finance.load).toHaveBeenCalledExactlyOnceWith(financeBot.id)
+    const panel = within(await screen.findByRole('region', { name: zh['chat.financeTitle'] }))
+    fireEvent.click(panel.getByText(zh['chat.financeTitle']))
+    fireEvent.click(await panel.findByRole('button', { name: zh['chat.financeSelect'] }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Odoo · 测试账套' }))
+    fireEvent.click(panel.getByRole('button', { name: zh['chat.financeSave'] }))
+    expect(await panel.findByText(zh['chat.financeSaved'])).toBeTruthy()
+    expect(finance.bind).toHaveBeenCalledExactlyOnceWith(financeBot.id, connector.id)
+  })
+
   it('shows the fixed main portrait without ordinary appearance controls and saves only the edited identity', async () => {
     const source = directory()
     const save = vi.fn(async () => {})
@@ -148,25 +349,47 @@ describe('member settings', () => {
     const updated = { ...bot, name: 'Updated Writer', role: 'The lasting role saved through chat' }
     act(() => { source.set({ ...source.getSnapshot(), snapshot: { ...snapshot, bots: [main, updated] } }) })
     expect(screen.getByLabelText<HTMLInputElement>(zh['bot.name']).value).toBe(updated.name)
-    expect(screen.getByLabelText<HTMLTextAreaElement>(zh['bot.role']).value).toBe(updated.role)
+    expect(screen.getByText(updated.role)).toBeTruthy()
+    expect(screen.queryByRole('textbox', { name: zh['bot.role'] })).toBeNull()
     expect(screen.getByRole('button', { name: zh['color.blue'] }).getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(screen.getByRole('button', { name: zh['bot.save'] }))
     await waitFor(() => { expect(save).toHaveBeenCalledExactlyOnceWith({ id: bot.id, avatar: { shape: 'classic', color: '#2288FF' } }) })
     expect(source.getSnapshot().snapshot?.bots.find(member => member.id === bot.id)?.role).toBe(updated.role)
   })
 
-  it('preserves an explicitly edited role across a concurrent update and submits only that role', async () => {
+  it('preserves a multiline duty draft after a concurrent update and a failed inline save', async () => {
     const source = directory()
-    const save = vi.fn<(request: UpdateBotRequest) => Promise<void>>().mockResolvedValue(undefined)
+    const initialRole = 'Prepare complete workpapers.\nPreserve source dates and exact numbers on every line.'
+    source.set({ ...source.getSnapshot(), snapshot: { ...snapshot, bots: [main, { ...bot, role: initialRole }] } })
+    const save = vi.fn<(request: UpdateBotRequest) => Promise<void>>()
+      .mockRejectedValueOnce(new Error('Synthetic duty save failed'))
+      .mockImplementationOnce(async request => {
+        const state = source.getSnapshot()
+        if (state.snapshot === null) throw new Error('Synthetic directory missing')
+        source.set({ ...state, snapshot: { ...state.snapshot,
+          bots: state.snapshot.bots.map(member => member.id === request.id ? { ...member, ...request } : member),
+        } })
+      })
     const props = { sessionId: bot.sessionId, useDirectory: bindSnapshotSelector(source), useProjection: () => undefined, save, t } as BotSettingsProps
     render(<BotSettings {...permissionDefaults} {...props} />)
-    fireEvent.change(screen.getByLabelText(zh['bot.role']), { target: { value: 'My explicit ongoing role' } })
+    expect(screen.getByText(initialRole, { normalizer: text => text }).textContent).toBe(initialRole)
+    expect(screen.queryByRole('textbox', { name: zh['bot.role'] })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: zh['role.edit'] }))
+    expect(screen.getByRole<HTMLTextAreaElement>('textbox', { name: zh['bot.role'] }).value).toBe(initialRole)
+    const draftRole = initialRole + '\nRecord any unresolved exceptions.'
+    fireEvent.change(screen.getByRole('textbox', { name: zh['bot.role'] }), { target: { value: draftRole } })
     act(() => { source.set({ ...source.getSnapshot(), snapshot: { ...snapshot,
       bots: [main, { ...bot, name: 'Updated Writer', role: 'A concurrent role from chat' }] } }) })
-    expect(screen.getByLabelText<HTMLTextAreaElement>(zh['bot.role']).value).toBe('My explicit ongoing role')
-    expect(screen.getByLabelText<HTMLInputElement>(zh['bot.name']).value).toBe('Updated Writer')
-    fireEvent.click(screen.getByRole('button', { name: zh['bot.save'] }))
-    await waitFor(() => { expect(save).toHaveBeenCalledExactlyOnceWith({ id: bot.id, role: 'My explicit ongoing role' }) })
+    fireEvent.change(screen.getByLabelText(zh['bot.name']), { target: { value: 'Unsaved title' } })
+    const saveRole = () => screen.getByRole('button', { name: zh['role.save'] })
+    await act(async () => { fireEvent.click(saveRole()) })
+    expect(screen.getByRole<HTMLTextAreaElement>('textbox', { name: zh['bot.role'] }).value).toBe(draftRole)
+    expect(saveRole()).toHaveProperty('disabled', false)
+    await act(async () => { fireEvent.click(saveRole()) })
+    expect(save.mock.calls).toEqual([[{ id: bot.id, role: draftRole }], [{ id: bot.id, role: draftRole }]])
+    expect(screen.queryByRole('textbox', { name: zh['bot.role'] })).toBeNull()
+    expect(screen.getByText(draftRole, { normalizer: text => text })).toBeTruthy()
+    expect(screen.getByLabelText<HTMLInputElement>(zh['bot.name']).value).toBe('Unsaved title')
   })
 
   it('retains the edited draft after a failed save', async () => {
@@ -180,7 +403,7 @@ describe('member settings', () => {
     act(() => { source.set({ ...source.getSnapshot(), snapshot: { ...snapshot,
       bots: [main, { ...bot, role: 'A role saved while this draft remained unsaved' }] } }) })
     expect(screen.getByLabelText<HTMLInputElement>(zh['bot.name']).value).toBe('Keep this draft')
-    expect(screen.getByLabelText<HTMLTextAreaElement>(zh['bot.role']).value).toBe('A role saved while this draft remained unsaved')
+    expect(screen.getByText('A role saved while this draft remained unsaved')).toBeTruthy()
     expect(save).toHaveBeenCalledExactlyOnceWith({ id: bot.id, name: 'Keep this draft' })
   })
 })

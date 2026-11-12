@@ -14,10 +14,9 @@
   flex-direction: column;
   width: 100%;
   max-width: var(--dsh-chat-content-width);
-  /* Composer seat sits in a fixed-height conversation column (overflow
-     hidden): cap the card against the viewport and scroll the option list
-     so header and footer actions stay reachable on long batches. */
-  max-height: min(60vh, 520px);
+  /* The standalone composer caps its card. An enclosing dock can provide
+     the scroll surface and let the whole card contribute to its height. */
+  max-height: var(--dsh-question-card-max-height, min(60vh, 520px));
   padding: 0 0 10px;
   border: 0;
   --dsw-elevation-stroke-color: var(--dsw-alias-border-l2-darkmode-thin);
@@ -33,6 +32,28 @@
      for the rebinding contract). */
   --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
   --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+.modalFrame {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+}
+
+.card.modalCard {
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.modalCard .headingBlock {
+  max-height: 24vh;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
 }
 
 .card,

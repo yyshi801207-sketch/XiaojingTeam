@@ -4,8 +4,9 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import { GroupWorkGate } from '../src/group-work.ts'
-import { captureGroupReviewCandidate, verifyGroupReviewCandidate } from '../src/group-review.ts'
-import type { GroupReviewReceipt } from '../src/group-review-types.ts'
+import { captureGroupReviewCandidate, groupReviewJson, verifyGroupReviewCandidate } from '../src/group-review.ts'
+import type { GroupReviewReceipt, GroupReviewedOdooOperation } from '../src/group-review-types.ts'
+import type { FinanceConnectorId } from '../src/finance-types.ts'
 import type { ChatDeliveryId } from '../src/chats-types.ts'
 import type { BotId } from '../src/types.ts'
 import { memoryFixture } from './memory-fixture.ts'
@@ -19,15 +20,52 @@ const signal = () => new AbortController().signal
 function gate() { return new GroupWorkGate(true, [reviewer, colleague], { policy: 'review-v1', deliveryId: parent }) }
 
 describe('independent review completion', () => {
+  it('rejects the original delegated maker as reviewer and preserves source identity in the version', async () => {
+    const h = await memoryFixture()
+    const work = gate()
+    work.decide({ ownTask: 'Integrate delegated work.', assignments: [], review: { reason: 'explicit-review', reviewerBotId: reviewer } })
+    const candidate = await captureGroupReviewCandidate(h.ctx.fs, h.root, { text: 'Delegated result.' }, signal(), 1024,
+      { sources: [{ deliveryId: child, botId: reviewer }] })
+    expect(() => work.beginReview(reviewer, candidate)).toThrow(/independent reviewer/)
+    expect(await verifyGroupReviewCandidate(h.ctx.fs, h.root, candidate, signal(), 1024)).toBe(true)
+    expect(await verifyGroupReviewCandidate(h.ctx.fs, h.root,
+      { ...candidate, sources: [{ deliveryId: child, botId: colleague }] }, signal(), 1024)).toBe(false)
+  })
+
+  it('requires the exact reviewed write and never clears an unknown outcome after a later review', async () => {
+    const h = await memoryFixture()
+    const work = gate()
+    work.decide({ ownTask: 'Create the verified draft voucher.', assignments: [], review: { reason: 'data-change', reviewerBotId: reviewer } })
+    const operation: GroupReviewedOdooOperation = { connectorId: brandString<FinanceConnectorId>('connection'), companyId: 7,
+      baseUrl: 'https://odoo.example.test', database: 'test', model: 'account.move', method: 'create',
+      parametersJson: groupReviewJson({ vals_list: [{ ref: 'draft' }], context: { allowed_company_ids: [7] } }) }
+    expect(work.operationDenial(operation)).toContain('actual approved review')
+    expect(work.denial('write_file')).toBeUndefined()
+    const candidate = await captureGroupReviewCandidate(h.ctx.fs, h.root, {}, signal(), 2048, { odooOperation: operation })
+    work.beginReview(reviewer, candidate)
+    work.receiveReview({ parentDeliveryId: parent, deliveryId: child, reviewerId: reviewer,
+      candidateVersion: candidate.version, verdict: 'approved', findings: 'Destination and voucher lines verified.' })
+    expect(work.operationDenial(operation)).toBeUndefined()
+    for (const changed of [{ ...operation, companyId: 8 }, { ...operation, method: 'action_post' },
+      { ...operation, parametersJson: '{}' }, { ...operation, database: 'other' }]) {
+      expect(work.operationDenial(changed)).toContain('differs from the approved candidate')
+    }
+    expect(groupReviewJson({ z: [2, 1], a: { b: 1, a: 2 } })).toBe(groupReviewJson({ a: { a: 2, b: 1 }, z: [2, 1] }))
+    expect(await verifyGroupReviewCandidate(h.ctx.fs, h.root, candidate, signal(), 2048)).toBe(true)
+    work.markUnknownOperation()
+    expect(work.completionDenial()).toContain('unknown outcome')
+    expect(work.operationDenial(operation)).toContain('unknown outcome')
+  })
+
   it('allows a plain conversation and individually scoped work without recruiting a colleague', () => {
     const work = gate()
-    expect(work.completionDenial('Hello.')).toBeUndefined()
+    expect(work.completionDenial()).toBeUndefined()
     expect(work.denial('write_file')).toContain('First record')
-    expect(work.completionDenial('Done.')).toContain('Record a plan')
+    expect(work.completionDenial()).toContain('Record a plan')
     work.decide({ ownTask: 'Save the requested line.', assignments: [], review: { reason: 'none' } })
     expect(work.denial('write_file')).toBeUndefined()
     expect(work.denial('present')).toBeUndefined()
-    expect(work.completionDenial('Saved.')).toBeUndefined()
+    expect(work.completionDenial()).toBeUndefined()
   })
 
   it('allows draft preparation before contributions and review but refuses premature presentation', async () => {
@@ -51,8 +89,8 @@ describe('independent review completion', () => {
       expect(work.denial('present')).toBeDefined()
     }
     work.receiveReview(receipt)
-    expect(work.completionDenial(candidate.text!)).toBeUndefined()
-    expect(work.completionDenial('A different financial conclusion.')).toContain('exact reviewed text')
+    expect(work.completionDenial()).toBeUndefined()
+    expect(work.reviewCandidate).toEqual(candidate)
     work.invalidateReview()
     expect(work.completionDenial()).toContain('actual approved review')
   })
@@ -77,7 +115,7 @@ describe('independent review completion', () => {
     expect(work.completionDenial()).toContain('actual approved review')
   })
 
-  it('rejects self review and retains reviewed text requirements when files accompany the conclusion', async () => {
+  it('rejects self review and retains the approved text and file as one candidate', async () => {
     const h = await memoryFixture()
     const work = gate()
     expect(() => work.decide({ ownTask: 'Review my own work.', assignments: [],
@@ -90,9 +128,8 @@ describe('independent review completion', () => {
     work.beginReview(reviewer, candidate)
     work.receiveReview({ parentDeliveryId: parent, deliveryId: child, reviewerId: reviewer,
       candidateVersion: candidate.version, verdict: 'approved', findings: 'The rows support the conclusion.' })
-    expect(work.completionDenial('The verified total is 30.')).toBeUndefined()
-    expect(work.completionDenial('The verified total is 30. All compliance checks have also passed.'))
-      .toContain('exact reviewed text')
+    expect(work.completionDenial()).toBeUndefined()
+    expect(work.reviewCandidate).toEqual(candidate)
   })
 
   it('retains the accepted legacy task admission behavior', () => {

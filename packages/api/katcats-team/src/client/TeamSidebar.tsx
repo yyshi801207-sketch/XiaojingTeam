@@ -12,7 +12,7 @@ import {
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
-import type { GroupId, TeamBot, TeamGroup } from '../types.ts'
+import { isOdooAdminBot, ledgerSetupBotId, odooAccessBotId, type GroupId, type TeamBot, type TeamGroup } from '../types.ts'
 import type { TeamChat } from '../chats-types.ts'
 import type { TeamView } from './model.ts'
 import type { ChatView } from './chat-model.ts'
@@ -26,6 +26,7 @@ import { chatSidebarStatus } from './chat-sidebar-status.ts'
 import { ChatSidebarStatus } from './ChatSidebarStatus.tsx'
 import { EntityMenu } from './EntityMenu.tsx'
 import type { EntityMenuActions, SidebarEntity } from './EntityMenu.tsx'
+import assistantsArtwork from './assets/odoo-assistants.png'
 import css from './team.module.css'
 
 /** Sidebar data and mutations are bound by the product registration. */
@@ -49,10 +50,14 @@ export interface TeamSidebarInjected {
 export type TeamSidebarProps = PropsRuntime<'sidebar.workspaces'> & PropsLocale<'katcats.team'>
   & PropsStore<ReturnType<typeof createSidebarViewStore>> & InjectFace<TeamSidebarInjected>
 
+function isGroupedBot(bot: TeamBot): boolean {
+  return bot.kind === 'ordinary' && !isOdooAdminBot(bot.id)
+}
+
 /**
- * Keep the main member separate from grouped private conversations.
+ * Keep the switchable fixed Bot card above grouped private conversations.
  * @param props - Sidebar geometry, directory hook and narrow commands.
- * @returns The fixed main member followed by logical groups.
+ * @returns A fixed Bot card followed by logical groups.
  */
 export function TeamSidebar({
   wide, expandSidebar, useDirectory, useChats, useSessions, useSidebarSessionStatus, usePanelInfo,
@@ -68,6 +73,7 @@ export function TeamSidebar({
   const moreBelow = useSidebarOverflow(value => value)
   const reveal = useSidebarReveal(value => value)
   const workspaces = useWorkspaces(value => value)
+  const [showAssistants, setShowAssistants] = useState(false)
   const [menu, setMenu] = useState<{ entity: SidebarEntity; anchor: HTMLButtonElement; point: DOMRect | null } | null>(null)
   const [groupMenu, setGroupMenu] = useState<{ groupId: TeamGroup['id']; anchor: HTMLButtonElement; point: DOMRect | null } | null>(null)
   const menuTrigger = useRef<HTMLButtonElement | null>(null)
@@ -86,6 +92,12 @@ export function TeamSidebar({
   const currentId = useSessions(state => state.ids.find(id => (state.byId[id]?.retainedBy.mainView ?? 0) > 0))
   const conversationVisible = usePanelInfo(value => value.activePanelId === null)
   const main = snapshot?.bots.find(bot => bot.id === snapshot.mainBotId)
+  const assistants = [ledgerSetupBotId, odooAccessBotId]
+    .map(id => snapshot?.bots.find(bot => bot.id === id))
+    .filter(bot => bot !== undefined)
+  const hasAssistants = assistants.length > 0
+  const assistantView = hasAssistants && showAssistants
+  const showAssistantArtwork = wide && !mainCollapsed && assistants.length === 2
   const botGroups = snapshot?.groups.filter(group => group.kind === 'bots') ?? []
   const customGroups = botGroups.filter(group => !group.system)
   const orderedGroups = [
@@ -110,7 +122,7 @@ export function TeamSidebar({
   }, [actions, chatView.snapshot, collapsedGroups, conversationVisible, currentId, reveal, view.snapshot, wide])
   const botEntity = (bot: TeamBot): SidebarEntity => ({ kind: 'bot', id: bot.id, name: bot.name, sessionId: bot.sessionId, currentGroup: bot.groupId })
   const chatEntity = (chat: TeamChat): SidebarEntity => ({ kind: 'chat', id: chat.id, name: chat.name, sessionId: chat.rootSessionId, currentGroup: chat.groupId })
-  const menuBot = menu?.entity.kind === 'bot' ? snapshot?.bots.find(bot => bot.kind === 'ordinary' && bot.id === menu.entity.id) : undefined
+  const menuBot = menu?.entity.kind === 'bot' ? snapshot?.bots.find(bot => isGroupedBot(bot) && bot.id === menu.entity.id) : undefined
   const menuChat = menu?.entity.kind === 'chat' ? chatView.snapshot?.chats.find(chat => chat.id === menu.entity.id) : undefined
   const menuEntity = menuBot !== undefined ? botEntity(menuBot) : menuChat !== undefined ? chatEntity(menuChat) : undefined
   const menuGroup = customGroups.find(group => group.id === groupMenu?.groupId)
@@ -121,7 +133,7 @@ export function TeamSidebar({
   const entityReady = view.phase === 'ready' && chatView.phase === 'ready'
   const sortReady = entityReady && workspaces.phase === 'ready' && workspaces.state !== 'error' && !moving
   const groupSessionIds = (groupId: GroupId) => orderSidebarEntries([
-    ...snapshot?.bots.filter(bot => bot.kind === 'ordinary' && bot.groupId === groupId).map(bot => bot.sessionId) ?? [],
+    ...snapshot?.bots.filter(bot => isGroupedBot(bot) && bot.groupId === groupId).map(bot => bot.sessionId) ?? [],
     ...chatView.snapshot?.chats.filter(chat => chat.groupId === groupId).map(chat => chat.rootSessionId) ?? [],
   ], entryOrder?.[groupId], workspaces.pinnedSessionIds)
   const pointerSort = useSidebarPointerSort({
@@ -190,30 +202,69 @@ export function TeamSidebar({
       <IconBranchOutlineRegular size={16} aria-hidden="true" />
     </button>
   </Tooltip>
+  const toggleLabel = hasAssistants ? t(mainCollapsed ? 'team.expandFixedBot' : 'team.collapseFixedBot')
+    : t(mainCollapsed ? 'team.expandMain' : 'team.collapseMain')
+  const mainIdentity = main === undefined ? null : <>
+    <Tooltip label={main.name} disabled={wide}>
+      <button type="button" className={css.mainAvatarButton} aria-label={main.name} data-session-id={main.sessionId}
+        aria-current={conversationVisible && currentId === main.sessionId ? 'page' : undefined}
+        onClick={() => { commands.openBot(main.id) }}>
+        <BotIdentityAvatar bot={main} size={wide ? mainCollapsed ? 28 : 96 : 30} />
+      </button>
+    </Tooltip>
+    {wide ? <div className={css.memberText}>
+      <div className={css.memberIdentity}>
+        <button type="button" className={css.mainIdentityButton} aria-label={`${main.name} ${t('team.main')}`}
+          onClick={() => { commands.openBot(main.id) }}>
+          <span className={css.memberName}>{main.name}</span>
+          <span className={css.mainBadge}>{t('team.main')}</span>
+        </button>
+        {headquartersEntry}
+      </div>
+      {!mainCollapsed && <span className={css.memberRole}>{t('team.mainRole')}</span>}
+    </div> : headquartersEntry}
+  </>
   const mainEntry = main === undefined ? <div className={css.mainSkeleton} aria-hidden="true" /> : <div className={css.mainRow}>
-    <div className={css.mainBot} data-wide={wide ? '' : undefined}
+    <div className={css.mainBot} data-wide={wide ? '' : undefined} data-switchable={hasAssistants ? '' : undefined}
       data-collapsed={wide && mainCollapsed ? '' : undefined}
       data-active={conversationVisible && currentId === main.sessionId ? '' : undefined}>
-      <Tooltip label={main.name} disabled={wide}>
-        <button type="button" className={css.mainAvatarButton} aria-label={main.name} data-session-id={main.sessionId}
-          aria-current={conversationVisible && currentId === main.sessionId ? 'page' : undefined}
-          onClick={() => { commands.openBot(main.id) }}>
-          <BotIdentityAvatar bot={main} size={wide ? mainCollapsed ? 28 : 96 : 30} />
+      {hasAssistants && <Tooltip label={t(assistantView ? 'team.showMainCard' : 'team.showAssistants')}>
+        <button type="button" className={css.botViewToggle} aria-label={t('team.switchFixedBot')} aria-pressed={assistantView}
+          onClick={() => { setShowAssistants(value => !value) }}>
+          {assistantView ? <BotIdentityAvatar bot={main} size={24} />
+            : <img src={assistantsArtwork} alt="" width={28} height={28} draggable={false} />}
         </button>
-      </Tooltip>
-      {wide ? <div className={css.memberText}>
-        <div className={css.memberIdentity}>
-          <button type="button" className={css.mainIdentityButton} aria-label={`${main.name} ${t('team.main')}`} onClick={() => { commands.openBot(main.id) }}>
-            <span className={css.memberName}>{main.name}</span>
-            <span className={css.mainBadge}>{t('team.main')}</span>
-          </button>
-          {headquartersEntry}
+      </Tooltip>}
+      {hasAssistants ? (
+        <div className={css.fixedBotContents}>
+          <div className={css.fixedMainIdentity} aria-hidden={assistantView || undefined}>{mainIdentity}</div>
+          <div className={css.fixedAssistantIdentity} aria-hidden={!assistantView || undefined}>
+            <div className={css.assistantCards} data-combined={showAssistantArtwork ? '' : undefined}
+              role="group" aria-label={t('team.odooAssistants')}>
+              {showAssistantArtwork && <img className={css.assistantArtwork} src={assistantsArtwork} alt="" draggable={false} />}
+              {assistants.map(bot => {
+                const isLedgerAssistant = bot.id === ledgerSetupBotId
+                const nickname = t(isLedgerAssistant ? 'team.ledgerAssistantNickname' : 'team.accessAssistantNickname')
+                const role = t(isLedgerAssistant ? 'team.ledgerAssistantRole' : 'team.accessAssistantRole')
+                return <Tooltip key={bot.id} label={`${bot.name} · ${role}`}>
+                  <button type="button" className={css.assistantCard} aria-label={bot.name} data-session-id={bot.sessionId}
+                    aria-current={conversationVisible && currentId === bot.sessionId ? 'page' : undefined}
+                    onClick={() => { commands.openBot(bot.id) }}>
+                    {!showAssistantArtwork && <BotIdentityAvatar bot={bot} size={wide && !mainCollapsed ? 64 : 28} />}
+                    {wide && <span className={css.assistantLabel}>
+                      <span className={css.memberRole}>{nickname}</span>
+                      <span className={css.mainBadge}>{bot.name}</span>
+                    </span>}
+                  </button>
+                </Tooltip>
+              })}
+            </div>
+          </div>
         </div>
-        {!mainCollapsed && <span className={css.memberRole}>{t('team.mainRole')}</span>}
-      </div> : headquartersEntry}
-      {wide && <Tooltip label={t(mainCollapsed ? 'team.expandMain' : 'team.collapseMain')}>
+      ) : mainIdentity}
+      {wide && <Tooltip label={toggleLabel}>
         <button type="button" className={css.mainToggle} aria-expanded={!mainCollapsed}
-          aria-label={t(mainCollapsed ? 'team.expandMain' : 'team.collapseMain')}
+          aria-label={toggleLabel}
           onClick={() => { actions.setMainCollapsed(!mainCollapsed) }}>
           <IconChevronDownOutlineRegular size={14} className={css.mainToggleIcon}
             data-expanded={!mainCollapsed ? '' : undefined} aria-hidden="true" />
@@ -241,7 +292,7 @@ export function TeamSidebar({
               <span className={css.memberName}>{bot.name}</span>
               {pinned.has(bot.sessionId) && <IconPinFillRegular className={css.pinnedMark} size={12} aria-hidden="true" />}
             </span>
-            <span className={css.memberRole}>{bot.role || t('team.general')}</span>
+            <span className={css.memberRole}>{bot.financePreset !== undefined ? t('bot.financeBadge') : bot.role || t('team.general')}</span>
           </span>}
         </button>
       </Tooltip>
@@ -287,7 +338,7 @@ export function TeamSidebar({
     </div>
   }
   const section = (group: TeamGroup) => {
-    const members = snapshot?.bots.filter(bot => bot.kind !== 'main' && bot.groupId === group.id) ?? []
+    const members = snapshot?.bots.filter(bot => isGroupedBot(bot) && bot.groupId === group.id) ?? []
     const chats = chatView.snapshot?.chats.filter(chat => chat.groupId === group.id) ?? []
     const label = group.system ? t(group.kind === 'chats' ? 'team.chats' : 'team.bots') : group.name
     const collapsed = collapsedGroups[group.id] === true

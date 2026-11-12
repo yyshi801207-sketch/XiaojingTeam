@@ -153,7 +153,7 @@ describe('Katcats development isolation', () => {
         "developmentMode": undefined,
         "guid": "c8462347-245f-49dd-8195-e1174bb7e3ef",
         "home": "permanent-app-data/XiaojingAccountingTeam-desktop/harness",
-        "product": "小兢Bot",
+        "product": "小兢财务",
         "productMode": "1",
         "userData": "permanent-app-data/XiaojingAccountingTeam-desktop",
         "workspace": "permanent-documents/XiaojingAccountingTeam_Home",
@@ -170,7 +170,7 @@ describe('Katcats development isolation', () => {
     expect(application.getPath).not.toHaveBeenCalled()
     expect(application.paths.get('userData')).toBe(join(root, 'desktop', 'app-data', 'XiaojingAccountingTeam-Dev'))
     expect(application.paths.get('sessionData')).toBe(join(root, 'desktop', 'session-data'))
-    expect(application.setName).toHaveBeenCalledWith('小兢Bot Dev')
+    expect(application.setName).toHaveBeenCalledWith('小兢财务 Dev')
     expect(application.setAppUserModelId).toHaveBeenCalledWith('ai.xiaojing.accounting.team.development')
     expect(paths.dshHome).toBe(join(root, 'home'))
     expect(paths.officeWorkspace).toBe(join(root, 'workspaces'))
@@ -222,7 +222,7 @@ describe('Katcats development isolation', () => {
     expect(paths.userData).toBe(join(repository, 'permanent-app-data', 'XiaojingAccountingTeam-desktop'))
     expect(paths.dshHome).toBe(join(paths.userData, 'harness'))
     expect(paths.officeWorkspace).toBe(join(repository, 'permanent-documents', 'XiaojingAccountingTeam_Home'))
-    expect(application.setName).toHaveBeenCalledWith('小兢Bot')
+    expect(application.setName).toHaveBeenCalledWith('小兢财务')
     expect(application.setAppUserModelId).toHaveBeenCalledWith('ai.xiaojing.accounting.team.desktop')
     expect(application.paths.get('sessionData')).toBe(join(paths.userData, 'session-data'))
     expect(existsSync(join(repository, 'run'))).toBe(false)

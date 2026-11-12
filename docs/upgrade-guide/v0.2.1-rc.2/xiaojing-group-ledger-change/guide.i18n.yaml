@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.1-rc.2/xiaojing-group-ledger-change/guide.md
+/:
+  en: 5be8906fa95e6c46
+  zh: e6d930d63bc50d35
+/group-task-archives-and-ledger-changes:
+  en: 46122551adc35127
+  zh: e7ae8927eb7dbb1f
+/group-task-archives-and-ledger-changes/change:
+  en: 1bdc31b369a31550
+  zh: 8b2ca3e330c10b9c
+/group-task-archives-and-ledger-changes/migration:
+  en: ec6a5b8920d5b0b0
+  zh: 14c0db163a47d5f5

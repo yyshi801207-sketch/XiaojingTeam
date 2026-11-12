@@ -29,8 +29,8 @@ export const DESKTOP_BUILD_SOURCE_ENV = 'DSH_DESKTOP_BUILD_SOURCE'
  */
 export function readDesktopBuildCommit(repositoryRoot, options) {
   if (!existsSync(join(repositoryRoot, '.git')) && options !== undefined) {
-    if (!options.unsigned || options.appId !== 'ai.xiaojing.accounting.team.desktop' || options.productName !== '小兢Bot') {
-      throw new Error('desktop build commit: copy baselines require unsigned 小兢Bot packaging')
+    if (!options.unsigned || options.appId !== 'ai.xiaojing.accounting.team.desktop' || options.productName !== '小兢财务') {
+      throw new Error('desktop build commit: copy baselines require unsigned 小兢财务 packaging')
     }
     let report
     try {

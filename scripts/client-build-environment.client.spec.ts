@@ -85,7 +85,7 @@ describe('client build environment', () => {
       DSH_CLIENT_BOOT_LOGO: './sudo-logo-gray.png',
       DSH_CLIENT_BOOT_LOGO_ALT: '数豆科技',
       DSH_CLIENT_FAVICON: './xiaojing-character-logo.png',
-      DSH_CLIENT_TITLE: '小兢Bot',
+      DSH_CLIENT_TITLE: '小兢财务',
       DSH_CLIENT_RUNNING_LABEL_ZH: '小兢正在思考',
       DSH_CLIENT_RUNNING_LABEL_EN: 'Xiaojing Team is thinking',
       DSH_CLIENT_WORKSPACE_LABEL: 'Xiaojing Team Home',

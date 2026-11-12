@@ -835,6 +835,35 @@ describe('Katcats durable groups', () => {
     await expect(h.chats.updateChat({ id: chat.id, managerId: reviewer.id })).rejects.toMatchObject({ code: 'gateway/bad-request' })
   })
 
+  it('merges quick responsibility edits against the latest group settings and clears a blank override', async () => {
+    const h = await setup()
+    const writer = (await h.team.createBot({ name: 'Writer' })).bot
+    await h.team.updateBot({ id: writer.id, role: 'Write in private.' })
+    const reviewer = (await h.team.createBot({ name: 'Reviewer' })).bot
+    const { chat } = await h.chats.createChat({ name: 'Editorial', memberIds: [writer.id, reviewer.id] })
+    await Promise.all([
+      h.chats.updateChat({ id: chat.id, memberRole: { botId: writer.id, role: '  Draft articles.  ' } }),
+      h.chats.updateChat({ id: chat.id, memberRole: { botId: reviewer.id, role: 'Review articles.' }, showHandoffRecords: false }),
+    ])
+    const saved = (await h.chats.snapshot()).chats[0]!
+    expect(saved.memberRoles).toHaveLength(2)
+    expect(saved.memberRoles).toEqual(expect.arrayContaining([
+      { botId: writer.id, role: 'Draft articles.' },
+      { botId: reviewer.id, role: 'Review articles.' },
+    ]))
+    expect(saved.showHandoffRecords).toBe(false)
+
+    const cleared = (await h.chats.updateChat({ id: chat.id, memberRole: { botId: writer.id, role: '  ' } })).chat
+    expect(cleared.memberRoles).toEqual([{ botId: reviewer.id, role: 'Review articles.' }])
+    expect((await h.team.snapshot()).bots.find(bot => bot.id === writer.id)?.role).toBe('Write in private.')
+
+    await expect(h.chats.updateChat({ id: chat.id, memberRole: { botId: mainBotId, role: '' } }))
+      .rejects.toMatchObject({ code: 'gateway/bad-request' })
+    await expect(h.chats.updateChat({ id: chat.id, memberRole: { botId: writer.id, role: 'Draft.' }, memberRoles: [] }))
+      .rejects.toMatchObject({ code: 'gateway/bad-request' })
+    expect((await h.chats.snapshot()).chats[0]).toEqual(cleared)
+  })
+
   it('denies every owner operation before revealing group metadata to another principal', async () => {
     const h = await setup()
     const limited = h.ctx.extend({ invocation: { peer: { principal: { kind: 'limited-fixture' } }, request: { namespace: 'katcatsChats', method: 'snapshot' } } }).katcatsChats
@@ -843,6 +872,8 @@ describe('Katcats durable groups', () => {
     await expect(limited.createChat({ name: 'Denied', memberIds: [] })).rejects.toMatchObject(denied)
     const id = brandString<TeamChat['id']>('denied')
     await expect(limited.updateChat({ id, name: 'Denied' })).rejects.toMatchObject(denied)
+    await expect(limited.financeBinding(id)).rejects.toMatchObject(denied)
+    await expect(limited.bindFinance(id, null)).rejects.toMatchObject(denied)
     const request = { id, expectedRunId: null, expectedGeneration: 0 }
     await expect(limited.pause(request)).rejects.toMatchObject(denied)
     await expect(limited.resume(request)).rejects.toMatchObject(denied)

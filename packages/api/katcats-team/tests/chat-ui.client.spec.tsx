@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /** Group forms, acknowledged controls and directory mutation races with synthetic members. */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ConnectionState } from '@deepseek-ai/dsh-client-connection/client'
 import type { PermissionBatchSelectOwnerProps } from '@deepseek-ai/dsh-client-ui-permission-presets/client'
@@ -10,8 +10,8 @@ import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import type { WorkspaceSnapshot } from '@deepseek-ai/dsh-api-workspace-controller/client'
-import type { BotId, GroupId, TeamBot } from '../src/types.ts'
-import type { ChatId, ChatRunId, ChatSnapshot, TeamChat, UpdateChatRequest } from '../src/chats-types.ts'
+import { ledgerSetupBotId, odooAccessBotId, type BotId, type GroupId, type TeamBot } from '../src/types.ts'
+import type { ChatId, ChatRunId, ChatSnapshot, GroupTicket, GroupTicketId, TeamChat, UpdateChatRequest } from '../src/chats-types.ts'
 import { ChatClientModel, type ChatRemote, type ChatView } from '../src/client/chat-model.ts'
 import { TeamRequestSupersededError, type TeamView } from '../src/client/model.ts'
 import { CreateChat, ChatSettings, type ChatSettingsProps } from '../src/client/ChatForms.tsx'
@@ -56,7 +56,92 @@ const permissionDefaults = {
   renderFactorySlot: () => null,
 }
 
+function openMemberDuty(name: string) {
+  const section = screen.getByText(zh['chat.groupRoles']).closest('summary')!
+  if (!section.closest('details')?.open) fireEvent.click(section)
+  const summary = screen.getByLabelText(t('chat.viewMemberRole', { name }))
+  fireEvent.click(summary)
+  return within(within(summary.closest('details')!).getByRole('region', { name: t('chat.memberRole', { name }) }))
+}
+
 describe('explicit group forms', () => {
+  it('keeps basic information visible and expands or collapses other sections without discarding drafts', async () => {
+    const source = groups()
+    const save = vi.fn()
+    const props = { ...permissionDefaults, sessionId: chat.rootSessionId, useDirectory: bindSnapshotSelector(directory()),
+      useChats: bindSnapshotSelector(source), save, finance: {
+        load: async () => ({ connectors: [], connectorId: null }), bind: vi.fn(),
+        connect: async () => { throw new Error('No connector is configured in this fixture') },
+      }, t } as ChatSettingsProps
+    render(<ChatSettings {...props} />)
+    await screen.findByText(zh['chat.financeUnbound'])
+    const basic = screen.getByRole('heading', { name: zh['chat.settingsBasics'] }).closest('section')!
+    expect(basic.querySelector('summary')).toBeNull()
+    const titles = ['archive.open', 'chat.settingsPeople', 'chat.groupRoles', 'chat.settingsCollaboration',
+      'permissions.members', 'chat.settingsResources'] as const
+    const sections = titles.map(key => screen.getAllByText(zh[key]).find(element => element.closest('summary'))!.closest('details')!)
+    const financial = screen.getByRole('region', { name: zh['chat.financeTitle'] }).querySelector('details')!
+    const allSections = [financial, ...sections]
+    expect(allSections.map(section => section.open)).toEqual([false, false, false, false, false, false, false])
+    expect(screen.getByRole('textbox', { name: zh['chat.name'] }).closest('details')).toBeNull()
+    const toggle = screen.getByRole('button', { name: zh['chat.expandSettings'] })
+    expect(basic.nextElementSibling).toBe(toggle)
+    expect(toggle.nextElementSibling).toBe(financial.closest('section'))
+    expect(toggle.getAttribute('title')).toBeNull()
+    expect(screen.queryByRole('button', { name: zh['chat.collapseSettings'] })).toBeNull()
+    fireEvent.click(toggle)
+    expect(screen.getByRole('button', { name: zh['chat.collapseSettings'] })).toBe(toggle)
+    expect(allSections.every(section => section.open)).toBe(true)
+    fireEvent.change(screen.getByLabelText(zh['chat.name']), { target: { value: 'Unsaved name' } })
+    fireEvent.change(screen.getByLabelText(zh['chat.relayLimit']), { target: { value: '9' } })
+    const nested = sections[2]!.querySelector('details')!
+    fireEvent.click(nested.querySelector('summary')!)
+    expect(nested.open).toBe(true)
+    fireEvent.click(toggle)
+    expect(screen.getByRole('button', { name: zh['chat.expandSettings'] })).toBe(toggle)
+    expect(allSections.every(section => !section.open)).toBe(true)
+    expect(screen.getByRole('textbox', { name: zh['chat.name'] }).closest('details')).toBeNull()
+    expect(nested.open).toBe(true)
+    fireEvent.click(toggle)
+    expect(screen.getByLabelText<HTMLInputElement>(zh['chat.name']).value).toBe('Unsaved name')
+    expect(screen.getByLabelText<HTMLInputElement>(zh['chat.relayLimit']).value).toBe('9')
+    expect(nested.open).toBe(true)
+    fireEvent.click(sections[3]!.querySelector('summary')!)
+    expect(sections[3]!.open).toBe(false)
+    expect(allSections.filter(section => section.open)).toHaveLength(6)
+    act(() => { source.set({ phase: 'ready', snapshot: { ...snapshot, revision: 2, chats: [{ ...chat, name: 'Server name' }] } }) })
+    expect(sections[3]!.open).toBe(false)
+    fireEvent.click(toggle)
+    expect(allSections.every(section => !section.open)).toBe(true)
+    expect(save).not.toHaveBeenCalled()
+  })
+
+  it('counts all registered tasks and their saved completion, acceptance and blocked states while collapsed', () => {
+    const source = groups()
+    const save = vi.fn()
+    render(<ChatSettings {...{ ...permissionDefaults, sessionId: chat.rootSessionId, useDirectory: bindSnapshotSelector(directory()),
+      useChats: bindSnapshotSelector(source), save, t } as ChatSettingsProps} />)
+    const header = screen.getByText(zh['archive.open']).closest('summary')!
+    const badges = () => Array.from(header.querySelectorAll('[data-task-count]'), badge => badge.getAttribute('aria-label'))
+    expect(badges()).toEqual(['已登记任务 · 0', '已完成 · 0', '待验收 · 0', '受阻任务 · 0'])
+    const tasks: GroupTicket[] = (['open', 'completed', 'completed', 'completed', 'delivered', 'delivered', 'blocked'] as const)
+      .map((state, index) => ({ version: 1, id: `task-${index}` as GroupTicketId, ownerId: writer.id,
+        goal: `Task ${index}`, acceptance: [], stage: '', nextStep: '', state, blocker: state === 'blocked' ? 'Missing source' : null,
+        artifacts: [], messageIds: [], revision: 1,
+        ...(index === 1 ? { completionKind: 'criteria' as const } : index === 2 ? { completionKind: 'owner' as const } : {}),
+      }))
+    act(() => { source.set({ phase: 'ready', snapshot: { ...snapshot, revision: 2, chats: [{ ...chat, tickets: tasks }] } }) })
+    expect(badges()).toEqual(['已登记任务 · 7', '已完成 · 3', '待验收 · 2', '受阻任务 · 1'])
+    expect(header.closest('details')!.open).toBe(false)
+    fireEvent.click(header)
+    const updated = tasks.map(task => task.state === 'delivered' ? { ...task, state: 'completed' as const, revision: 2 } : task)
+    act(() => { source.set({ phase: 'ready', snapshot: { ...snapshot, revision: 3, chats: [{ ...chat, tickets: updated }] } }) })
+    expect(badges()).toEqual(['已登记任务 · 7', '已完成 · 5', '待验收 · 0', '受阻任务 · 1'])
+    expect(header.closest('details')!.open).toBe(true)
+    expect(screen.getByRole('button', { name: '任务详情' })).toBeTruthy()
+    expect(save).not.toHaveBeenCalled()
+  })
+
   it('opens saved records without submitting unsaved settings and follows group updates', () => {
     const source = groups()
     const save = vi.fn()
@@ -64,7 +149,7 @@ describe('explicit group forms', () => {
       useChats: bindSnapshotSelector(source), save, t } as ChatSettingsProps
     render(<ChatSettings {...props} />)
     fireEvent.change(screen.getByLabelText(zh['chat.name']), { target: { value: 'Unsaved name' } })
-    fireEvent.click(screen.getByRole('button', { name: '任务档案' }))
+    fireEvent.click(screen.getByRole('button', { name: '任务详情' }))
     expect(screen.getByRole('heading', { name: /^Editorial\s*\/ 任务档案$/ })).toBeTruthy()
     act(() => { source.set({ phase: 'ready', snapshot: { ...snapshot, revision: 2,
       chats: [{ ...chat, name: 'Saved name' }] } }) })
@@ -132,11 +217,15 @@ describe('explicit group forms', () => {
     expect(renderSlot).not.toHaveBeenCalled()
   })
 
-  it('starts with no members or manager, omits the main Bot, and creates only on submit', async () => {
+  it('starts with no members or manager, omits fixed Bots, and creates only on submit', async () => {
     const create = vi.fn(async () => {})
     const close = vi.fn()
-    render(<CreateChat bots={[main, writer]} defaultRelayLimit={6} create={create} close={close} t={t} />)
+    const ledger: TeamBot = { ...writer, id: ledgerSetupBotId, name: '建账助手', sessionId: 'setup-session' as SessionId }
+    const system: TeamBot = { ...writer, id: odooAccessBotId, name: '系统助手', sessionId: 'access-session' as SessionId }
+    render(<CreateChat bots={[main, writer, ledger, system]} defaultRelayLimit={6} create={create} close={close} t={t} />)
     expect(screen.queryByRole('checkbox', { name: t('chat.mainMember', { name: main.name }) })).toBeNull()
+    expect(screen.queryByRole('checkbox', { name: ledger.name })).toBeNull()
+    expect(screen.queryByRole('checkbox', { name: system.name })).toBeNull()
     expect(screen.getByLabelText(zh['chat.manager']).textContent).toContain(zh['chat.noManager'])
     fireEvent.change(screen.getByLabelText(zh['chat.name']), { target: { value: '  Editorial  ' } })
     expect(screen.getByRole<HTMLButtonElement>('button', { name: zh['team.create'] }).disabled).toBe(true)
@@ -169,8 +258,8 @@ describe('explicit group forms', () => {
     const save = vi.fn(async () => {})
     const props = { sessionId: chat.rootSessionId, useDirectory: bindSnapshotSelector(directory()), useChats: bindSnapshotSelector(source), save, t } as ChatSettingsProps
     render(<ChatSettings {...permissionDefaults} {...props} />)
-    fireEvent.click(screen.getByText(`${zh['chat.members']} · 2`))
-    const members = screen.getByRole('group', { name: zh['chat.members'] })
+    fireEvent.click(screen.getByText(zh['chat.settingsPeople']).closest('summary')!)
+    const members = screen.getByRole('group', { name: new RegExp(zh['chat.members']) })
     expect(members.querySelector('img[data-xiaojing-main-avatar]')?.getAttribute('width')).toBe('24')
     expect(members.querySelector('[data-katcats-manager-avatar="main"]')).toBeNull()
     fireEvent.click(screen.getByRole('checkbox', { name: t('chat.mainMember', { name: main.name }) }))
@@ -180,21 +269,52 @@ describe('explicit group forms', () => {
     await waitFor(() => { expect(save).toHaveBeenCalledExactlyOnceWith({ id: chat.id, memberIds: [writer.id], managerId: null }) })
   })
 
-  it('merges explicit group-role edits with the latest untouched roles and leaves private instructions unchanged', async () => {
+  it('shows an inherited duty as read-only and saves it independently of group settings', async () => {
+    const source = groups()
+    const initial = { ...chat, memberIds: [writer.id, reviewer.id] }
+    source.set({ phase: 'ready', snapshot: { ...snapshot, chats: [initial] } })
+    const save = vi.fn(async () => {})
+    const props = { sessionId: chat.rootSessionId, useDirectory: bindSnapshotSelector(directory()), useChats: bindSnapshotSelector(source), save, t } as ChatSettingsProps
+    render(<ChatSettings {...permissionDefaults} {...props} />)
+    const duty = openMemberDuty(writer.name)
+    expect(duty.queryByRole('textbox', { name: t('chat.memberRole', { name: writer.name }) })).toBeNull()
+    expect(duty.getByText(writer.role)).toBeTruthy()
+    fireEvent.click(duty.getByRole('button', { name: zh['role.edit'] }))
+    const editor = duty.getByRole<HTMLTextAreaElement>('textbox', { name: t('chat.memberRole', { name: writer.name }) })
+    const submit = screen.getByRole<HTMLButtonElement>('button', { name: zh['bot.save'] })
+    expect(editor.value).toBe(writer.role)
+    expect(submit.disabled).toBe(true)
+    const extended = editor.value + '\nPrepare the monthly report.'
+    fireEvent.change(editor, { target: { value: extended } })
+    expect(submit.disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText(zh['chat.name']), { target: { value: 'Finance team' } })
+    await act(async () => { fireEvent.click(submit) })
+    expect(save).toHaveBeenNthCalledWith(1, { id: chat.id, name: 'Finance team' })
+    expect(editor.value).toBe(extended)
+    await act(async () => { fireEvent.click(duty.getByRole('button', { name: zh['role.save'] })) })
+    expect(save).toHaveBeenNthCalledWith(2, { id: chat.id, memberRole: { botId: writer.id, role: extended } })
+  })
+
+  it('saves one group duty without replacing a concurrent member duty or the private instructions', async () => {
     const source = groups()
     const initial = { ...chat, memberIds: [writer.id, reviewer.id], memberRoles: [{ botId: writer.id, role: 'Draft' }] }
     source.set({ phase: 'ready', snapshot: { ...snapshot, chats: [initial] } })
     const save = vi.fn(async () => {})
     const props = { sessionId: chat.rootSessionId, useDirectory: bindSnapshotSelector(directory()), useChats: bindSnapshotSelector(source), save, t } as ChatSettingsProps
     render(<ChatSettings {...permissionDefaults} {...props} />)
-    fireEvent.change(screen.getByLabelText(t('chat.memberRole', { name: writer.name })), { target: { value: 'My group draft' } })
+    const duty = openMemberDuty(writer.name)
+    fireEvent.click(duty.getByRole('button', { name: zh['role.edit'] }))
+    const editor = duty.getByRole<HTMLTextAreaElement>('textbox', { name: t('chat.memberRole', { name: writer.name }) })
+    expect(editor.value).toBe('Draft')
+    const extended = editor.value + '\nInclude the source list.'
+    fireEvent.change(editor, { target: { value: extended } })
     act(() => { source.set({ phase: 'ready', snapshot: { ...snapshot, revision: 2,
       chats: [{ ...initial, memberRoles: [{ botId: writer.id, role: 'Remote draft' }, { botId: reviewer.id, role: 'Latest review' }] }] } }) })
-    expect(screen.getByLabelText<HTMLTextAreaElement>(t('chat.memberRole', { name: writer.name })).value).toBe('My group draft')
-    expect(screen.getByLabelText<HTMLTextAreaElement>(t('chat.memberRole', { name: reviewer.name })).value).toBe('Latest review')
-    fireEvent.click(screen.getByRole('button', { name: zh['bot.save'] }))
+    expect(editor.value).toBe(extended)
+    expect(screen.getByLabelText(t('chat.viewMemberRole', { name: reviewer.name })).textContent).toContain('Latest review')
+    fireEvent.click(duty.getByRole('button', { name: zh['role.save'] }))
     await waitFor(() => { expect(save).toHaveBeenCalledExactlyOnceWith({ id: chat.id,
-      memberRoles: [{ botId: writer.id, role: 'My group draft' }, { botId: reviewer.id, role: 'Latest review' }] }) })
+      memberRole: { botId: writer.id, role: extended } }) })
     expect(writer.role).toBe('Coordinate')
   })
 
@@ -215,7 +335,7 @@ describe('explicit group forms', () => {
     const props = { sessionId: chat.rootSessionId, useDirectory: bindSnapshotSelector(directory()), useChats: bindSnapshotSelector(source), save, t } as ChatSettingsProps
     render(<ChatSettings {...permissionDefaults} {...props} />)
     fireEvent.change(screen.getByLabelText(zh['chat.name']), { target: { value: 'My edited name' } })
-    fireEvent.click(screen.getByText(`${zh['chat.members']} · 2`))
+    fireEvent.click(screen.getByText(zh['chat.settingsPeople']).closest('summary')!)
     act(() => { source.set({ phase: 'ready', snapshot: { ...snapshot, revision: 2,
       chats: [{ ...chat, memberIds: [...chat.memberIds, reviewer.id], relayLimit: 9 }] } }) })
     expect(screen.getByRole<HTMLInputElement>('checkbox', { name: reviewer.name }).checked).toBe(true)
@@ -227,12 +347,25 @@ describe('explicit group forms', () => {
     expect(screen.getByLabelText<HTMLInputElement>(zh['chat.name']).value).toBe('My edited name')
   })
 
-  it('submits member and relay-limit edits without changing the root Session or folder', async () => {
+  it('adds eligible outsiders from the plus menu and saves the roster with other settings', async () => {
     const save = vi.fn<(request: UpdateChatRequest) => Promise<void>>().mockResolvedValue(undefined)
-    const props = { sessionId: chat.rootSessionId, useDirectory: bindSnapshotSelector(directory()), useChats: bindSnapshotSelector(groups()), save, t } as ChatSettingsProps
+    const bots = directory()
+    const saved = bots.getSnapshot().snapshot!
+    const assistant: TeamBot = { ...writer, id: ledgerSetupBotId, name: 'Ledger setup', sessionId: 'setup-session' as SessionId }
+    bots.set({ ...bots.getSnapshot(), snapshot: { ...saved, bots: [...saved.bots, assistant] } })
+    const props = { sessionId: chat.rootSessionId, useDirectory: bindSnapshotSelector(bots), useChats: bindSnapshotSelector(groups()), save, t } as ChatSettingsProps
     render(<ChatSettings {...permissionDefaults} {...props} />)
-    fireEvent.click(screen.getByText(`${zh['chat.members']} · 2`))
-    fireEvent.click(screen.getByRole('checkbox', { name: reviewer.name }))
+    fireEvent.click(screen.getByText(zh['chat.settingsPeople']).closest('summary')!)
+    expect(screen.getByRole<HTMLInputElement>('checkbox', { name: writer.name }).checked).toBe(true)
+    expect(screen.queryByRole('checkbox', { name: reviewer.name })).toBeNull()
+    const add = screen.getByRole('button', { name: zh['chat.addMember'] })
+    fireEvent.click(add)
+    const menu = within(screen.getByRole('menu'))
+    expect(menu.getAllByRole('menuitem')).toHaveLength(1)
+    fireEvent.click(menu.getByRole('menuitem', { name: reviewer.name }))
+    expect(screen.getByRole<HTMLInputElement>('checkbox', { name: reviewer.name }).checked).toBe(true)
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(save).not.toHaveBeenCalled()
     fireEvent.change(screen.getByLabelText(zh['chat.relayLimit']), { target: { value: '8' } })
     fireEvent.click(screen.getByRole('button', { name: zh['bot.save'] }))
     await waitFor(() => { expect(save).toHaveBeenCalledExactlyOnceWith({ id: chat.id, memberIds: [main.id, writer.id, reviewer.id], relayLimit: 8 }) })
@@ -247,7 +380,7 @@ describe('run-aware group controls', () => {
       useChats: bindSnapshotSelector(source), save: vi.fn(), openMemory: vi.fn(), openSchedules: vi.fn(), t } as ChatSettingsProps
     const view = render(<ChatSettings {...props} />)
     expect(view.container.querySelectorAll('[data-katcats-manager-avatar="writer"]').length).toBeGreaterThan(0)
-    fireEvent.click(screen.getByText(`${zh['chat.members']} · 2`))
+    fireEvent.click(screen.getByText(zh['chat.settingsPeople']).closest('summary')!)
     expect(screen.getAllByRole('img', { name: zh['chat.managerBadge'] }).length).toBeGreaterThan(1)
     fireEvent.click(screen.getByRole('button', { name: zh['chat.manager'] }))
     fireEvent.click(screen.getByRole('menuitem', { name: zh['chat.noManager'] }))
@@ -527,7 +660,9 @@ describe('run-aware group controls', () => {
 })
 
 describe('group directory mutation races', () => {
-  const remote = (): ChatRemote => ({ sendMessage: vi.fn(), cancelSession: vi.fn(), snapshot: vi.fn(), follow: async function* () {}, createChat: vi.fn(), updateChat: vi.fn(), deleteChat: vi.fn(), pause: vi.fn(), resume: vi.fn(), stop: vi.fn() })
+  const remote = (): ChatRemote => ({ sendMessage: vi.fn(), cancelSession: vi.fn(), snapshot: vi.fn(), follow: async function* () {},
+    createChat: vi.fn(), updateChat: vi.fn(), deleteChat: vi.fn(), pause: vi.fn(), resume: vi.fn(), stop: vi.fn(),
+    continueTask: vi.fn(), completeTask: vi.fn() })
 
   it('does not replace a later group stream state with an older control acknowledgement', async () => {
     const api = remote()

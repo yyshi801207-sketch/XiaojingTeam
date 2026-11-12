@@ -185,7 +185,7 @@ describe('Desktop local packaging configuration', () => {
     const { createElectronBuilderConfig } = await import('../scripts/electron-builder-config.mjs')
     const config = createElectronBuilderConfig(localMacOSPackageEnvironment({}), 'darwin', arch)
     expect(config.appId).toBe(identity.appId)
-    expect(config.productName).toBe('小兢Bot')
+    expect(config.productName).toBe('小兢财务')
     expect(config.extraMetadata.version).toBe(identity.productVersion)
     expect(config.artifactName).toBe(`${identity.executableName}-\${version}-\${os}-\${arch}-unsigned.\${ext}`)
     expect(readFileSync(config.mac.icon)).toEqual(readFileSync(new URL('../build/app-icon.icns', import.meta.url)))

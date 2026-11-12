@@ -43,7 +43,7 @@
       "content": [
         {
           "type": "text",
-          "text": "Ask me which color to use before completing this task."
+          "text": "查询凭证"
         }
       ],
       "source": {
@@ -81,7 +81,7 @@
           }
         }
       },
-      "message": "Ask me which color to use before completing this task.",
+      "message": "查询凭证",
       "eventId": "{{id:6}}",
       "status": "queued",
       "recovered": false,
@@ -114,7 +114,7 @@
           }
         }
       },
-      "message": "Ask me which color to use before completing this task.",
+      "message": "查询凭证",
       "eventId": "{{id:7}}",
       "status": "started",
       "recovered": false,
@@ -127,7 +127,7 @@
       "content": [
         {
           "type": "text",
-          "text": "QUEUED_FOLLOWUP: confirm the chosen color after the first task finishes."
+          "text": "确认刚才选定的凭证查询区间。"
         }
       ],
       "source": {
@@ -165,7 +165,7 @@
           }
         }
       },
-      "message": "Ask me which color to use before completing this task.",
+      "message": "查询凭证",
       "eventId": "{{id:8}}",
       "status": "completed",
       "recovered": false,
@@ -180,7 +180,7 @@
       "content": [
         {
           "type": "text",
-          "text": "The selected color is Green."
+          "text": "已选择上月整月，2026-10-01 至 2026-10-31。"
         }
       ],
       "source": {
@@ -233,7 +233,7 @@
           }
         }
       },
-      "message": "QUEUED_FOLLOWUP: confirm the chosen color after the first task finishes.",
+      "message": "确认刚才选定的凭证查询区间。",
       "eventId": "{{id:9}}",
       "status": "queued",
       "recovered": false,
@@ -266,7 +266,7 @@
           }
         }
       },
-      "message": "QUEUED_FOLLOWUP: confirm the chosen color after the first task finishes.",
+      "message": "确认刚才选定的凭证查询区间。",
       "eventId": "{{id:10}}",
       "status": "started",
       "recovered": false,
@@ -299,7 +299,7 @@
           }
         }
       },
-      "message": "QUEUED_FOLLOWUP: confirm the chosen color after the first task finishes.",
+      "message": "确认刚才选定的凭证查询区间。",
       "eventId": "{{id:11}}",
       "status": "completed",
       "recovered": false,
@@ -314,7 +314,7 @@
       "content": [
         {
           "type": "text",
-          "text": "Queued follow-up completed: Green remains selected."
+          "text": "查询区间仍是 2026-10-01 至 2026-10-31。"
         }
       ],
       "source": {

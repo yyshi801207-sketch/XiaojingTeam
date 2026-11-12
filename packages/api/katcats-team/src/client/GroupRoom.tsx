@@ -17,7 +17,7 @@ import { RoomActivity, type WatchRoomActivity } from './RoomActivity.tsx'
 import type { RoomActivitySnapshot } from './room-activity.ts'
 import { RoomUsage, RoomElapsed } from './RoomUsage.tsx'
 import { useHandoffScroll } from './use-handoff-scroll.ts'
-import { TaskArchiveAction } from './TaskArchive.tsx'
+import { TaskArchiveAction, type TaskArchiveActions } from './TaskArchive.tsx'
 import type {} from './room-locales.ts'
 import css from './group-room.module.css'
 
@@ -36,6 +36,7 @@ export interface GroupRoomInjected {
   readonly loadRoomHistory: () => Promise<void>
   readonly watchRoomActivity: WatchRoomActivity
   readonly copyText: (text: string) => Promise<void>
+  readonly archiveActions: TaskArchiveActions
 }
 
 /** The room uses the same Session scope as the group header. */
@@ -256,7 +257,9 @@ function GroupRoom(props: GroupRoomProps & { readonly chat: TeamChat; readonly c
             : <p className={css.hint}>{t('activity.replay')}</p>}
           <section className={css.handoffs} aria-label={t('handoffLog')}>
             <div data-room-handoffs className={`${css.recordHeader} ${css.handoffHeader}`}><h2>{t('tasks')}</h2>
-              <TaskArchiveAction chat={chat} bots={directory?.bots ?? []} connected={connected} room copyText={props.copyText} t={t} />
+              <TaskArchiveAction chat={chat} bots={directory?.bots ?? []} connected={connected}
+                activity={groups.snapshot?.activities.find(item => item.chatId === chat.id)} actions={props.archiveActions}
+                room copyText={props.copyText} t={t} />
               <button type="button" onClick={records.top}>{t('top')}</button>
               <button type="button" onClick={records.bottom}>{t('bottom')}</button>
               {selected !== null && <button type="button" onClick={() => { setSelected(null) }}>{t('all')}</button>}

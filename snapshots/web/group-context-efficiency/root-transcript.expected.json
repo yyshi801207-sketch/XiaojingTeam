@@ -340,5 +340,23 @@
       }
     },
     "surfaceOp": "append"
+  },
+  {
+    "type": "user/message",
+    "data": {
+      "content": [
+        {
+          "type": "text",
+          "text": "验收通过"
+        }
+      ],
+      "source": {
+        "kind": "user",
+        "rpcId": "{{rpc:3}}"
+      },
+      "role": "user",
+      "id": "{{message:13}}"
+    },
+    "surfaceOp": "append"
   }
 ]

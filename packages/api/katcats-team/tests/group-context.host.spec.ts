@@ -181,6 +181,20 @@ describe('incremental public group context', () => {
     expect(text(h.build(second).content).match(/OWN_CONFIRMED_RESULT/g)).toHaveLength(1)
   })
 
+  it('delivers the approved group text when the retained assistant closing message differs', () => {
+    const h = fixture()
+    const first = h.owner('Prepare reviewed work')
+    h.enter(first, h.build(first))
+    const message = createAssistantMessage({ content: [{ type: 'text', text: 'UNREVIEWED_CLOSING' }],
+      source: { provider: 'fixture', model: 'fixture' } })
+    h.executor.append('assistant/message', { turn: 1, step: 1, message, stream: [] }, { surfaceOp: 'append' })
+    h.deliveries[0] = { ...first, state: 'completed', receipt: { sender, text: 'APPROVED_PUBLIC_RESULT',
+      outputMessageId: message.id, turn: 1 } }
+    const second = h.owner('Use the confirmed result')
+    expect(text(h.build(second).content).match(/APPROVED_PUBLIC_RESULT/g)).toHaveLength(1)
+    expect(h.build(second).context.deliveredIds).toContain('message:' + first.relayMessageId)
+  })
+
   it.each([false, true])('inherits actual history tool coverage only for a complete original (partial=%s)', (partial) => {
     const h = fixture()
     const first = h.owner('first instruction')

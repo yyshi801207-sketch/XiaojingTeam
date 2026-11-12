@@ -65,7 +65,7 @@ try {
     Add-Type -AssemblyName PresentationFramework
     [System.Windows.MessageBox]::Show(
       "安装已停止，但未能完整清理临时程序文件。请重新运行安装包完成安装。`n`n诊断日志：$logPath",
-      '小兢会计团队版 安装清理失败',
+      '小兢财务 安装清理失败',
       [System.Windows.MessageBoxButton]::OK,
       [System.Windows.MessageBoxImage]::Error
     ) | Out-Null

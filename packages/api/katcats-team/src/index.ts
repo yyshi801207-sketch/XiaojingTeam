@@ -21,12 +21,24 @@ import {
   type TeamState,
 } from './storage.ts'
 import type {
-  BotId, BotModel, BotMutationValue, CreateBotRequest, CreateGroupRequest, DeleteBotRequest, GroupId,
+  BotId, BotModel, BotMutationValue, CreateBotRequest, CreateGroupRequest, DeleteBotRequest, FinanceBotPreset, GroupId,
   GroupMutationValue, MoveGroupRequest, RemoveGroupRequest, TeamBot, TeamFrame, TeamGroup,
   TeamSnapshot, UpdateBotRequest, UpdateGroupRequest,
 } from './types.ts'
 import { memberToolGuidance, registerMemberTools } from './tools.ts'
+import { financeTeamPositions, type FinanceTeamTemplate } from './finance-team-templates.ts'
+import { AVATAR_COLORS } from './avatar-palette.ts'
+import { isOdooAdminBot, ledgerSetupBotId, odooAccessBotId } from './types.ts'
+import { ledgerSetupRole, odooAccessRole } from './finance-setup-tools.ts'
 import { resolveBotModel } from './model-policy.ts'
+import { FinanceConnections, financeRemoteError } from './finance-connectors.ts'
+import { createFinanceQueryTool } from './finance-query-tool.ts'
+import { registerFinanceExportTool } from './finance-export-tool.ts'
+import { createFinanceOrmTool } from './finance-orm-tool.ts'
+import type {
+  FinanceCompany, FinanceConnectionDraft, FinanceConnector, FinanceConnectorId, FinanceConnectorSnapshot,
+  SaveFinanceConnectorRequest,
+} from './finance-types.ts'
 import { archiveOwnedSessions, GroupOrganization, requireInactiveSessions } from './group-organization.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -35,6 +47,22 @@ declare module '@deepseek-ai/cordis' {
     katcatsTeam: KatcatsTeam
   }
 }
+
+const FINANCE_ROLES: Readonly<Record<FinanceBotPreset, string>> = {
+  cashier: '财务专用出纳：负责日记账、资金往来、凭证和收付款核对，说明记录范围与状态。',
+  'general-ledger': '总账会计：负责会计科目、凭证、分录和往来核对，说明过账状态与借贷发生额。',
+  reporting: '报表会计：负责核对报表、凭证、分录和科目发生额，说明取数期间与口径。',
+  tax: '税务会计：负责核对涉税凭证、分录及相关科目发生额。',
+  cost: '成本会计：负责成本相关科目、凭证和分录，核对归集期间与发生额。',
+  audit: '审核专员：负责核验凭证、科目、分录和过账状态，说明核验发现。',
+  analysis: '财务分析师：解释凭证和科目发生额，注明数据范围与分析依据。',
+  documents: '票据专员：负责票据和凭证，核对引用、分录及相关记录。',
+}
+
+const odooAdminBots = [
+  { id: ledgerSetupBotId, name: '建账助手', role: ledgerSetupRole, avatar: { shape: 'round', color: '#12A489' } },
+  { id: odooAccessBotId, name: '系统助手', role: odooAccessRole, avatar: { shape: 'wave', color: '#F47A12' } },
+] as const
 
 /** Deployment-owned locations and first-use member labels. */
 export interface Config {
@@ -48,6 +76,10 @@ export interface Config {
   readonly ordinaryGroupName: string
   /** Initial label of the built-in group chat section. */
   readonly chatGroupName: string
+  /** Enable finance connectors in this product deployment. */
+  readonly financeConnectors?: boolean
+  /** Time budget for one Odoo JSON-2 request. */
+  readonly financeRequestTimeoutMs?: number
 }
 
 /** Team metadata and private Sessions, with durable interrupted-creation recovery. */
@@ -59,8 +91,12 @@ export class KatcatsTeam extends TypertRemoteService {
     mainRole: z.string().default('Bot 创建助手：根据用户需求创建和配置 Bot。'),
     ordinaryGroupName: z.string().default('普通 Bot'),
     chatGroupName: z.string().default('群聊'),
+    financeConnectors: z.boolean().default(false),
+    financeRequestTimeoutMs: z.natural().min(1).max(120000).default(10000),
   })
 
+  /** Optional product finance connectors and group bindings. */
+  readonly finance: FinanceConnections | undefined
   private readonly ready: Promise<void>
   private readonly workspaceRoot: string
   private domain: Domain<typeof teamDomainSpec> | undefined
@@ -76,6 +112,11 @@ export class KatcatsTeam extends TypertRemoteService {
     super(ctx, 'katcatsTeam')
     if (!isAbsolute(config.workspaceRoot)) throw new Error('katcats-team workspaceRoot must be absolute')
     this.workspaceRoot = resolve(config.workspaceRoot)
+    if (config.financeConnectors) {
+      const credentials = ctx.get('credentials')
+      if (!credentials) throw new Error('Finance connectors require a credential provider.')
+      this.finance = new FinanceConnections(ctx, credentials, this.financeTimeoutMs)
+    }
     ctx.on('agent/created', ({ agent }) => {
       this.installIdentity(agent)
     })
@@ -87,6 +128,7 @@ export class KatcatsTeam extends TypertRemoteService {
       await this.ready.catch(() => {})
       await this.organization.run(async () => {})
       await this.tail
+      await this.finance?.close()
       await this.domain?.close()
     })
   }
@@ -98,6 +140,7 @@ export class KatcatsTeam extends TypertRemoteService {
 
   private async initialize(): Promise<void> {
     this.domain = await this.ctx.storageDomain.open(teamDomainSpec)
+    await this.finance?.ready
     const members = this.state.pendingBot === null ? this.state.bots : [...this.state.bots, this.state.pendingBot]
     for (const bot of members) {
       if (resolve(bot.workDir) !== join(this.workspaceRoot, 'bots', bot.id)) {
@@ -129,6 +172,7 @@ export class KatcatsTeam extends TypertRemoteService {
       await this.commit({ ...this.state, groups, pendingBot: bot })
       await this.finishPending()
     })
+    await this.finance?.pruneBotBindings(this.state.bots.filter(bot => bot.financePreset !== undefined).map(bot => bot.id))
   }
 
   private get state(): TeamState {
@@ -144,7 +188,7 @@ export class KatcatsTeam extends TypertRemoteService {
 
   private serialize<T>(operation: () => Promise<T>): Promise<T> {
     const result = this.tail.then(() => {
-      if (this.closing) throw new RemoteError('gateway/internal', 'Katcats member directory is closing', {})
+      if (this.closing) throw new RemoteError('gateway/internal', 'The team member directory is closing', {})
       return operation()
     })
     this.tail = result.then(() => {}, () => {})
@@ -158,7 +202,7 @@ export class KatcatsTeam extends TypertRemoteService {
   private requireOwner(): void {
     const invocation = this.ctx.invocation
     if (invocation !== undefined && principalOf(invocation) !== undefined) {
-      throw new RemoteError('remote-access/denied', 'Only the owner can manage the Katcats team', {
+      throw new RemoteError('remote-access/denied', 'Only the owner can manage the team', {
         action: `${invocation.request.namespace}/${invocation.request.method}`,
         reason: 'owner-required',
       })
@@ -183,6 +227,126 @@ export class KatcatsTeam extends TypertRemoteService {
   async snapshot(): Promise<TeamSnapshot> {
     this.requireOwner()
     return this.readSnapshot()
+  }
+
+  /**
+   * Read the finance connector directory for the product owner.
+   * @returns the redacted directory, or null when the deployment disables finance connectors.
+   */
+  @Remote
+  async financeSnapshot(): Promise<FinanceConnectorSnapshot | null> {
+    this.requireOwner()
+    return this.finance?.snapshot() ?? null
+  }
+
+  /**
+   * Follow the owner’s finance connector catalog and observed access status.
+   * @param signal - Cancels delivery when the client disconnects.
+   * @returns The baseline catalog and later replacements, or null when finance connectors are disabled.
+   */
+  @Remote({ mode: 'stream' })
+  async *followFinance(signal: AbortSignal): AsyncIterable<FinanceConnectorSnapshot | null> {
+    this.requireOwner()
+    if (this.finance === undefined) {
+      yield null
+      return
+    }
+    yield* this.finance.follow(signal)
+  }
+
+  /**
+   * Discover companies accessible to an Odoo credential.
+   * @param input - proposed destination and credential.
+   * @param signal - cancels discovery if the owner leaves the page.
+   * @returns the companies available for selection.
+   */
+  @Remote
+  async discoverFinanceCompanies(input: FinanceConnectionDraft, signal: AbortSignal): Promise<readonly FinanceCompany[]> {
+    this.requireOwner()
+    return this.requireFinance().discover(input, signal)
+  }
+
+  /**
+   * Verify and persist a finance connector with its selected access mode.
+   * @param input - configuration and selected company.
+   * @param signal - cancels verification before the accepted save.
+   * @returns the saved configuration with its key omitted.
+   */
+  @Remote
+  async saveFinanceConnector(input: SaveFinanceConnectorRequest, signal: AbortSignal): Promise<FinanceConnector> {
+    this.requireOwner()
+    return this.requireFinance().save(input, signal)
+  }
+
+  /**
+   * Test an existing connector against its stored company.
+   * @param id - the connector to test.
+   * @param signal - cancels the test without replacing its last result.
+   * @returns the updated public test status.
+   */
+  @Remote
+  async testFinanceConnector(id: FinanceConnectorId, signal: AbortSignal): Promise<FinanceConnector> {
+    this.requireOwner()
+    return this.requireFinance().test(id, signal)
+  }
+
+  /**
+   * Delete an unbound finance connector.
+   * @param id - the connector to remove.
+   */
+  @Remote
+  async deleteFinanceConnector(id: FinanceConnectorId): Promise<void> {
+    this.requireOwner()
+    await this.requireFinance().remove(id)
+  }
+
+  /**
+   * Read the ledger bound to a dedicated finance Bot's private conversation.
+   * @param botId - Existing dedicated finance Bot identity.
+   * @returns Its verified connection identity, or null when unbound.
+   */
+  @Remote
+  async financeBotBinding(botId: BotId): Promise<FinanceConnectorId | null> {
+    this.requireOwner()
+    await this.ready
+    return this.serialize(async () => {
+      this.requireOwner()
+      this.requireDedicatedFinanceBot(botId)
+      return this.requireFinance().getBotBinding(botId)
+    })
+  }
+
+  /**
+   * Bind one verified ledger for a dedicated finance Bot's private queries.
+   * @param botId - Existing dedicated finance Bot identity.
+   * @param connectorId - Verified connection, or null to unbind.
+   */
+  @Remote
+  async bindFinanceBot(botId: BotId, connectorId: FinanceConnectorId | null): Promise<void> {
+    this.requireOwner()
+    await this.ready
+    await this.serialize(async () => {
+      this.requireOwner()
+      this.requireDedicatedFinanceBot(botId)
+      await this.requireFinance().bindBot(botId, connectorId)
+    })
+  }
+
+  private requireDedicatedFinanceBot(botId: BotId): void {
+    const bot = this.state.bots.find(item => item.id === botId)
+    if (bot?.financePreset === undefined || this.deletingBots.has(botId)) {
+      throw financeRemoteError('permissions', 'Private finance connections require a dedicated finance Bot.')
+    }
+  }
+
+  /** Request deadline shared by Odoo finance and ledger setup operations. */
+  get financeTimeoutMs(): number {
+    return this.config.financeRequestTimeoutMs ?? 10000
+  }
+
+  private requireFinance(): FinanceConnections {
+    if (!this.finance) throw financeRemoteError('unsupported', 'Finance connectors are unavailable in this deployment.')
+    return this.finance
   }
 
   private async readSnapshot(signal?: AbortSignal, authorize?: () => void): Promise<TeamSnapshot> {
@@ -405,21 +569,71 @@ export class KatcatsTeam extends TypertRemoteService {
         text: () => {
           const bot = this.memberForSession(agent.id)
           if (bot === undefined) throw new Error('Katcats member identity is unavailable')
+          if (bot.id === ledgerSetupBotId) return ledgerSetupRole
+          if (bot.id === odooAccessBotId) return odooAccessRole
+          if (bot.financePreset !== undefined) {
+            return `You are ${bot.name}, a dedicated finance Bot of 瑞华云财务共享团队. ${bot.role}\nYour role describes your usual duties. For a direct owner request, use the connected tools and their actual permissions. Report any denial from the tool. Use query_bot_finance for verified ledger facts in private chat. Resolve the user's wording from context and ask for a missing date, voucher, or account when needed. Identify the company and scope of the result. For an unbound ledger, direct the owner to the finance connection in Bot settings. When the owner asks to export or download voucher data, call export_bot_finance using the confirmed scope. The tool creates an Excel workbook in the conversation. After success, tell the owner the file is ready and give the row count. Use the ordinary Bot tools and skills for document creation, conversion, charts, and other work under the current permissions. Use call_bot_odoo_orm to read Odoo models outside the finance shortcuts, including suppliers, customers, products and purchase orders. The saved connection mode and Odoo permissions govern allowed operations. In full mode use public methods for the owner’s requested changes and wait for confirmation.`
+          }
           const scope = bot.kind === 'main'
             ? '\nYour product scope is creating and configuring Bots and, when create_group_chat is available, creating requested group chats from saved members. You remain outside the group. Group work is coordinated by its ordinary members, not by this private creation assistant. Claim creation only after the corresponding tool confirms it. These limits take precedence over a saved role that describes broader coordination.'
             : ''
-          return `You are ${bot.name}, a member of 瑞华云财务共享团队.\n${bot.role || 'You are a general assistant. Work with the user to establish your role.'}${scope}\nWhen introducing yourself, use the exact team name 瑞华云财务共享团队, even if earlier conversation mentions an old product name.\n\n${memberToolGuidance(bot.kind)}`
+          return `You are ${bot.name}, a member of 瑞华云财务共享团队.\n${bot.role || 'You are a general assistant. Work with the user to establish your role.'}${scope}\nWhen introducing yourself, use the exact team name 瑞华云财务共享团队, even if earlier conversation mentions an old product name.\n\n${memberToolGuidance(bot.kind, this.finance !== undefined)}`
         },
       })
       const authorize = (exec: ToolRunContext, mainOnly: boolean) => () => {
         this.requireToolAgent(agent, exec.agent, mainOnly)
       }
-      yield registerMemberTools(agent, member.kind, {
-        create: async (request, role, exec) => (await this.createMember(request, role, exec.signal, authorize(exec, true))).bot,
-        list: exec => this.readSnapshot(exec.signal, authorize(exec, true)),
-        setRole: async (role, exec) => (await this.updateMember({ id: member.id, role }, exec.signal, authorize(exec, false))).bot,
-        setAppearance: async (id, avatar, exec) => (await this.updateMember({ id, avatar }, exec.signal, authorize(exec, true))).bot,
-      })
+      if (member.financePreset !== undefined) {
+        const finance = this.finance
+        if (finance !== undefined) {
+          yield agent.ctx.systemPrompt.context({
+            name: 'xiaojing:finance-ledger',
+            order: agent.ctx.systemPrompt.getContextOrder('TEAM_IDENTITY'),
+            interpolate: false,
+            required: true,
+            text: () => finance.botPrompt(member.id),
+          })
+          const requireFinanceAgent = (exec: ToolRunContext) => {
+            this.requireToolAgent(agent, exec.agent, false)
+            this.requireDedicatedFinanceBot(member.id)
+          }
+          yield agent.ctx.tools.register(createFinanceQueryTool('bot', async (query, exec) => {
+            requireFinanceAgent(exec)
+            const result = await finance.queryBot(member.id, query, exec.signal)
+            requireFinanceAgent(exec)
+            return result
+          }))
+          yield agent.ctx.tools.register(createFinanceOrmTool('bot', async (request, approve, exec) => {
+            requireFinanceAgent(exec)
+            return await finance.callOrmBot(member.id, request, async (connector, signal, body) => {
+              await approve(connector, signal, body)
+              requireFinanceAgent(exec)
+            }, exec.signal)
+          }))
+          yield registerFinanceExportTool(agent, 'bot', async (query, exec) => {
+            requireFinanceAgent(exec)
+            return await finance.exportBotRows(member.id, query, exec.signal)
+          }, async (exec) => {
+            requireFinanceAgent(exec)
+            await this.ensureWorkDir(member)
+            requireFinanceAgent(exec)
+            return member.workDir
+          })
+        }
+      } else if (!isOdooAdminBot(member.id)) {
+        yield registerMemberTools(agent, member.kind, {
+          create: async (request, role, exec) => (await this.createMember(request, role, exec.signal, authorize(exec, true))).bot,
+          ...(this.finance !== undefined && member.kind === 'main' ? {
+            createFinance: async (request, preset, exec) => (await this.createMember(
+              request, FINANCE_ROLES[preset], exec.signal, authorize(exec, true), preset,
+            )).bot,
+          } : {}),
+          createFolder: async (name, exec) => (await this.createGroupValue({ name }, exec.signal, authorize(exec, true))).group,
+          list: exec => this.readSnapshot(exec.signal, authorize(exec, true)),
+          setRole: async (role, exec) => (await this.updateMember({ id: member.id, role }, exec.signal, authorize(exec, false))).bot,
+          setAppearance: async (id, avatar, exec) => (await this.updateMember({ id, avatar }, exec.signal, authorize(exec, true))).bot,
+        })
+      }
       yield () => { this.initializedAgents.delete(agent) }
     }.bind(this), 'katcats-team.memberIdentity()')
     this.initializedAgents.set(agent, dispose)
@@ -446,8 +660,112 @@ export class KatcatsTeam extends TypertRemoteService {
     return this.createMember(request, '')
   }
 
+  /**
+   * Provision the private Odoo administration Bots for the ledger setup plugin.
+   * Existing private Sessions are retained while their fixed identities are synchronized.
+   * @returns Once both private Bot records and their Sessions are saved.
+   */
+  async ensureOdooAdminBots(): Promise<void> {
+    await this.ready
+    this.requireFinance()
+    await this.serialize(async () => {
+      await this.finishPending()
+      await this.finishPendingRename()
+      for (const identity of odooAdminBots) {
+        const previous = this.state.bots.find(bot => bot.id === identity.id)
+        if (previous === undefined) {
+          const bot = { ...this.newBot(identity.id, 'ordinary', identity.name, ordinaryGroupId, identity.role), avatar: identity.avatar }
+          await this.commit({ ...this.state, pendingBot: bot })
+          await this.finishPending()
+        } else if (previous.name !== identity.name || previous.role !== identity.role
+          || previous.avatar.shape !== identity.avatar.shape || previous.avatar.color !== identity.avatar.color) {
+          await this.commit({ ...this.state, pendingRename: { ...previous, ...identity } })
+          await this.finishPendingRename()
+        }
+      }
+    })
+  }
+
+  /**
+   * Resolve the original creator tool to the already provisioned ledger Bot.
+   * @param agent Live main Bot authorized to locate the fixed ledger assistant.
+   * @param signal Cancels the lookup.
+   * @returns The saved ledger Bot and its private Session.
+   */
+  async ensureLedgerSetupBot(agent: Agent, signal: AbortSignal): Promise<TeamBot> {
+    await this.ready
+    signal.throwIfAborted()
+    this.requireToolAgent(agent, agent, true)
+    const bot = this.state.bots.find(item => item.id === ledgerSetupBotId)
+    if (bot === undefined) throw new RemoteError('gateway/bad-request', 'The Odoo ledger Bot is unavailable.', {})
+    return bot
+  }
+
+  /**
+   * Save a versioned finance roster once, resuming its allocated identities after interruption.
+   * Existing saved roles, model selections and names remain editable and are not reset by a retry.
+   * @param agent Live main Bot requesting the team.
+   * @param template Fixed compact or standard definition.
+   * @param name Requested group name identifying this creation within its sidebar folder.
+   * @param groupId Selected custom folder, or undefined for default member/chat placement.
+   * @param signal Cancels before the next durable member is accepted.
+   * @returns Saved ordered members, with the finance manager first.
+   */
+  async createFinanceTeamMembers(agent: Agent, template: FinanceTeamTemplate, name: string,
+    groupId: GroupId | undefined, signal: AbortSignal): Promise<readonly TeamBot[]> {
+    await this.ready
+    this.requireFinance()
+    return this.serialize(async () => {
+      const authorize = () => { signal.throwIfAborted(); this.requireOwner(); this.requireToolAgent(agent, agent, true) }
+      authorize()
+      await this.finishPending()
+      await this.finishPendingRename()
+      const folder = groupId ?? ordinaryGroupId
+      this.ordinaryGroup(folder)
+      if (folder !== ordinaryGroupId && this.state.groups.find(group => group.id === folder)?.system) {
+        throw new RemoteError('gateway/bad-request', 'Choose a custom folder for a finance team.', {})
+      }
+      const label = this.nameValue(name)
+      let creation = this.state.financeTeams?.find(item => item.name === label && item.groupId === folder)
+      if (creation !== undefined && creation.template !== template) {
+        throw new RemoteError('gateway/bad-request', 'This team name already uses another template. Choose a different name for a new team.', {})
+      }
+      const positions = financeTeamPositions(template)
+      if (creation === undefined) {
+        creation = { template, name: label, groupId: folder, completed: false,
+          memberIds: positions.map(() => brandString<BotId>(`bot-${randomUUID()}`)) }
+        authorize()
+        await this.commit({ ...this.state, financeTeams: [...(this.state.financeTeams ?? []), creation] })
+      }
+      const bots: TeamBot[] = []
+      for (const [index, position] of positions.entries()) {
+        authorize()
+        const id = creation.memberIds[index]!
+        let bot = this.state.bots.find(member => member.id === id)
+        if (bot === undefined) {
+          if (creation.completed) throw new RemoteError('gateway/bad-request', 'A saved template member was removed. Inspect the existing team instead of creating replacements automatically.', {})
+          bot = { ...this.newBot(id, 'ordinary', position.name, folder, position.role),
+            financePreset: position.preset, avatar: { shape: 'classic', color: AVATAR_COLORS[index]!.color } }
+          await this.commit({ ...this.state, pendingBot: bot })
+          await this.finishPending()
+        }
+        bots.push(bot)
+      }
+      if (!creation.completed) {
+        const members = new Set(creation.memberIds)
+        let index = 0
+        const ordered = template === 'compact-v2' || template === 'standard-v2'
+          ? this.state.bots.map(bot => members.has(bot.id) ? bots[index++]! : bot) : this.state.bots
+        await this.commit({ ...this.state, bots: ordered, financeTeams: this.state.financeTeams!.map(item => item.groupId === folder && item.name === label
+          ? { ...item, completed: true } : item) })
+      }
+      return bots
+    })
+  }
+
   private async createMember(
     request: CreateBotRequest, role: string, signal?: AbortSignal, authorize?: () => void,
+    financePreset?: TeamBot['financePreset'],
   ): Promise<BotMutationValue> {
     await this.ready
     return this.serialize(async () => {
@@ -459,13 +777,15 @@ export class KatcatsTeam extends TypertRemoteService {
       const name = this.nameValue(request.name)
       const avatar = this.avatarValue(request.avatar ?? { shape: 'classic', color: '#FF2849' })
       const pending = this.state.pendingBot
-      const retry = pending?.kind === 'ordinary' && pending.name === name && pending.groupId === groupId && pending.role === role
-        && pending.avatar.shape === avatar.shape && pending.avatar.color.toLowerCase() === avatar.color.toLowerCase()
+      const retry = pending?.kind === 'ordinary' && !isOdooAdminBot(pending.id)
+        && pending.name === name && pending.groupId === groupId && pending.role === role
+        && pending.financePreset === financePreset && pending.avatar.shape === avatar.shape && pending.avatar.color.toLowerCase() === avatar.color.toLowerCase()
       const recovered = await this.finishPending()
       if (retry && recovered !== undefined) return { bot: recovered, snapshot: this.snapshotValue() }
       const bot = {
         ...this.newBot(brandString<BotId>(`bot-${randomUUID()}`), 'ordinary', name, groupId, role),
         avatar,
+        ...(financePreset === undefined ? {} : { financePreset }),
       }
       signal?.throwIfAborted()
       authorize?.()
@@ -510,7 +830,9 @@ export class KatcatsTeam extends TypertRemoteService {
         await this.finishPending()
         const bot = this.state.bots.find(item => item.id === request.id)
         if (bot === undefined) throw new RemoteError('katcats/organization', 'Bot no longer exists.', { reason: 'bot-not-found' })
-        if (bot.kind === 'main') throw new RemoteError('katcats/organization', 'The main Bot cannot be deleted.', { reason: 'bot-main' })
+        if (bot.kind === 'main' || isOdooAdminBot(bot.id)) {
+          throw new RemoteError('katcats/organization', 'A fixed Bot cannot be deleted.', { reason: 'bot-main' })
+        }
         if (memberships.length > 0) throw new RemoteError('katcats/organization', 'Remove this Bot from its groups before deleting it. A group must retain at least one member.', { reason: 'bot-in-group' })
         const idle = () => {
           const agent = this.ctx.agents.get(bot.sessionId)
@@ -532,6 +854,13 @@ export class KatcatsTeam extends TypertRemoteService {
             }
             throw error
           }
+          if (bot.financePreset !== undefined) {
+            try {
+              await this.finance?.bindBot(bot.id, null)
+            } catch {
+              this.ctx.logger.warn('The deleted finance Bot’s binding could not be cleared and will be retried on restart.')
+            }
+          }
           for (const [agent, dispose] of this.initializedAgents) if (agent.id === bot.sessionId) await dispose()
           return this.snapshotValue()
         } finally { this.deletingBots.delete(bot.id) }
@@ -550,6 +879,13 @@ export class KatcatsTeam extends TypertRemoteService {
       await this.finishPending()
       const previous = this.state.bots.find(bot => bot.id === request.id)
       if (previous === undefined) throw new RemoteError('gateway/bad-request', 'Member does not exist', {})
+      if (isOdooAdminBot(previous.id) && ((request.name !== undefined && request.name.trim() !== previous.name)
+        || (request.role !== undefined && request.role !== previous.role)
+        || (request.groupId !== undefined && request.groupId !== previous.groupId)
+        || (request.avatar !== undefined && (request.avatar.shape !== previous.avatar.shape
+          || request.avatar.color.toLowerCase() !== previous.avatar.color.toLowerCase())))) {
+        throw new RemoteError('gateway/bad-request', 'The Odoo administration Bot has a fixed identity.', {})
+      }
       if (request.groupId !== undefined) {
         if (previous.kind === 'main') throw new RemoteError('gateway/bad-request', 'The main Bot stays above the groups', {})
         this.ordinaryGroup(request.groupId)
@@ -584,11 +920,26 @@ export class KatcatsTeam extends TypertRemoteService {
   @Remote
   async createGroup(request: CreateGroupRequest): Promise<GroupMutationValue> {
     this.requireOwner()
+    return this.createGroupValue(request)
+  }
+
+  private async createGroupValue(request: CreateGroupRequest, signal?: AbortSignal, authorize?: () => void): Promise<GroupMutationValue> {
     await this.ready
     return this.serialize(async () => {
+      signal?.throwIfAborted()
+      authorize?.()
       await this.finishPendingRename()
       await this.finishPending()
-      const group: TeamGroup = { id: brandString<GroupId>(`group-${randomUUID()}`), name: this.nameValue(request.name), kind: 'bots', system: false }
+      const name = this.nameValue(request.name)
+      signal?.throwIfAborted()
+      authorize?.()
+      if (authorize !== undefined) {
+        const matches = this.state.groups.filter(group => !group.system && group.kind === 'bots' && group.name === name)
+        if (matches.length > 1) throw new RemoteError('gateway/bad-request', 'More than one folder has that name. Use list_bots and ask which folder to use.', {})
+        const existing = matches[0]
+        if (existing !== undefined) return { group: existing, snapshot: this.snapshotValue() }
+      }
+      const group: TeamGroup = { id: brandString<GroupId>(`group-${randomUUID()}`), name, kind: 'bots', system: false }
       const firstCustom = this.state.groups.findIndex(item => !item.system)
       const index = firstCustom === -1 ? this.state.groups.length : firstCustom
       await this.commit({ ...this.state, groups: [...this.state.groups.slice(0, index), group, ...this.state.groups.slice(index)] })

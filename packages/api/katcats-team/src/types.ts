@@ -1,5 +1,5 @@
 /** Persistent Katcats members, logical groups, and Remote request values. */
-import type { Branded } from '@deepseek-ai/dsh-brand'
+import { brandString, type Branded } from '@deepseek-ai/dsh-brand'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
@@ -12,6 +12,21 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
 
 /** Member identity, independent of its current private conversation. */
 export type BotId = Branded<'KatcatsBotId'>
+
+/** Fixed Odoo company and ledger Bot, retaining the original setup assistant's identity. */
+export const ledgerSetupBotId = brandString<BotId>('ledger-setup')
+/** Fixed Odoo user and permissions Bot. */
+export const odooAccessBotId = brandString<BotId>('odoo-access')
+
+/**
+ * Identify the two private Odoo administration Bots by their saved identities.
+ * @param id Bot identity from the member directory.
+ * @returns Whether the Bot has a fixed Odoo administration role.
+ */
+export function isOdooAdminBot(id: BotId): boolean {
+  return id === ledgerSetupBotId || id === odooAccessBotId
+}
+
 /** Logical sidebar group identity; it does not name a filesystem workspace. */
 export type GroupId = Branded<'KatcatsGroupId'>
 
@@ -26,10 +41,18 @@ export type BotModel =
   | { readonly kind: 'follow-global' }
   | { readonly kind: 'override'; readonly provider: string; readonly model: string; readonly reasoningEffort?: string }
 
+/** Finance templates that fix a Bot’s private query scope at creation. */
+export const financeBotPresets = ['cashier', 'general-ledger', 'reporting', 'tax', 'cost', 'audit', 'analysis', 'documents'] as const
+
+/** Stable identity of a dedicated finance template. */
+export type FinanceBotPreset = typeof financeBotPresets[number]
+
 /** Durable member record. Role changes apply at the next prompt assembly. */
 export interface TeamBot {
   readonly id: BotId
   readonly kind: 'main' | 'ordinary'
+  /** A creation-owned finance template for this Bot's private conversation. */
+  readonly financePreset?: FinanceBotPreset
   readonly name: string
   readonly role: string
   readonly avatar: BotAvatar

@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.1-rc.2/xiaojing-ledger-connector-registration/guide.md
+/:
+  en: ea3c2d6171fa0b69
+  zh: 913af33baf2b1107
+/registering-a-ready-ledger-in-connectors:
+  en: bd17e4529bf38074
+  zh: 490626a2b7e92e3e
+/registering-a-ready-ledger-in-connectors/change:
+  en: ad10d5b6998f5ce9
+  zh: 269258f0d34662eb
+/registering-a-ready-ledger-in-connectors/migration:
+  en: 135ab219c823d4fc
+  zh: 2b13f7f729b71cfe

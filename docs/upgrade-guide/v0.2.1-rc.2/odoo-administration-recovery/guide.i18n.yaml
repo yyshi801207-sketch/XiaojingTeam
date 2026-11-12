@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.1-rc.2/odoo-administration-recovery/guide.md
+/:
+  en: 492f54d7084adffa
+  zh: 54aa852e49f96f64
+/odoo-administration-recovery:
+  en: ec6ed0b6bdaf5e3b
+  zh: 6df6c8ac6cb2a530
+/odoo-administration-recovery/change:
+  en: 488e52635d05e273
+  zh: 7d56da557da8773b
+/odoo-administration-recovery/migration:
+  en: 0999387926a770f5
+  zh: 1ee650b75a865c21

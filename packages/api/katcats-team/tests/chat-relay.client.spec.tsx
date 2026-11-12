@@ -17,6 +17,7 @@ import { processGroupDefinition } from '../../../client/ui-chat/src/client/conve
 import { turnProcessDefinition } from '../../../client/ui-chat/src/client/conversation-nodes/turn-process.ts'
 import type { BotId } from '../src/types.ts'
 import type { ChatDeliveryId, ChatId, ChatRunId } from '../src/chats-types.ts'
+import type { FinanceConnectorId } from '../src/finance-types.ts'
 import { chatRelayDefinition } from '../src/client/chat-relay.ts'
 import { ChatRelayMessage, type ChatRelayMessageProps } from '../src/client/ChatRelayMessage.tsx'
 import { en, zh } from '../src/client/locales.ts'
@@ -64,6 +65,47 @@ function isRelayNode(node: ChatConversationViewNode): node is ChatNode<'katcats-
 }
 
 describe('member relay projection', () => {
+  it('renders the recorded main Bot’s connection welcome in the chat without a model turn or file cards', () => {
+    const directory = presentationDirectory()
+    const welcome: UserMessage = {
+      id: 'finance-connected' as MessageId, role: 'user', content: [{ type: 'text', text: 'Recorded connection' }],
+      source: { kind: 'katcats-group-finance-connected', form: 'notice', summary: 'Finance connection established',
+        chatId: directory.chat.id, sender: { botId: 'main' as BotId, name: '小兢会计', role: '',
+          avatar: { shape: 'classic', color: '#222222' } }, connectorId: 'new-connector' as FinanceConnectorId,
+        connectorName: '鸿优嘉', companyName: '苏州鸿优嘉', currency: 'RMB' },
+    }
+    const assembler = engine()
+    assembler.replaceWindow([consumed(1, welcome)], false)
+    expect(snapshot(assembler).timeline.turnOrder).toEqual([])
+    const node = relayNodes(assembler)[0]!
+    expect(relayNodes(assembler)).toHaveLength(1)
+    const renderSlot = vi.fn(() => null)
+    const props = { node, sessionId: directory.chat.rootSessionId, useGroupDirectory: directory.useGroupDirectory,
+      ...relayActions, renderSlot, t: makeTranslate(zh) } as ChatRelayMessageProps
+    const view = render(<ChatRelayMessage {...props} />)
+    const body = view.container.querySelector('[data-katcats-message-body]')
+    expect([screen.getByText('小兢会计').textContent, body?.textContent]).toMatchInlineSnapshot(`
+      [
+        "小兢会计",
+        "本群已连接账套「鸿优嘉」（苏州鸿优嘉 · RMB）。现在可以在群里查凭证、核对分录或导出账套数据。",
+      ]
+    `)
+    expect(renderSlot).not.toHaveBeenCalled()
+    view.rerender(<ChatRelayMessage {...props} t={makeTranslate(en)} />)
+    expect(body?.textContent).toBe('This group is now connected to the ledger “鸿优嘉” (苏州鸿优嘉 · RMB). Ask the group to find vouchers, check entries, or export ledger data.')
+  })
+
+  it('shows file cards without an empty message bubble for a file-only result', () => {
+    const assembler = engine()
+    assembler.replaceWindow([consumed(1, { ...relay, content: [{ type: 'text', text: '' }] })], false)
+    const renderSlot = vi.fn(() => <button>Reviewed report.xlsx</button>)
+    const props = { node: relayNodes(assembler)[0]!, useGroupDirectory, ...relayActions, renderSlot, t: makeTranslate(zh) } as ChatRelayMessageProps
+    const view = render(<ChatRelayMessage {...props} />)
+    expect(view.container.querySelector('[data-katcats-message-body]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Reviewed report.xlsx' })).toBeTruthy()
+    expect(renderSlot).toHaveBeenCalledExactlyOnceWith('katcats.group.delivered-files', { messageId: relay.id, source: relay.source })
+  })
+
   it('marks only the current manager by Bot identity in this exact group, preserving historical sender names', () => {
     const assembler = engine()
     assembler.replaceWindow([consumed()], false)
@@ -249,6 +291,33 @@ describe('member message context actions', () => {
     return { ...view, bubble, directory, props, actions }
   }
 
+  it('widens and tints a reply only while its exact group is bound to a ledger', () => {
+    const b = setup('| Date | Reference | Debit | Credit |\n| --- | --- | --- | --- |\n| 2026-11-10 | Voucher | 8 | 8 |')
+    const saved = b.directory.source.getSnapshot().snapshot!
+    const row = b.container.querySelector<HTMLElement>('[data-katcats-relay]')!
+    expect(row.hasAttribute('data-katcats-reply-layout')).toBe(false)
+    act(() => { b.directory.source.set({ phase: 'ready', snapshot: { ...saved, financeChatIds: ['other-group' as ChatId] } }) })
+    expect(row.hasAttribute('data-katcats-reply-layout')).toBe(false)
+
+    act(() => { b.directory.source.set({ phase: 'ready', snapshot: { ...saved, financeChatIds: [b.directory.chat.id] } }) })
+    expect(row.getAttribute('data-katcats-reply-layout')).toBe('wide')
+    expect(row.style.getPropertyValue('--katcats-relay-color')).toBe(b.props.node.data.source.sender.avatar.color)
+    expect(screen.getByText('Recorded Writer')).toBeTruthy()
+    expect(screen.getByLabelText('Recorded Writer')).toBeTruthy()
+    expect(screen.getByRole('table').parentElement?.classList.contains('md-table-wide')).toBe(true)
+    fireEvent.contextMenu(b.bubble)
+    fireEvent.click(screen.getByRole('menuitem', { name: zh['chat.copyMessage'] }))
+    expect(b.actions.copyRelayText).toHaveBeenCalledExactlyOnceWith(b.props.node.data.text)
+
+    b.rerender(<ChatRelayMessage {...b.props} sessionId={'other-root' as SessionId} />)
+    expect(row.hasAttribute('data-katcats-reply-layout')).toBe(false)
+    b.rerender(<ChatRelayMessage {...b.props} />)
+    expect(row.getAttribute('data-katcats-reply-layout')).toBe('wide')
+    act(() => { b.directory.source.set({ phase: 'ready', snapshot: saved }) })
+    expect(row.hasAttribute('data-katcats-reply-layout')).toBe(false)
+    expect(row.style.getPropertyValue('--katcats-relay-color')).toBe('')
+  })
+
   it('copies the original Markdown or exact message identity from a compact, localized menu', () => {
     const b = setup()
     fireEvent.contextMenu(b.bubble, { clientX: 120, clientY: 160 })
@@ -311,13 +380,10 @@ describe('member message context actions', () => {
     expect(screen.queryByRole('menu')).toBeNull()
   })
 
-  it('disables copying empty message content while leaving its durable ID available', () => {
+  it('copies the durable ID of a file-only message from the member menu', () => {
     const b = setup('')
-    fireEvent.contextMenu(b.bubble)
-    const copy = screen.getByRole<HTMLButtonElement>('menuitem', { name: zh['chat.copyMessage'] })
-    expect(copy.disabled).toBe(true)
-    fireEvent.click(copy)
-    expect(b.actions.copyRelayText).not.toHaveBeenCalled()
+    fireEvent.contextMenu(screen.getByText('Recorded Writer'))
+    expect(screen.queryByRole('menuitem', { name: zh['chat.copyMessage'] })).toBeNull()
     fireEvent.click(screen.getByRole('menuitem', { name: zh['chat.copyMessageId'] }))
     expect(b.actions.copyRelayText).toHaveBeenCalledExactlyOnceWith('relay-message')
   })

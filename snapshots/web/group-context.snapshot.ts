@@ -8,7 +8,7 @@ import { expect, it } from 'vitest'
 import { resolveExampleLaunch } from '@deepseek-ai/dsh-loader-smoke'
 import { materializeProfilePatch, sessionFixtureNames } from '@deepseek-ai/dsh-session-snapshot'
 import type { BotMutationValue } from '@deepseek-ai/dsh-client-katcats-team/types'
-import type { ChatMutationValue, ChatSnapshot } from '@deepseek-ai/dsh-client-katcats-team/chats-types'
+import type { ChatMutationValue, ChatPromptValue, ChatSnapshot } from '@deepseek-ai/dsh-client-katcats-team/chats-types'
 import { prompts, ready, authenticatedWeb, remoteRpc, sessionLog, modelResponses, close } from './group-profile-fixture.ts'
 import { verifyGroupSnapshots } from './group-context-efficiency-normalize.ts'
 
@@ -67,6 +67,11 @@ snapshotTest('group-context-efficiency: selective dispatch and incremental histo
     }
     expect(snapshot?.deliveries.map(delivery => delivery.botId)).toEqual([coordinator.id, coordinator.id])
     expect(snapshot?.deliveries.at(-1)?.receipt?.text).toBe('The original code was blue; the latest correction is green.')
+    const acceptance = await remoteRpc<ChatPromptValue>(connection, 'katcatsChats/sendMessage', { request: {
+      sessionId: chat.rootSessionId, requestId: 'group-context-owner-acceptance', mode: 'queue',
+      content: [{ type: 'text', text: '验收通过' }],
+    } })
+    expect(acceptance).toEqual({ accepted: true, taskAcceptance: { kind: 'none' } })
     const executor = chat.executors.find(worker => worker.botId === coordinator.id)
     if (executor === undefined) throw new Error('The coordinator has no group executor')
     const root = join(cwd, '.dsh', 'sessions')

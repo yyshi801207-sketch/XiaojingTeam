@@ -1,4 +1,4 @@
-/** Run the independent 小兢Bot development copy with project-owned state and tools. */
+/** Run the independent 小兢财务 development copy with project-owned state and tools. */
 import { execFileSync, spawn } from 'node:child_process'
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
@@ -15,9 +15,9 @@ function inside(root, target) {
 }
 
 function localPath(root, target) {
-  if (!inside(root, resolve(target))) throw new Error(`Path leaves the 小兢Bot project: ${target}`)
+  if (!inside(root, resolve(target))) throw new Error(`Path leaves the 小兢财务 project: ${target}`)
   if (existsSync(target) && !inside(realpathSync(root), realpathSync(target))) {
-    throw new Error(`Linked path leaves the 小兢Bot project: ${target}`)
+    throw new Error(`Linked path leaves the 小兢财务 project: ${target}`)
   }
   return target
 }
@@ -142,7 +142,7 @@ export function developmentEnvironment(paths, inherited, executable = process.ex
  */
 export function parseArguments(argv) {
   const mode = argv[0] ?? 'check'
-  if (!MODES.includes(mode)) throw new Error(`小兢Bot: Usage: npm run team:<${MODES.join('|')}> [web: -- --port 3390]`)
+  if (!MODES.includes(mode)) throw new Error(`小兢财务: Usage: npm run team:<${MODES.join('|')}> [web: -- --port 3390]`)
   let port = 3390
   if (argv.length > 1) {
     if (mode !== 'web' || argv.length !== 3 || argv[1] !== '--port' || !/^\d+$/.test(argv[2])) {
@@ -265,7 +265,7 @@ export async function runChild(command, capture = false) {
       child.once('error', reject)
       child.once('close', (code, signal) => {
         if (code === 0) accept()
-        else reject(new Error(`小兢Bot ${command.args[0]} exited with ${signal ?? code}`))
+        else reject(new Error(`小兢财务 ${command.args[0]} exited with ${signal ?? code}`))
       })
     })
     return { stdout, stderr }
@@ -300,7 +300,7 @@ async function main() {
   const env = developmentEnvironment(paths, process.env)
   const state = dependencyState(paths)
   if (invocation.mode === 'check') {
-    console.log(JSON.stringify({ developmentIdentity: '小兢Bot Dev',
+    console.log(JSON.stringify({ developmentIdentity: '小兢财务 Dev',
       ports: { web: invocation.port, renderer: 19422, main: 19429, host: 19430 },
       project: ROOT, run: paths.run, home: paths.home, agents: paths.agents,
       desktop: paths.desktop, workspaces: paths.workspaces, dependencies: state.ready }, null, 2))

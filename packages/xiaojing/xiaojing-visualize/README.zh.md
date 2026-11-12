@@ -24,7 +24,7 @@ kind: "package-bundle"
 
 Host 半侧注册 `visualize` 工具及其内置创作 skill，Client 半侧注册完成态工具视图和流式预览。Katcat Web 组合只在 `DSH_CLIENT_BUILD_PROFILE=xiaojing` 时加载这两个半侧，官方 Harness profile 保持不变。
 
-卡片固定使用原插件的浅色鲸鱼蓝配色，不继承 Harness 主题、Katcat浅绿色产品主题或操作系统外观。禁用或删除 Web 组合中的唯一 `xiaojing-visualize` 配置行并重新构建，即可移除该功能。从源码中彻底删除时，还需移除 `web-app` 解析清单中的包依赖；其他Katcat功能和持久数据 owner 都不依赖这两处声明。
+卡片固定使用原插件的浅色鲸鱼蓝配色，不继承 Harness 主题、Katcat浅绿色产品主题或操作系统外观。禁用或删除 Web 组合中的唯一 `xiaojing-visualize` 配置行并重新构建，即可移除该功能。从源码中彻底删除时，还需移除 `web-app` 中的包依赖和群聊转发对可选卡片 Factory 的引用。
 
 ## 配置
 

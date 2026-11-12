@@ -1,7 +1,64 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Katcats directory through the real Loader and owner Remote > creates a complete team and group from the main conversation with replayable saved receipts 1`] = `
+exports[`Katcats directory through the real Loader and owner Remote > asks where to place a team, then saves new members and their chat in the selected folder 1`] = `
 "[
+  {
+    "callId": "inspect-team-folders",
+    "content": [
+      {
+        "type": "text",
+        "text": "{\\"bots\\":[{\\"bot_id\\":\\"main\\",\\"name\\":\\"小兢会计\\",\\"role\\":\\"Bot 创建助手：根据用户需求创建和配置 Bot。\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"},\\"is_main\\":true},{\\"bot_id\\":\\"<Writer>\\",\\"name\\":\\"Writer\\",\\"role\\":\\"\\",\\"avatar\\":{\\"shape\\":\\"classic\\",\\"color\\":\\"#FF2849\\"},\\"is_main\\":false,\\"group_id\\":\\"<editorial-folder>\\"}],\\"groups\\":[{\\"group_id\\":\\"bots\\",\\"name\\":\\"未分组\\"},{\\"group_id\\":\\"<editorial-folder>\\",\\"name\\":\\"Editorial\\"}]}"
+      }
+    ],
+    "meta": {
+      "bots": [
+        {
+          "bot_id": "main",
+          "name": "小兢会计",
+          "role": "Bot 创建助手：根据用户需求创建和配置 Bot。",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          },
+          "is_main": true
+        },
+        {
+          "bot_id": "<Writer>",
+          "name": "Writer",
+          "role": "",
+          "avatar": {
+            "shape": "classic",
+            "color": "#FF2849"
+          },
+          "is_main": false,
+          "group_id": "<editorial-folder>"
+        }
+      ],
+      "groups": [
+        {
+          "group_id": "bots",
+          "name": "未分组"
+        },
+        {
+          "group_id": "<editorial-folder>",
+          "name": "Editorial"
+        }
+      ]
+    }
+  },
+  {
+    "callId": "create-team-folder",
+    "content": [
+      {
+        "type": "text",
+        "text": "{\\"group_id\\":\\"<finance-folder>\\",\\"name\\":\\"Finance operations\\"}"
+      }
+    ],
+    "meta": {
+      "group_id": "<finance-folder>",
+      "name": "Finance operations"
+    }
+  },
   {
     "callId": "create-team-members",
     "content": [
@@ -38,12 +95,13 @@ exports[`Katcats directory through the real Loader and owner Remote > creates a 
     "content": [
       {
         "type": "text",
-        "text": "{\\"chat_id\\":\\"<finance-chat>\\",\\"name\\":\\"Finance\\",\\"member_ids\\":[\\"<CFO>\\",\\"<Accountant>\\"],\\"manager_id\\":\\"<CFO>\\",\\"relay_limit\\":8}"
+        "text": "{\\"chat_id\\":\\"<finance-chat>\\",\\"name\\":\\"Finance\\",\\"group_id\\":\\"<finance-folder>\\",\\"member_ids\\":[\\"<CFO>\\",\\"<Accountant>\\"],\\"manager_id\\":\\"<CFO>\\",\\"relay_limit\\":8}"
       }
     ],
     "meta": {
       "chat_id": "<finance-chat>",
       "name": "Finance",
+      "group_id": "<finance-folder>",
       "member_ids": [
         "<CFO>",
         "<Accountant>"
@@ -57,7 +115,7 @@ exports[`Katcats directory through the real Loader and owner Remote > creates a 
     "content": [
       {
         "type": "text",
-        "text": "{\\"chats\\":[{\\"chat_id\\":\\"<finance-chat>\\",\\"name\\":\\"Finance\\",\\"member_ids\\":[\\"<CFO>\\",\\"<Accountant>\\"],\\"manager_id\\":\\"<CFO>\\",\\"relay_limit\\":8}]}"
+        "text": "{\\"chats\\":[{\\"chat_id\\":\\"<finance-chat>\\",\\"name\\":\\"Finance\\",\\"group_id\\":\\"<finance-folder>\\",\\"member_ids\\":[\\"<CFO>\\",\\"<Accountant>\\"],\\"manager_id\\":\\"<CFO>\\",\\"relay_limit\\":8}]}"
       }
     ],
     "meta": {
@@ -65,6 +123,7 @@ exports[`Katcats directory through the real Loader and owner Remote > creates a 
         {
           "chat_id": "<finance-chat>",
           "name": "Finance",
+          "group_id": "<finance-folder>",
           "member_ids": [
             "<CFO>",
             "<Accountant>"

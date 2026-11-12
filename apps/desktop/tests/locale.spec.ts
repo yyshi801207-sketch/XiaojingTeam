@@ -19,12 +19,12 @@ describe('desktop locale dictionaries', () => {
       .toMatchInlineSnapshot(`
         {
           "en": {
-            "menu": "About 小兢Bot",
-            "product": "小兢Bot",
+            "menu": "About 小兢财务",
+            "product": "小兢财务",
           },
           "zh": {
-            "menu": "关于 小兢Bot",
-            "product": "小兢Bot",
+            "menu": "关于 小兢财务",
+            "product": "小兢财务",
           },
         }
       `)

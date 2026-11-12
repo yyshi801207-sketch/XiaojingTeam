@@ -24,6 +24,7 @@
   disabled: false
   config:
     workspaceRoot: !!js process.env.XIAOJING_OFFICE_WORKSPACE_ROOT
+    financeConnectors: true
 - id: katcats-chats
   disabled: false
   config:

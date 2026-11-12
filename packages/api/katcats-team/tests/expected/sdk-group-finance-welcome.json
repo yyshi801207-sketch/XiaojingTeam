@@ -1,0 +1,22 @@
+{
+  "type": "user/message",
+  "seq": 0,
+  "time": 0,
+  "surfaceOp": "append",
+  "data": {
+    "id": "sdk-group-finance-welcome",
+    "role": "user",
+    "source": {
+      "kind": "katcats-group-finance-connected",
+      "form": "notice",
+      "summary": "Finance connection verified",
+      "chatId": "sdk-group",
+      "sender": { "botId": "main", "name": "小兢会计", "role": "Bot 创建助手", "avatar": { "shape": "round", "color": "#101010" } },
+      "connectorId": "00000000-0000-4000-8000-000000000001",
+      "connectorName": "Test ledger",
+      "companyName": "Test company",
+      "currency": "CNY"
+    },
+    "content": [{ "type": "text", "text": "Connected to the Odoo ledger Test ledger for Test company (CNY). You can now ask this group to work with this ledger." }]
+  }
+}

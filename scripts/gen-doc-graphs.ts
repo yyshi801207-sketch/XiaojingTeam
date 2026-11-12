@@ -132,6 +132,14 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Owns Bot, group, and team facts with owner-selected sharing and conversation-scoped model access in the isolated product composition.',
   },
   {
+    key: 'xiaojingLedgerSetup',
+    pkg: 'client-katcats-team',
+    title: 'Xiaojing ledger setup and administration',
+    mode: 'service',
+    consumers: ['client-katcats-team'],
+    note: 'Owns database connections, persisted company setup plans, initialization checkpoints, and administrative tools for the fixed finance assistants.',
+  },
+  {
     key: 'usageAccounting',
     pkg: 'usage-accounting',
     title: 'Local request-time usage accounting',

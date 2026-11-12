@@ -9,8 +9,8 @@ const integration = JSON.parse(await readFile(join(appRoot, 'integration-patches
 const manifest = JSON.parse(await readFile(join(appRoot, 'package.json'), 'utf8'))
 const rootManifest = JSON.parse(await readFile(join(appRoot, '..', '..', 'package.json'), 'utf8'))
 const webManifest = JSON.parse(await readFile(join(appRoot, '..', 'web', 'public', 'xiaojing-manifest.webmanifest'), 'utf8'))
-if (webManifest.name !== '小兢Bot' || webManifest.short_name !== '小兢Bot') {
-  throw new Error('installed browser application metadata must use 小兢Bot')
+if (webManifest.name !== '小兢财务' || webManifest.short_name !== '小兢财务') {
+  throw new Error('installed browser application metadata must use 小兢财务')
 }
 for (const path of ['build/internal-use-notice.txt', 'src/locale.ts']) {
   if (/Katcats?\.AI|小兢会计|小兢办公/u.test(await readFile(join(appRoot, path), 'utf8'))) {
@@ -38,14 +38,14 @@ const builder = createElectronBuilderConfig({
 
 const expected = Object.freeze({
   packageName: '@deepseek-ai/dsh-desktop',
-  productVersion: '1.0.2',
+  productVersion: '1.1.0',
   appId: 'ai.xiaojing.accounting.team.desktop',
   nsisGuid: 'c8462347-245f-49dd-8195-e1174bb7e3ef',
   installDirectoryName: 'XiaojingAccountingTeam-desktop',
   executableName: 'XiaojingAccountingTeam',
-  productName: '小兢Bot',
+  productName: '小兢财务',
   installScope: 'currentUser',
-  shortcutName: '小兢Bot',
+  shortcutName: '小兢财务',
   userDataSegments: ['XiaojingAccountingTeam-desktop'],
 })
 
@@ -145,15 +145,20 @@ if (version[0] === 0 && version[1] === 1 && version[2] <= 7) {
 if (!installer.includes(`!define APP_FILENAME "${identity.installDirectoryName}"`)) {
   throw new Error('installer directory identity no longer matches identity.json')
 }
+const installSection = /!macro customInstall\s+([\s\S]*?)!macroend/.exec(installer)?.[1] ?? ''
 if (!installer.includes('!include "${__FILEDIR__}\\..\\scripts\\installer-directories.nsh"')
-  || !/!macro customInstall[\s\S]*!insertmacro dshFinishDirectories[\s\S]*Call xiaojingFinalizeInstallSection/.test(installer)) {
-  throw new Error('branded installer must commit the RC1 staged-directory replacement before its automatic exit')
+  || !/!macro customInstallerExtract\b[\s\S]*?window-frame\.dll::InstallerExtract\(/.test(installer)
+  || !/!insertmacro dshFinishDirectories\s+StrCpy \$xiaojingInstallInProgress "0"\s*$/.test(installSection)
+  || /Call xiaojingAutoFinish|StdUtils\.ExecShellAsUser/.test(installSection)
+  || !/Function xiaojingInstallFilesShow\b(?:(?!FunctionEnd)[\s\S])*?SetAutoClose true/.test(installer)
+  || !/!macro customFinishPage\s+Page custom xiaojingAutoFinish\s+!macroend/.test(installer)) {
+  throw new Error('branded installer must use supervised extraction and finish its worker before automatic launch')
 }
 if (!installer.includes('${isUpdated}')) {
   throw new Error('installer must skip directory selection during an in-place update')
 }
 if (!installer.includes('!include "${BUILD_RESOURCES_DIR}\\installer-shortcuts.nsh"')
-  || !/!macro customInstall\s+[\s\S]*!insertmacro xiaojingRefreshShortcutIcons[\s\S]*Call xiaojingFinalizeInstallSection/.test(installer)
+  || !/!insertmacro xiaojingRefreshShortcutIcons[\s\S]*!insertmacro dshFinishDirectories/.test(installSection)
   || !shortcutInstaller.includes('${StdUtils.HashFile} $R0 "SHA2-256"')
   || !shortcutInstaller.includes('!insertmacro xiaojingRefreshShortcut "$newDesktopLink" "$R1"')
   || !shortcutInstaller.includes('!insertmacro xiaojingRefreshShortcut "$newStartMenuLink" "$R1"')
@@ -216,7 +221,7 @@ if (!installer.includes('!define MUI_CUSTOMFUNCTION_ABORT xiaojingInstallerAbort
   || !installer.includes('SetErrorLevel 1602')
   || !installer.includes('Call muiPageLoadFullWindow')
   || !installer.includes('ShowWindow $mui.InstFilesPage.Log ${SW_HIDE}')
-  || !installer.includes('正在安装小兢Bot，请稍候…')
+  || !installer.includes('正在安装小兢财务，请稍候…')
   || !installer.includes('xiaojing-company-logo.bmp')
   || !installer.includes('${NSD_SetStretchedImage} $xiaojingProgressProductControl')
   || !/CreateWindowExW\([^\n]+p \$mui\.InstFilesPage[^\n]+\) p \.r0'[\s\S]+StrCpy \$xiaojingProgressProductControl \$0/.test(installer)

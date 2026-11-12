@@ -606,6 +606,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     slotInject: '',
     declaredBy: 'factory \'conversation.content\' (client-ui-conversation), so it exists while that definition is registered',
     occupants: [
+      'client-katcats-team PrivateQuestionComposer',
       'client-ui-approval ApprovalPanel',
       'client-ui-subagent SubagentReadOnlyComposer',
       'client-ui-user-questions QuestionComposerEntry',
@@ -2338,7 +2339,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'katcats.group.delivered-cards\', () => ctx.slots.register(\n      { name: \'katcats.group.delivered-cards\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/api/katcats-team/src/client/GroupDeliveredFiles.tsx:20',
+    source: 'packages/api/katcats-team/src/client/GroupDeliveredFiles.tsx:21',
   },
   {
     key: 'katcats.group.delivered-files',
@@ -2384,7 +2385,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'katcats.group.delivered-files\', () => ctx.slots.register(\n      { name: \'katcats.group.delivered-files\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/api/katcats-team/src/client/GroupDeliveredFiles.tsx:18',
+    source: 'packages/api/katcats-team/src/client/GroupDeliveredFiles.tsx:19',
   },
   {
     key: 'katcats.group.question-panel',
@@ -2424,7 +2425,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'katcats.group.question-panel\', () => ctx.slots.register(\n      { name: \'katcats.group.question-panel\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/api/katcats-team/src/client/ChatQuestions.tsx:19',
+    source: 'packages/api/katcats-team/src/client/ChatQuestions.tsx:21',
   },
   {
     key: 'katcats.settings.permission',
@@ -2498,6 +2499,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     slotInject: '',
     declaredBy: 'an entry in \'root\' (client-ui-layout), so it exists while that entry is mounted',
     occupants: [
+      'client-katcats-team FinanceConnectorsPage',
       'client-katcats-team ScheduleManager',
       'client-ui-conversation ConversationPanel key \'conversation\'',
       'client-ui-plugin-manager PluginManagerPage',
@@ -3802,6 +3804,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     slotInject: '',
     declaredBy: 'an entry in \'root\' (client-ui-layout), so it exists while that entry is mounted',
     occupants: [
+      'client-katcats-team FinanceConnectorToast id \'finance-connectors.toast\'',
       'client-katcats-team TeamOverlays id \'katcats-team.dialogs\'',
       'client-katcats-team ChatOverlay id \'katcats-team.chat-dialog\'',
       'client-katcats-team Headquarters id \'katcats-team.headquarters\'',
@@ -4106,6 +4109,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     slotInject: '',
     declaredBy: 'an entry in \'sidebar\' (client-ui-sidebar), so it exists while that entry is mounted',
     occupants: [
+      'client-katcats-team FinancePanelIcon',
       'client-ui-plugin-manager PluginsPanelIcon',
       'client-ui-schedule TaskManagerIcon',
     ],

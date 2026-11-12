@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Config, XiaojingWeixinChannel } from '../src/index.ts'
-import { WeixinStateStore } from '../src/state.ts'
+import { apply, Config, XiaojingWeixinChannel } from '../src/index.ts'
+import { WeixinInstanceLease, WeixinStateStore } from '../src/state.ts'
 
 type Listener = (...args: unknown[]) => unknown
 
@@ -70,6 +70,32 @@ describe('Xiaojing Weixin assembled channel', () => {
 
   it('defaults visible long-task progress to 30-second intervals', () => {
     expect(Config({}).progressHeartbeatMs).toBe(30_000)
+  })
+
+  it('reports the Xiaojing Accounting lease conflict in status and pairing replies', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'xiaojing-weixin-busy-'))
+    cleanups.push(() => rm(root, { recursive: true, force: true }))
+    const lease = new WeixinInstanceLease(join(root, 'channel.lock'))
+    expect(await lease.acquire()).toBe(true)
+    const rpcHandle = vi.fn((_path: string, _handler: (endpoint: string, payload: unknown) => Promise<unknown>) => () => undefined)
+    const ctx = new Context().extend({
+      connection: { rpc: { handle: rpcHandle } },
+      logger: { warn: vi.fn() },
+      effect: (factory: () => unknown) => { factory() },
+    })
+    try {
+      const dispose = await apply(ctx, { stateDir: root, mediaDir: join(root, 'uploads') })
+      try {
+        const handler = rpcHandle.mock.calls[0]![1]
+        const message = '另一套小兢会计正在使用此微信连接。'
+        await expect(handler('status', {})).resolves.toMatchObject({
+          ok: true, value: { state: 'instance-busy', online: false, error: message },
+        })
+        await expect(handler('pairing/start', {})).resolves.toMatchObject({
+          ok: false, error: { message },
+        })
+      } finally { await dispose() }
+    } finally { await lease.release() }
   })
 
   it.each(['once', 'session'] as const)('recovers a state-write failure, serializes tasks, and handles %s approvals', async (approvalKind) => {

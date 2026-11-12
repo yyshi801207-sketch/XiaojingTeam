@@ -22,6 +22,9 @@
       "path": "../../storage/storage-domain"
     },
     {
+      "path": "../../credentials/credentials"
+    },
+    {
       "path": "../../core/system-prompt"
     },
     {
@@ -76,10 +79,25 @@
       "path": "../../interaction/user-approval"
     },
     {
+      "path": "../../interaction/user-questions"
+    },
+    {
       "path": "../../fs/fs"
     },
     {
       "path": "../../compaction/compaction"
+    },
+    {
+      "path": "../../deliverables/tool-present"
+    },
+    {
+      "path": "../../session/session-projection"
+    },
+    {
+      "path": "../../util/atomic-write"
+    },
+    {
+      "path": "../../sandbox/sandbox-policy"
     }
   ]
 }

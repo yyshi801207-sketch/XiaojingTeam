@@ -12,7 +12,7 @@ const snapshot = (revision: number): ChatSnapshot => ({ revision, chats: [], del
 function setup() {
   const remote: ChatRemote = { sendMessage: vi.fn(), cancelSession: vi.fn(), snapshot: vi.fn(),
     follow: async function* () {}, createChat: vi.fn(), updateChat: vi.fn(), deleteChat: vi.fn(),
-    pause: vi.fn(), resume: vi.fn(), stop: vi.fn() }
+    pause: vi.fn(), resume: vi.fn(), stop: vi.fn(), continueTask: vi.fn(), completeTask: vi.fn() }
   return { remote, model: new ChatClientModel(remote) }
 }
 

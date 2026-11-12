@@ -17,9 +17,9 @@ const directory = fileURLToPath(new URL('./group-question/', import.meta.url))
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
 const item = z.object({ type: z.literal('item'), value: z.record(z.string(), z.unknown()) })
 const invocation = z.object({ type: z.literal('waterfall'), event: z.literal('user-questions/request'),
-  eventId: z.string(), agentId: z.string(), request: z.object({ questions: z.array(z.object({ id: z.string() })) }) })
+  eventId: z.string(), agentId: z.string(), request: z.object({ questions: z.array(z.object({ id: z.string(), options: z.array(z.object({ label: z.string(), description: z.string().optional() })).optional() })) }) })
 
-it.skipIf(process.env.DSH_SNAPSHOT === 'record')('group-question: answer the executor, preserve queued input and cancel the next wait', async () => {
+it.skipIf(process.env.DSH_SNAPSHOT === 'record')('group-question: select a voucher period, preserve queued input and cancel the next wait', async () => {
   const mode = process.env.DSH_SNAPSHOT ?? 'replay'
   if (mode !== 'replay' && mode !== 'refresh') throw new Error('This authored fixture supports keyless replay or refresh only')
   const cwd = await realpath(await mkdtemp(join(tmpdir(), 'group-question-snapshot-')))
@@ -87,17 +87,21 @@ it.skipIf(process.env.DSH_SNAPSHOT === 'record')('group-question: answer the exe
     const question = questions()[0]!
     expect(question.agentId).toBe(executor.sessionId)
     expect(question.agentId).not.toBe(chat.rootSessionId)
-    expect(question.request.questions).toEqual([{ id: 'color' }])
+    expect(question.request.questions).toEqual([{ id: 'voucher_period', options: [
+      { label: '本月至今', description: '2026-11-01 至 2026-11-10' },
+      { label: '上月整月', description: '2026-10-01 至 2026-10-31' },
+      { label: '本年至今', description: '2026-01-01 至 2026-11-10' },
+    ] }])
     await send(1)
     const waiting = await remoteRpc<ChatSnapshot>(connection, 'katcatsChats/snapshot', {})
     expect(waiting.deliveries.filter(delivery => delivery.chatId === chat.id).map(delivery => delivery.state)).toEqual(['running'])
     expect(waiting.activities.find(activity => activity.chatId === chat.id)?.processing).toBe(true)
     await remoteRpc(connection, '$events/result', { clientId, eventId: question.eventId,
-      outcome: { kind: 'result', value: { answers: [{ id: 'color', selected: ['Green'] }] } } })
+      outcome: { kind: 'result', value: { answers: [{ id: 'voucher_period', selected: ['上月整月'] }] } } })
     await expect.poll(async () => {
       const value = await remoteRpc<ChatSnapshot>(connection, 'katcatsChats/snapshot', {})
       return value.deliveries.filter(delivery => delivery.chatId === chat.id).map(delivery => delivery.receipt?.text)
-    }, { timeout: 30_000 }).toEqual(['The selected color is Green.', 'Queued follow-up completed: Green remains selected.'])
+    }, { timeout: 30_000 }).toEqual(['已选择上月整月，2026-10-01 至 2026-10-31。', '查询区间仍是 2026-10-01 至 2026-10-31。'])
     await send(2)
     await expect.poll(() => questions().length, { timeout: 30_000 }).toBe(2)
     const cancelled = questions()[1]!

@@ -71,6 +71,7 @@ describe('native browser settings page', () => {
     const { controller: owner } = controller()
     render(<BrowserControlSection {...props(owner)} />)
     expect(await screen.findByRole('switch', { name: zh.enableChrome })).toBeTruthy()
+    expect(screen.getByText(/小兢会计可操作已打开的浏览器标签页/)).toBeTruthy()
     expect(screen.getByRole('switch', { name: zh.enableEdge }).getAttribute('aria-checked')).toBe('false')
     expect(screen.getByRole('button', { name: zh.manageChrome })).toBeTruthy()
     expect(screen.getByRole('button', { name: zh.manageEdge })).toBeTruthy()

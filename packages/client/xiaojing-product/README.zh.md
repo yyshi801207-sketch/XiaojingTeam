@@ -5,11 +5,11 @@ kind: "package-reference"
 
 # @deepseek-ai/dsh-client-xiaojing-product
 
-当前产品为小兢Bot（`1.0.2`），支持独立 Bot 与群聊协作。历史更新条目描述各自版本当时的功能。
+当前产品为小兢财务（`1.1.0`），支持独立 Bot 与群聊协作。历史更新条目描述各自版本当时的功能。
 
 [English](README.md) | 中文
 
-Bot 对用户自我介绍时使用“瑞华云财务共享团队”，应用界面使用“小兢Bot”。技术包名、路径、已保存的 Bot 职责和历史聊天内容保留原值。
+Bot 对用户自我介绍时使用“瑞华云财务共享团队”，应用界面使用“小兢财务”。技术包名、路径、已保存的 Bot 职责和历史聊天内容保留原值。
 
 ## 概述
 
@@ -40,7 +40,7 @@ Katcat桌面端在主工作区内显示这份说明，不先展示独立登录�
 
 Team 新会话欢迎区从 `src/client/assets/xiaojing-finance-team-hero.png` 嵌入用户提供的八位财务机器人团队插画，不修改原图像素。SVG 将完整图片按原比例铺满响应式框，最大显示为 420 × 280 CSS 像素，不再设置内层留白。小窗口自动缩小图片，标题和输入框保持在图片下方。中文标题为“小兢会计，您的AI财务团队”，英文为“Xiaojing Accounting, your AI finance team.”。favicon 使用用户提供的白色应用图标，保留金色装饰与透明边缘，存放为 `xiaojing-character-logo.png`。这些资源文件名属于内部标识。黑色版本角标始终跟在标题右侧，标题折行时也不会独自落到下一行。初始 HTML 通过 `DSH_CLIENT_BOOT_LOGO`、`DSH_CLIENT_BOOT_LOGO_ALT` 和 `DSH_CLIENT_FAVICON` 获取品牌与 favicon；未配置这些值的构建保留通用资源。
 
-浏览器插件只在 `xiaojing` Client 构建 profile 中注册 `sidebar.brand.mark`、`sidebar.brand.name`、`conversation.hero.brand.mark`、`conversation.hero.brand.content`、`onboarding.content` 和 `settings.section`。产品文案、配色覆盖、版本号标签和默认人格位于本包。仍带有 Finance 元数据的历史空会话也使用同一财务团队欢迎页。关于页显示用户提供的 `src/client/assets/xiaojing-team-app-icon.png`、中英文界面统一使用的产品名称“小兢Bot”、应用版本号与通过 `DSH_CLIENT_VERSION` 编译注入的 DSH 底座版本号；不显示版本历史、详情入口、介绍和公司页脚。Electron 通过一个受限 preload 方法提供应用实际版本；普通 Web 预览使用必须与 `apps/desktop/identity.json.productVersion` 相同的受检 fallback。测试要求该 fallback 与更新历史首项一致，并拒绝重复版本号。产品层门禁会拒绝版本不一致，也会拒绝把Katcat品牌标记重新写入官方 UI 源码目录。插件生命周期还会在产品 dataset 挂载后同步现有浏览器 `theme-color` 元数据，并在产品插件卸载时恢复通用值。构建 profile 通过通用启动元数据为插件加载前页面选择已登记的 Katcat Logo；缺少该元数据时，shell 仍显示 `HARNESS` 默认内容。`product.json` 通过官方发布标签记录 `dsh-v0.2.1-rc.2` 基线、通用 slot、浏览器资源路径、桌面产品清单和空的产品预设列表。产品层门禁会解析 Finance 与标准模式的声明式组装，只允许 Finance 人格、已声明的 Finance 消费端和产品 skill 目录不同。
+浏览器插件只在 `xiaojing` Client 构建 profile 中注册 `sidebar.brand.mark`、`sidebar.brand.name`、`conversation.hero.brand.mark`、`conversation.hero.brand.content`、`onboarding.content` 和 `settings.section`。产品文案、配色覆盖、版本号标签和默认人格位于本包。仍带有 Finance 元数据的历史空会话也使用同一财务团队欢迎页。关于页显示用户提供的 `src/client/assets/xiaojing-team-app-icon.png`、中英文界面统一使用的产品名称“小兢财务”、应用版本号与通过 `DSH_CLIENT_VERSION` 编译注入的 DSH 底座版本号；不显示版本历史、详情入口、介绍和公司页脚。Electron 通过一个受限 preload 方法提供应用实际版本；普通 Web 预览使用必须与 `apps/desktop/identity.json.productVersion` 相同的受检 fallback。测试要求该 fallback 与更新历史首项一致，并拒绝重复版本号。产品层门禁会拒绝版本不一致，也会拒绝把Katcat品牌标记重新写入官方 UI 源码目录。插件生命周期还会在产品 dataset 挂载后同步现有浏览器 `theme-color` 元数据，并在产品插件卸载时恢复通用值。构建 profile 通过通用启动元数据为插件加载前页面选择已登记的 Katcat Logo；缺少该元数据时，shell 仍显示 `HARNESS` 默认内容。`product.json` 通过官方发布标签记录 `dsh-v0.2.1-rc.2` 基线、通用 slot、浏览器资源路径、桌面产品清单和空的产品预设列表。产品层门禁会解析 Finance 与标准模式的声明式组装，只允许 Finance 人格、已声明的 Finance 消费端和产品 skill 目录不同。
 
 个性版关闭财务工作区、账套管理、财务计算、依据服务和 Finance 预设，侧边栏与关于页使用办公文案。保留的 Finance 预设和包源码默认不激活。`product.json.agentPresets` 为空；`product.json.financeExtension` 登记保留源码和受保护的 `harness/finance` 目录。普通文档读取继续使用共享解析器，不启动财务业务服务。已有财务记录与文件不会被删除。
 
@@ -72,7 +72,7 @@ Katcat构建通过 `DSH_CLIENT_RUNNING_LABEL_ZH` 与 `DSH_CLIENT_RUNNING_LABEL_E
 
 #### 模型看到的内容
 
-所有Katcat预设在人格组装后都会获得一段稳定的回答规则。最终回答必须先给可用的业务结果；任务成功后不叙述内部执行证据和失败尝试；任务失败时只给用户可理解的原因和下一步；生成文件按内容及可用位置交付，不附带内部审计元数据。只有用户明确要求技术诊断时才展示技术细节。各工具仍须先生成模型安全的结果，不能用这段提示词替代对传输、重试、分页、校验值和测试信息的源头过滤。
+所有Katcat预设在人格组装后都会获得一段稳定的回答规则。如果未解决的意图歧义会实质改变结果，模型会先澄清。问答工具可用时，模型根据请求和已核实的上下文提供少量可执行的选项。查询凭证缺少明确期间时，提供常用期间，并在时间上下文可用时注明具体日期。推荐项以任务中的线索或用户已建立的偏好为依据。最终回答必须先给可用的业务结果；任务成功后不叙述内部执行证据和失败尝试；任务失败时只给用户可理解的原因和下一步；生成文件按内容及可用位置交付，不附带内部审计元数据。只有用户明确要求技术诊断时才展示技术细节。各工具仍须先生成模型安全的结果，不能用这段提示词替代对传输、重试、分页、校验值和测试信息的源头过滤。
 
 #### Token 影响
 

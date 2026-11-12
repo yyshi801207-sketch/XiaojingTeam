@@ -51,5 +51,73 @@
       },
       "content": [{ "type": "text", "text": "Submit the actual review findings before claiming completion." }]
     }
+  },
+  {
+    "type": "user/message",
+    "seq": 2,
+    "time": 0,
+    "surfaceOp": "append",
+    "data": {
+      "id": "sdk-write-review-input",
+      "role": "user",
+      "source": {
+        "kind": "katcats-group-task",
+        "form": "relay",
+        "chatId": "sdk-group",
+        "runId": "sdk-run",
+        "generation": 1,
+        "deliveryId": "sdk-review-delivery",
+        "target": {
+          "botId": "reviewer",
+          "name": "Reviewer",
+          "role": "Independent reviewer",
+          "avatar": {
+            "shape": "round",
+            "color": "#10B8A6"
+          }
+        },
+        "collaborationVersion": 1,
+        "context": {
+          "schemaVersion": 1,
+          "rootSessionId": "sdk-group-root",
+          "deliveredIds": [
+            "message:current-correction",
+            "handoff:sdk-review-delivery"
+          ],
+          "archivedIds": [
+            "message:earlier-evidence"
+          ]
+        },
+        "reviewRequest": {
+          "parentDeliveryId": "sdk-parent-delivery",
+          "candidate": {
+            "version": "046d7c6b47753bfcd9953d7f7b8649734d826673bdeb75739bb1fdbdc9c373fb",
+            "text": null,
+            "files": [],
+            "sources": [
+              {
+                "deliveryId": "sdk-author-delivery",
+                "botId": "maker"
+              }
+            ],
+            "odooOperation": {
+              "connectorId": "sdk-finance",
+              "companyId": 7,
+              "baseUrl": "https://odoo.example.test",
+              "database": "sdk_test",
+              "model": "account.move",
+              "method": "create",
+              "parametersJson": "{\"context\":{\"allowed_company_ids\":[7]},\"vals_list\":[{\"ref\":\"SDK draft\"}]}"
+            }
+          }
+        }
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "Review the exact Odoo draft creation and its original maker."
+        }
+      ]
+    }
   }
 ]

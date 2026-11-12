@@ -83,6 +83,48 @@ describe('group blocker handling', () => {
     expect(h.adapter.requests).toHaveLength(5)
   })
 
+  it('settles a directly assigned review failure without pausing the group', async () => {
+    let reviewerId = ''
+    const h = await fixture([
+      () => toolCallResponse('plan-direct-review', 'plan_group_work', { own_task: 'Prepare a conclusion.', assignments: [],
+        review: { reason: 'explicit-review', reviewer_bot_id: reviewerId } }),
+      textResponse('The unreviewed conclusion is approved.'),
+      request => {
+        expect(JSON.stringify(request.messages)).toContain('actual approved review')
+        return textResponse('The unreviewed conclusion is still approved.')
+      },
+      textResponse('I can respond to the next instruction.'),
+    ])
+    reviewerId = h.reviewer.id
+    await h.send()
+    const state = await h.ctx.katcatsChats.snapshot()
+    expect(state.chats[0]).toMatchObject({ status: 'active', run: null, error: null })
+    expect(state.deliveries).toHaveLength(1)
+    expect(state.deliveries[0]).toMatchObject({
+      state: 'failed', receipt: null, error: { code: 'KATCATS_CHAT_REVIEW_INCOMPLETE' },
+    })
+    const parent = await h.ctx.sessionController.inspect(state.deliveries[0]!.executorSessionId)
+    expect(parent.events.filter(event => event.type === 'user/message'
+      && event.data.source.kind === 'katcats-group-review-notice')).toHaveLength(1)
+    const root = await h.ctx.sessionController.inspect(h.chat.rootSessionId)
+    expect(root.events.filter(event => event.type === 'user/message'
+      && event.data.source.kind === 'katcats-group-relay')).toEqual([])
+    expect(root.events).toContainEqual(expect.objectContaining({
+      type: 'katcats/group-task-lifecycle',
+      data: expect.objectContaining({ deliveryId: state.deliveries[0]!.id, status: 'failed',
+        error: expect.objectContaining({ code: 'KATCATS_CHAT_REVIEW_INCOMPLETE' }) }),
+    }))
+    expect(h.adapter.requests).toHaveLength(3)
+
+    await h.send()
+    const next = await h.ctx.katcatsChats.snapshot()
+    expect(next.chats[0]).toMatchObject({ status: 'active', run: null, error: null })
+    expect(next.deliveries.at(-1)).toMatchObject({
+      state: 'completed', receipt: { text: 'I can respond to the next instruction.' },
+    })
+    expect(h.adapter.requests).toHaveLength(4)
+  })
+
   it('rejects a waiting ancestor as reviewer before freezing the plan, allowing an available reviewer instead', async () => {
     let managerId = '', workerId = '', reviewerId = ''
     const h = await fixture([

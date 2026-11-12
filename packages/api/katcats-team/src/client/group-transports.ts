@@ -3,6 +3,7 @@ import type { ISessions, SessionTransportDisposer } from '@deepseek-ai/dsh-api-s
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SessionPromptRequest } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
+import type { ChatPromptValue } from '../chats-types.ts'
 import type { ChatRemote, ChatView } from './chat-model.ts'
 
 /** Product-owned group delivery, composer availability and visible registration failures. */
@@ -15,7 +16,7 @@ export interface GroupTransportOptions {
   /** @param id - unavailable group container. @param error - registration or teardown failure. */
   readonly failed: (id: SessionId, error: unknown) => void
   /** Capture this submission's scope; the returned callback runs only after durable acceptance. */
-  readonly submitting?: (request: SessionPromptRequest) => () => void
+  readonly submitting?: (request: SessionPromptRequest) => (value: ChatPromptValue) => void
 }
 
 /**
@@ -42,7 +43,7 @@ export function installGroupTransports(options: GroupTransportOptions): () => Pr
           prompt: async (request, signal) => {
             const accepted = options.submitting?.(request)
             const result = await options.remote.sendMessage(request, signal)
-            if (result.ok && !signal?.aborted) accepted?.()
+            if (result.ok && !signal?.aborted) accepted?.(result.value)
             return result
           },
           cancel: request => options.remote.cancelSession(request),

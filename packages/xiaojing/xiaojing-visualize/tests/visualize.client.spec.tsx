@@ -7,7 +7,7 @@ import { Context as ClientContext } from '@deepseek-ai/cordis'
 import { HEIGHT_MESSAGE_TYPE, STREAM_MESSAGE_TYPE } from '../src/shell.ts'
 import { StreamingPreview } from '../src/client/StreamingPreview.tsx'
 import { VisualizeCard } from '../src/client/VisualizeCard.tsx'
-import { VisualizeTurnTail } from '../src/client/VisualizeTurnTail.tsx'
+import { VisualizeDeliveredCards, VisualizeTurnTail } from '../src/client/VisualizeTurnTail.tsx'
 import { EMPTY_CHAT_SNAPSHOT, type ChatNode, type ChatNodeSource, type ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { PartialArguments } from '@deepseek-ai/dsh-util-values'
@@ -61,8 +61,9 @@ describe('visualize client registration and theme', () => {
       registrations.push([slot, component])
       return vi.fn()
     })
+    const registerFactory = vi.fn(() => vi.fn())
     const ctx = Object.assign(new ClientContext(), {
-      slots: { inject: injectSlot, register },
+      slots: { inject: injectSlot, register, registerFactory },
       effect: (callback: () => unknown) => callback(),
       locale: { register: vi.fn() },
     })
@@ -72,6 +73,7 @@ describe('visualize client registration and theme', () => {
     apply(ctx)
     expect(injectSlot).toHaveBeenCalledTimes(3)
     expect(registrations).toHaveLength(3)
+    expect(registerFactory).toHaveBeenCalledExactlyOnceWith({ name: 'xiaojing.visualize.cards', scope: 'session' }, VisualizeDeliveredCards)
     expect(register).toHaveBeenCalledWith({
       name: 'conversation.chat.turnTail', id: 'visualize-results', order: 30,
     }, VisualizeTurnTail)

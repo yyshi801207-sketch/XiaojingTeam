@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /** Transcript preferences save independently after confirmation without consuming other edits. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import type { ConnectionState } from '@deepseek-ai/dsh-client-connection/client'
@@ -49,20 +49,80 @@ function fixture() {
   const commit = (request: UpdateChatRequest) => {
     const current = source.getSnapshot().snapshot
     if (current === null) throw new Error('Synthetic directory missing')
+    const { memberRole, ...settings } = request
     source.set({ phase: 'ready', snapshot: { ...current, revision: current.revision + 1,
-      chats: current.chats.map(item => item.id === request.id ? { ...item, ...request } : item) } })
+      chats: current.chats.map(item => item.id !== request.id ? item : { ...item, ...settings,
+        ...(memberRole === undefined ? {} : {
+          memberRoles: [...item.memberRoles.filter(role => role.botId !== memberRole.botId), memberRole],
+        }),
+      }) } })
   }
   return { source, directory, connection, batch, tab, injected, commit }
 }
 
+function settingsSection(title: string) {
+  const summary = screen.getByText(title, { selector: 'summary > span' }).closest('summary')
+  const details = summary?.parentElement
+  if (summary === null || !(details instanceof HTMLDetailsElement)) throw new Error(`Missing settings section: ${title}`)
+  return { details, summary }
+}
+
+function displaySwitch() {
+  const { details, summary } = settingsSection(zh['chat.settingsCollaboration'])
+  if (!details.open) fireEvent.click(summary)
+  return screen.getByRole<HTMLButtonElement>('switch', { name: zh['chat.showHandoffRecords'] })
+}
+
+function editWriterDuty() {
+  const summary = screen.getByLabelText(t('chat.viewMemberRole', { name: writer.name }))
+  fireEvent.click(summary)
+  const field = screen.getByRole('region', { name: t('chat.memberRole', { name: writer.name }) })
+  fireEvent.click(within(field).getByRole('button', { name: zh['role.edit'] }))
+  return within(field)
+}
+
 describe('group display settings', () => {
+  it('opens only basic information initially and keeps role and collaboration drafts through folding', () => {
+    const { injected } = fixture()
+    const save = vi.fn(async (_request: UpdateChatRequest) => {})
+    const { container } = render(<ChatSettings {...{ ...injected, save } as ChatSettingsProps} />)
+    const basics = settingsSection(zh['chat.settingsBasics'])
+    const roles = settingsSection(zh['chat.groupRoles'])
+    const collaboration = settingsSection(zh['chat.settingsCollaboration'])
+    expect([...container.querySelectorAll('form > details[open]')]).toEqual([basics.details])
+    expect(roles.details.open).toBe(false)
+    expect(collaboration.details.open).toBe(false)
+
+    fireEvent.click(roles.summary)
+    const duty = editWriterDuty()
+    fireEvent.click(collaboration.summary)
+    const role = duty.getByRole<HTMLTextAreaElement>('textbox', { name: t('chat.memberRole', { name: writer.name }) })
+    const limit = screen.getByRole<HTMLInputElement>('spinbutton', { name: zh['chat.relayLimit'] })
+    fireEvent.change(role, { target: { value: 'Review drafts before publication' } })
+    fireEvent.change(limit, { target: { value: '24' } })
+    fireEvent.click(roles.summary)
+    fireEvent.click(collaboration.summary)
+    expect(roles.details.open).toBe(false)
+    expect(collaboration.details.open).toBe(false)
+    expect(roles.details.contains(role)).toBe(true)
+    expect(collaboration.details.contains(limit)).toBe(true)
+
+    fireEvent.click(roles.summary)
+    fireEvent.click(collaboration.summary)
+    expect(screen.getByRole('textbox', { name: t('chat.memberRole', { name: writer.name }) })).toBe(role)
+    expect(role.value).toBe('Review drafts before publication')
+    expect(screen.getByRole('spinbutton', { name: zh['chat.relayLimit'] })).toBe(limit)
+    expect(limit.value).toBe('24')
+    expect(save).not.toHaveBeenCalled()
+  })
+
   it('automatically saves only the display flag and changes the switch after the directory confirms it', async () => {
     const { source, injected, commit } = fixture()
     const pending = Promise.withResolvers<undefined>()
     const save = vi.fn(async (request: UpdateChatRequest) => { await pending.promise; commit(request) })
     const props = { ...injected, save } as ChatSettingsProps
     const view = render(<ChatSettings {...props} />)
-    const toggle = screen.getByRole<HTMLButtonElement>('switch', { name: zh['chat.showHandoffRecords'] })
+    const toggle = displaySwitch()
     expect(toggle.getAttribute('aria-checked')).toBe('true')
     fireEvent.click(toggle)
     expect(save).toHaveBeenCalledExactlyOnceWith({ id: chat.id, showHandoffRecords: false })
@@ -75,7 +135,7 @@ describe('group display settings', () => {
     expect(screen.getByRole<HTMLButtonElement>('button', { name: zh['bot.save'] }).disabled).toBe(true)
     view.unmount()
     render(<ChatSettings {...props} />)
-    expect(screen.getByRole('switch', { name: zh['chat.showHandoffRecords'] }).getAttribute('aria-checked')).toBe('false')
+    expect(displaySwitch().getAttribute('aria-checked')).toBe('false')
   })
 
   it('keeps the confirmed value on failure and retries without needing the form save button', async () => {
@@ -84,7 +144,7 @@ describe('group display settings', () => {
     const save = vi.fn<(request: UpdateChatRequest) => Promise<void>>()
       .mockImplementationOnce(() => pending.promise).mockImplementationOnce(async (request) => { commit(request) })
     render(<ChatSettings {...{ ...injected, save } as ChatSettingsProps} />)
-    const toggle = screen.getByRole<HTMLButtonElement>('switch', { name: zh['chat.showHandoffRecords'] })
+    const toggle = displaySwitch()
     fireEvent.click(toggle)
     await act(async () => { pending.reject(new Error('Synthetic display save failed')) })
     expect(toggle.disabled).toBe(false)
@@ -100,12 +160,15 @@ describe('group display settings', () => {
     const save = vi.fn(async (request: UpdateChatRequest) => { commit(request) })
     render(<ChatSettings {...{ ...injected, save } as ChatSettingsProps} />)
     const name = screen.getByLabelText<HTMLInputElement>(zh['chat.name'])
+    const toggle = displaySwitch()
+    fireEvent.click(settingsSection(zh['chat.groupRoles']).summary)
+    const duty = editWriterDuty()
     const limit = screen.getByLabelText<HTMLInputElement>(zh['chat.relayLimit'])
-    const role = screen.getByLabelText<HTMLTextAreaElement>(t('chat.memberRole', { name: writer.name }))
+    const role = duty.getByRole<HTMLTextAreaElement>('textbox', { name: t('chat.memberRole', { name: writer.name }) })
     fireEvent.change(name, { target: { value: 'Draft name' } })
     fireEvent.change(limit, { target: { value: '24' } })
     fireEvent.change(role, { target: { value: 'Draft group responsibility' } })
-    fireEvent.click(screen.getByRole('switch', { name: zh['chat.showHandoffRecords'] }))
+    fireEvent.click(toggle)
     await waitFor(() => { expect(screen.getByRole('switch').getAttribute('aria-checked')).toBe('false') })
     expect(save).toHaveBeenCalledExactlyOnceWith({ id: chat.id, showHandoffRecords: false })
     expect({ name: name.value, limit: limit.value, role: role.value,
@@ -122,8 +185,13 @@ describe('group display settings', () => {
     `)
     fireEvent.click(screen.getByRole('button', { name: zh['bot.save'] }))
     await waitFor(() => { expect(save).toHaveBeenCalledTimes(2) })
-    expect(save.mock.calls[1]?.[0]).toEqual({ id: chat.id, name: 'Draft name', relayLimit: 24,
-      memberRoles: [{ botId: writer.id, role: 'Draft group responsibility' }] })
+    expect(save.mock.calls[1]?.[0]).toEqual({ id: chat.id, name: 'Draft name', relayLimit: 24 })
+    expect(role.value).toBe('Draft group responsibility')
+    await act(async () => { fireEvent.click(duty.getByRole('button', { name: zh['role.save'] })) })
+    expect(save.mock.calls[2]?.[0]).toEqual({ id: chat.id,
+      memberRole: { botId: writer.id, role: 'Draft group responsibility' } })
+    expect(duty.getByText('Draft group responsibility')).toBeTruthy()
+    expect(duty.queryByRole('textbox')).toBeNull()
   })
 
   it('admits at most one display or manual save during a synchronous burst', async () => {
@@ -132,7 +200,7 @@ describe('group display settings', () => {
     const save = vi.fn(async (request: UpdateChatRequest) => { await pending.promise; commit(request) })
     const view = render(<ChatSettings {...{ ...injected, save } as ChatSettingsProps} />)
     fireEvent.change(screen.getByLabelText(zh['chat.name']), { target: { value: 'Unsaved name' } })
-    const toggle = screen.getByRole<HTMLButtonElement>('switch', { name: zh['chat.showHandoffRecords'] })
+    const toggle = displaySwitch()
     const form = view.container.querySelector('form')
     if (form === null) throw new Error('Synthetic settings form missing')
     act(() => { toggle.click(); toggle.click(); fireEvent.submit(form) })
@@ -148,9 +216,10 @@ describe('group display settings', () => {
     const save = vi.fn(async (request: UpdateChatRequest) => { await pending.promise; commit(request) })
     render(<ChatSettings {...{ ...injected, save } as ChatSettingsProps} />)
     fireEvent.change(screen.getByLabelText(zh['chat.name']), { target: { value: 'Saved name' } })
+    const toggle = displaySwitch()
     act(() => {
       screen.getByRole<HTMLButtonElement>('button', { name: zh['bot.save'] }).click()
-      screen.getByRole<HTMLButtonElement>('switch', { name: zh['chat.showHandoffRecords'] }).click()
+      toggle.click()
     })
     expect(save).toHaveBeenCalledExactlyOnceWith({ id: chat.id, name: 'Saved name' })
     await act(async () => { pending.resolve(undefined) })
@@ -168,7 +237,7 @@ describe('group display settings', () => {
       else if (state === 'hidden') { tab.visible = false; view.rerender(<ChatSettings {...props} />) }
       else batch.set({ ...emptyBatch, busy: true })
     })
-    const toggle = screen.getByRole<HTMLButtonElement>('switch', { name: zh['chat.showHandoffRecords'] })
+    const toggle = displaySwitch()
     expect(toggle.disabled).toBe(true)
     fireEvent.click(toggle)
     expect(save).not.toHaveBeenCalled()
@@ -189,7 +258,7 @@ describe('group display settings', () => {
     const save = vi.fn(async (request: UpdateChatRequest) => { await pending.promise; commit(request) })
     const props = { ...injected, save } as ChatSettingsProps
     const view = render(<ChatSettings {...props} />)
-    fireEvent.click(screen.getByRole('switch', { name: zh['chat.showHandoffRecords'] }))
+    fireEvent.click(displaySwitch())
     tab.visible = false
     view.rerender(<ChatSettings {...props} />)
     view.rerender(<ChatSettings {...props} sessionId={other.rootSessionId} />)
@@ -197,10 +266,10 @@ describe('group display settings', () => {
     tab.visible = true
     view.rerender(<ChatSettings {...props} sessionId={other.rootSessionId} />)
     expect(screen.getByLabelText<HTMLInputElement>(zh['chat.name']).value).toBe('Other')
-    expect(screen.getByRole('switch').getAttribute('aria-checked')).toBe('true')
+    expect(displaySwitch().getAttribute('aria-checked')).toBe('true')
     expect(source.getSnapshot().snapshot?.chats.find(item => item.id === other.id)?.showHandoffRecords).toBeUndefined()
     view.rerender(<ChatSettings {...props} />)
-    expect(screen.getByRole('switch').getAttribute('aria-checked')).toBe('false')
+    expect(displaySwitch().getAttribute('aria-checked')).toBe('false')
     expect(save).toHaveBeenCalledExactlyOnceWith({ id: chat.id, showHandoffRecords: false })
   })
 })

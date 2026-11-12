@@ -2,6 +2,7 @@
 import type { Branded } from '@deepseek-ai/dsh-brand'
 import type { ChatDeliveryId } from './chats-types.ts'
 import type { BotId } from './types.ts'
+import type { FinanceConnectorId } from './finance-types.ts'
 
 /** Content identity computed by the host, never supplied by the reviewing model. */
 export type GroupReviewVersion = Branded<'GroupReviewVersion'>
@@ -17,6 +18,21 @@ export interface GroupReviewPolicy {
 export interface GroupReviewCandidateRequest {
   readonly text?: string
   readonly files?: readonly string[]
+  /** Completed child deliveries whose work is included in this candidate. */
+  readonly sourceDeliveryIds?: readonly ChatDeliveryId[]
+  /** Exact pending ORM write; the host adds the current connection and company. */
+  readonly odooOperation?: { readonly model: string; readonly method: string; readonly parametersJson: string }
+}
+
+/** Exact reviewed external write, including the company-scoped body and destination. */
+export interface GroupReviewedOdooOperation {
+  readonly connectorId: FinanceConnectorId
+  readonly companyId: number
+  readonly baseUrl: string
+  readonly database: string
+  readonly model: string
+  readonly method: string
+  readonly parametersJson: string
 }
 
 /** Host-captured content versions; files remain in the group's canonical working directory. */
@@ -24,6 +40,9 @@ export interface GroupReviewCandidate {
   readonly version: GroupReviewVersion
   readonly text: string | null
   readonly files: readonly { readonly path: string; readonly sha256: string }[]
+  /** Absent on older candidates; identities are resolved from saved child deliveries. */
+  readonly sources?: readonly { readonly deliveryId: ChatDeliveryId; readonly botId: BotId }[]
+  readonly odooOperation?: GroupReviewedOdooOperation
 }
 
 /** A real child review result associated with the exact parent and candidate. */

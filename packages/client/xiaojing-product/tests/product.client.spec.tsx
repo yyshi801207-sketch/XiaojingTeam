@@ -248,8 +248,8 @@ describe('Xiaojing product UI', () => {
   })
 
   it.each([
-    ['zh', zh, '小兢Bot'],
-    ['en', en, '小兢Bot'],
+    ['zh', zh, '小兢财务'],
+    ['en', en, '小兢财务'],
   ] as const)('shows the Team app icon, localized name and installed versions in About (%s)', (_language, dictionary, name) => {
     vi.stubEnv('DSH_CLIENT_VERSION', '0.2.1-rc.2')
     const view = render(<AboutSection {...kit} close={vi.fn()} t={key => dictionary[key]} />)
@@ -280,7 +280,7 @@ describe('Xiaojing product UI', () => {
     const versions = XIAOJING_RELEASE_HISTORY.map(release => release.version)
     expect(versions[0]).toBe(XIAOJING_PRODUCT_VERSION)
     expect(new Set(versions).size).toBe(versions.length)
-    expect(versions).toEqual(['1.0.2', '1.0.0', '0.3.3', '0.3.2', '0.3.1', '0.2.4', '0.2.3', '0.2.2'])
+    expect(versions).toEqual(['1.1.0', '1.0.2', '1.0.0', '0.3.3', '0.3.2', '0.3.1', '0.2.4', '0.2.3', '0.2.2'])
   })
 
   it('hides system prompts in Xiaojing transcripts without removing the generic renderer', async () => {
@@ -307,8 +307,9 @@ describe('Xiaojing product UI', () => {
 
   it('activates every product occupant and theme only for the Xiaojing build profile', async () => {
     const theme = readFileSync('packages/client/xiaojing-product/src/client/theme.module.css', 'utf8')
+    expect(theme).toContain('--sudo-brand-green: #12a489;')
     expect(theme).toContain(`body[data-xiaojing-product] [data-composer-primary] {
-  --dsw-alias-button-info-fill: #12a489;
+  --dsw-alias-button-info-fill: var(--sudo-brand-green);
   --dsw-alias-button-info-hover: #0f8b75;
 }`)
     expect(inject).toEqual(['slots', 'locale'])
@@ -331,9 +332,9 @@ describe('Xiaojing product UI', () => {
     await fiber.await()
     for (const hole of HOLES) expect(product.slots.entries(hole)).toHaveLength(1)
     product.ctx.locale.setLocale('zh')
-    expect(resolveSlotLabel(product.slots.entriesOfSlot('settings.section')[0]?.options.label)).toBe('关于 小兢Bot')
+    expect(resolveSlotLabel(product.slots.entriesOfSlot('settings.section')[0]?.options.label)).toBe('关于 小兢财务')
     product.ctx.locale.setLocale('en')
-    expect(resolveSlotLabel(product.slots.entriesOfSlot('settings.section')[0]?.options.label)).toBe('About 小兢Bot')
+    expect(resolveSlotLabel(product.slots.entriesOfSlot('settings.section')[0]?.options.label)).toBe('About 小兢财务')
     expect(document.body.dataset.xiaojingProduct).toBe('')
     expect(document.documentElement.dataset.dshClientBuildProfile).toBe('xiaojing')
     expect(themeColor.content).toBe('rgb(251, 253, 253)')

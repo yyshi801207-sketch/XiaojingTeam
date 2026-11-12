@@ -44,6 +44,40 @@ binding(sessionId: SessionId): { chatId: ChatId; botId: BotId | 'root' } | undef
 @Remote async snapshot(): Promise<ChatSnapshot>
 
 /**
+ * Accept an archive task after the owner inspects its published result.
+ * @param chatId - Group owning the task.
+ * @param taskId - Task chosen in the archive.
+ * @param expectedRevision - Exact delivered revision shown to the owner.
+ * @param acceptanceRequestId - Saved ambiguous chat instruction resolved by this choice, if any.
+ * @returns The group and directory after acceptance.
+ */
+@Remote async completeTask(chatId: ChatId, taskId: GroupTicketId, expectedRevision: number, acceptanceRequestId?: SessionRequestId): Promise<ChatMutationValue>
+
+/**
+ * Read the verified accounting connection selected in this group's settings.
+ * @param chatId - Existing group identity.
+ * @returns The binding identity, or null when the group has no enabled connection.
+ */
+@Remote async financeBinding(chatId: ChatId): Promise<FinanceConnectorId | null>
+
+/**
+ * Change the group's verified accounting connection while the group has no saved run.
+ * @param chatId - Existing group identity.
+ * @param connectorId - Verified connection or null to remove access.
+ * @param expectedBinding - The prior binding a prepared handoff may replace. Omit for a direct settings change.
+ */
+@Remote async bindFinance(chatId: ChatId, connectorId: FinanceConnectorId | null, expectedBinding?: FinanceConnectorId | null): Promise<void>
+
+/**
+ * Verify this group’s bound ledger and publish the main Bot’s welcome on success.
+ * @param chatId - Group containing the bound ledger.
+ * @param connectorId - Connection selected in the group’s settings.
+ * @param signal - Cancels verification before the welcome is accepted.
+ * @returns The verified connector or its recorded failure.
+ */
+@Remote async connectFinance(chatId: ChatId, connectorId: FinanceConnectorId, signal: AbortSignal): Promise<FinanceConnector>
+
+/**
  * Admit the original composer's message into a pure group transcript and schedule actual members.
  * Identical request retries reuse the durable input; a changed retry is rejected before resolving uploads.
  * Queue requests preserve active work and pauses; stopped groups start a new run. Steering replaces the run and drains its old work.
@@ -51,7 +85,16 @@ binding(sessionId: SessionId): { chatId: ChatId; botId: BotId | 'root' } | undef
  * @param signal - cancellation before durable input acceptance.
  * @returns confirmation after the owner message is flushed and any interrupted work settles; member replies arrive separately.
  */
-@Remote async sendMessage(request: SessionPromptRequest, signal: AbortSignal): Promise<SessionPromptValue>
+@Remote async sendMessage(request: SessionPromptRequest, signal: AbortSignal): Promise<ChatPromptValue>
+
+/**
+ * Continue the explicitly selected archived task. A paused matching run resumes its saved work.
+ * An idle group admits a new owner instruction bound to the original task and responsible member.
+ * @param request - Exact task revision, group run, and retry identity shown to the owner.
+ * @param signal - Cancels the request before the continuation is accepted.
+ * @returns The saved group and current archive activity.
+ */
+@Remote async continueTask(request: ContinueGroupTaskRequest, signal: AbortSignal): Promise<ChatMutationValue>
 
 /**
  * Stop the current group work from the original composer, using a fresh captured run generation.
@@ -70,7 +113,7 @@ binding(sessionId: SessionId): { chatId: ChatId; botId: BotId | 'root' } | undef
 /**
  * Create an isolated group and one persistent execution Session per selected ordinary member.
  * Newly created groups precede existing groups in the durable directory.
- * @param request - name, ordinary members, and optional positive dispatch limit.
+ * @param request - name, ordinary members, and optional sidebar folder and positive dispatch limit.
  * @returns the fully committed group and replacement directory.
  */
 @Remote async createChat(request: CreateChatRequest): Promise<ChatMutationValue>
@@ -112,7 +155,7 @@ binding(sessionId: SessionId): { chatId: ChatId; botId: BotId | 'root' } | undef
 @Remote async stop(request: ChatControlRequest): Promise<ChatMutationValue>
 ```
 
-Types: [SessionCancelRequest](session.md) · [SessionCancelValue](session.md) · [SessionId](core.md) · [SessionPromptRequest](session.md) · [SessionPromptValue](session.md)
+Types: [SessionCancelRequest](session.md) · [SessionCancelValue](session.md) · [SessionId](core.md) · [SessionPromptRequest](session.md)
 
 Source: [`packages/api/katcats-team/src/chats.ts`](../../packages/api/katcats-team/src/chats.ts)
 
@@ -181,6 +224,63 @@ Team metadata and private Sessions, with durable interrupted-creation recovery.
 @Remote async snapshot(): Promise<TeamSnapshot>
 
 /**
+ * Read the finance connector directory for the product owner.
+ * @returns the redacted directory, or null when the deployment disables finance connectors.
+ */
+@Remote async financeSnapshot(): Promise<FinanceConnectorSnapshot | null>
+
+/**
+ * Follow the owner’s finance connector catalog and observed access status.
+ * @param signal - Cancels delivery when the client disconnects.
+ * @returns The baseline catalog and later replacements, or null when finance connectors are disabled.
+ */
+@Remote({ mode: 'stream' }) async *followFinance(signal: AbortSignal): AsyncIterable<FinanceConnectorSnapshot | null>
+
+/**
+ * Discover companies accessible to an Odoo credential.
+ * @param input - proposed destination and credential.
+ * @param signal - cancels discovery if the owner leaves the page.
+ * @returns the companies available for selection.
+ */
+@Remote async discoverFinanceCompanies(input: FinanceConnectionDraft, signal: AbortSignal): Promise<readonly FinanceCompany[]>
+
+/**
+ * Verify and persist a finance connector with its selected access mode.
+ * @param input - configuration and selected company.
+ * @param signal - cancels verification before the accepted save.
+ * @returns the saved configuration with its key omitted.
+ */
+@Remote async saveFinanceConnector(input: SaveFinanceConnectorRequest, signal: AbortSignal): Promise<FinanceConnector>
+
+/**
+ * Test an existing connector against its stored company.
+ * @param id - the connector to test.
+ * @param signal - cancels the test without replacing its last result.
+ * @returns the updated public test status.
+ */
+@Remote async testFinanceConnector(id: FinanceConnectorId, signal: AbortSignal): Promise<FinanceConnector>
+
+/**
+ * Delete an unbound finance connector.
+ * @param id - the connector to remove.
+ */
+@Remote async deleteFinanceConnector(id: FinanceConnectorId): Promise<void>
+
+/**
+ * Read the ledger bound to a dedicated finance Bot's private conversation.
+ * @param botId - Existing dedicated finance Bot identity.
+ * @returns Its verified connection identity, or null when unbound.
+ */
+@Remote async financeBotBinding(botId: BotId): Promise<FinanceConnectorId | null>
+
+/**
+ * Bind one verified ledger for a dedicated finance Bot's private queries.
+ * @param botId - Existing dedicated finance Bot identity.
+ * @param connectorId - Verified connection, or null to unbind.
+ */
+@Remote async bindFinanceBot(botId: BotId, connectorId: FinanceConnectorId | null): Promise<void>
+
+/**
  * Follow complete durable directory replacements, starting with a baseline.
  * @param signal - caller-owned stream cancellation.
  * @returns one baseline and later committed snapshots until cancellation.
@@ -210,6 +310,33 @@ modelSelection(botId: BotId): ModelSelection
  * @returns the committed member and replacement snapshot.
  */
 @Remote async createBot(request: CreateBotRequest): Promise<BotMutationValue>
+
+/**
+ * Provision the private Odoo administration Bots for the ledger setup plugin.
+ * Existing private Sessions are retained while their fixed identities are synchronized.
+ * @returns Once both private Bot records and their Sessions are saved.
+ */
+async ensureOdooAdminBots(): Promise<void>
+
+/**
+ * Resolve the original creator tool to the already provisioned ledger Bot.
+ * @param agent Live main Bot authorized to locate the fixed ledger assistant.
+ * @param signal Cancels the lookup.
+ * @returns The saved ledger Bot and its private Session.
+ */
+async ensureLedgerSetupBot(agent: Agent, signal: AbortSignal): Promise<TeamBot>
+
+/**
+ * Save a versioned finance roster once, resuming its allocated identities after interruption.
+ * Existing saved roles, model selections and names remain editable and are not reset by a retry.
+ * @param agent Live main Bot requesting the team.
+ * @param template Fixed compact or standard definition.
+ * @param name Requested group name identifying this creation within its sidebar folder.
+ * @param groupId Selected custom folder, or undefined for default member/chat placement.
+ * @param signal Cancels before the next durable member is accepted.
+ * @returns Saved ordered members, with the finance manager first.
+ */
+async createFinanceTeamMembers(agent: Agent, template: FinanceTeamTemplate, name: string, groupId: GroupId | undefined, signal: AbortSignal): Promise<readonly TeamBot[]>
 
 /**
  * Update member settings and synchronize title or model policy changes with the private Session.
@@ -258,7 +385,99 @@ modelSelection(botId: BotId): ModelSelection
 @Remote async removeGroup(request: RemoveGroupRequest): Promise<TeamSnapshot>
 ```
 
-Types: [ModelSelection](core.md) · [SessionId](core.md)
+Types: [Agent](core.md) · [ModelSelection](core.md) · [SessionId](core.md)
 
 Source: [`packages/api/katcats-team/src/index.ts`](../../packages/api/katcats-team/src/index.ts)
+
+<a id="ctxxiaojingledgersetup--xiaojingledgersetup"></a>
+
+### `ctx.xiaojingLedgerSetup` — `XiaojingLedgerSetup`
+
+Stores setup plans before Odoo writes and checkpoints the confirmed company ID before initialization.
+
+```ts cordis-catalog
+/**
+ * Read redacted setup configuration and plans.
+ * @returns The database status and saved setup plans.
+ */
+@Remote async snapshot(): Promise<LedgerSetupSnapshot>
+
+/**
+ * Follow saved setup changes after the initial snapshot.
+ * @param signal Client connection lifetime.
+ * @returns Redacted snapshots of the setup database and plans.
+ */
+@Remote({ mode: 'stream' }) async *follow(signal: AbortSignal): AsyncIterable<LedgerSetupSnapshot>
+
+/**
+ * Verify and save a database-level setup credential without selecting a company.
+ * @param request Address, database and an optional replacement key for the same destination.
+ * @param signal Cancels verification before settings are committed.
+ * @returns The redacted setup snapshot.
+ */
+@Remote async saveConnection(request: LedgerSetupConnectionInput, signal: AbortSignal): Promise<LedgerSetupSnapshot>
+
+/**
+ * Resolve the available Odoo template choices without changing server data.
+ * @param request Country and currency codes confirmed for this proposed plan.
+ * @param signal Tool execution lifetime.
+ * @returns The matching Odoo country, currency and installed templates.
+ */
+choices(request: { countryCode: string; currencyCode: string }, signal: AbortSignal): Promise<OdooSetupChoices>
+
+/**
+ * Discover the companies accessible to the saved administration account.
+ * @param signal Tool execution lifetime.
+ * @returns The verified database name and accessible company summaries.
+ */
+adminCompanies(signal: AbortSignal): Promise<{ readonly database: string; readonly companies: readonly FinanceCompany[] }>
+
+/**
+ * Call a role-scoped Odoo administration method after confirming its exact write target and arguments.
+ * @param role Fixed Bot responsibility derived from the private Session.
+ * @param request Odoo model, method, arguments and optional selected company.
+ * @param confirm Obtains explicit user approval before a mutation is sent.
+ * @param signal Tool execution lifetime.
+ * @returns The verified database and company scope with the Odoo response.
+ */
+adminCall(role: 'ledger' | 'access', request: FinanceOrmCallRequest & { readonly companyId?: number }, confirm: (details: Readonly<Record<string, unknown>>, signal: AbortSignal) => Promise<void>, signal: AbortSignal): Promise<{ readonly database: string; readonly company: FinanceCompany | null; readonly model: string; readonly method: string; readonly data: FinanceOrmJsonValue }>
+
+/**
+ * Save a reviewable draft from the dedicated assistant without changing Odoo.
+ * @param request Proposed company settings and template selection.
+ * @param signal Tool execution lifetime.
+ * @returns The persisted draft or identical existing plan.
+ */
+propose(request: LedgerSetupDraftInput, signal: AbortSignal): Promise<LedgerSetupPlan>
+
+/**
+ * Validate an uploaded chart and save its normalized rows on the expected draft.
+ * @param id Setup plan that receives the workbook.
+ * @param expectedRevision Plan revision reviewed before the upload.
+ * @param fileName Workbook label displayed on the approval.
+ * @param workbookBase64 XLSX bytes encoded by the owner UI.
+ * @returns The redacted snapshot after the workbook is accepted.
+ */
+@Remote async uploadChart(id: LedgerSetupPlanId, expectedRevision: number, fileName: string, workbookBase64: string): Promise<LedgerSetupSnapshot>
+
+/**
+ * Execute the owner-approved plan and durably record the resulting company and readiness.
+ * @param id Plan to execute.
+ * @param expectedRevision Exact revision presented for confirmation.
+ * @param signal Cancels work before writes or leaves the dispatched step for reconciliation.
+ * @returns The current snapshot including the plan's settled status.
+ */
+@Remote async execute(id: LedgerSetupPlanId, expectedRevision: number, signal: AbortSignal): Promise<LedgerSetupSnapshot>
+
+/**
+ * Verify a separate bookkeeping account and publish its company in finance connectors.
+ * @param id Ready plan to add.
+ * @param request Access mode and bookkeeping account key.
+ * @param signal Cancels account verification before the connector save is accepted.
+ * @returns The redacted snapshot with registration confirmed after the connector is saved.
+ */
+@Remote async addConnector(id: LedgerSetupPlanId, request: LedgerSetupConnectorInput, signal: AbortSignal): Promise<LedgerSetupSnapshot>
+```
+
+Source: [`packages/api/katcats-team/src/finance-setup.ts`](../../packages/api/katcats-team/src/finance-setup.ts)
 <!-- END GENERATED cordis-surface -->

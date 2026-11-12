@@ -1,4 +1,4 @@
-/** Katcats Weixin iLink channel: pairing, durable polling, Agent bridging, and approval replies. */
+/** Xiaojing Accounting Weixin iLink channel with pairing, durable polling, and approval replies. */
 
 import { createHash, randomInt, randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
@@ -68,6 +68,7 @@ const COMPLETED_ID_LIMIT = 1000
 const PENDING_MESSAGE_LIMIT = 100
 const MAX_MEDIA_ITEMS_PER_MESSAGE = 10
 const MEDIA_UNSUPPORTED = '当前版本支持文字、图片和普通文档，暂不支持语音或视频。'
+const INSTANCE_BUSY_MESSAGE = '另一套小兢会计正在使用此微信连接。'
 const SESSION_TITLE = '微信助手'
 const WORKSPACE_WRITE_PRESET = 'workspace-write'
 const FULL_ACCESS_PRESET = 'danger-full-access'
@@ -207,10 +208,12 @@ function ok<T>(value: T): ConnectionRpcResult<T> {
   return { ok: true, value }
 }
 
+class InstanceBusyError extends Error {}
+
 function browserSafeError(error: unknown): string {
+  if (error instanceof InstanceBusyError) return INSTANCE_BUSY_MESSAGE
   const message = error instanceof Error ? error.message : String(error)
-  if (message.startsWith('另一套Katcats正在使用此微信连接')
-    || message.startsWith('微信任务正在处理')
+  if (message.startsWith('微信任务正在处理')
     || message.startsWith('当前没有等待验证的微信连接')) return message
   if (message === 'iLink request timed out' || /^iLink request failed with HTTP \d{3}$/.test(message)) {
     return '微信网络暂时不可用，请稍后重试。'
@@ -470,7 +473,7 @@ export class XiaojingWeixinChannel {
       this.state = await this.store.load()
       this.leaseOwned = await this.lease.acquire()
       if (!this.leaseOwned) {
-        this.setStatus('instance-busy', false, '另一套Katcats正在使用此微信连接。')
+        this.setStatus('instance-busy', false, INSTANCE_BUSY_MESSAGE)
         return
       }
       const token = await this.ctx.credentials.resolve(TOKEN_REF)
@@ -625,7 +628,7 @@ export class XiaojingWeixinChannel {
   }
 
   private async startPairing(): Promise<void> {
-    if (!this.leaseOwned) throw new Error('另一套Katcats正在使用此微信连接。')
+    if (!this.leaseOwned) throw new InstanceBusyError(INSTANCE_BUSY_MESSAGE)
     if (this.active !== undefined || this.state.pending.length > 0) {
       throw new Error('微信任务正在处理，请等待任务完成后再重新连接。')
     }

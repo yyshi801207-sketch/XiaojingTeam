@@ -6,7 +6,7 @@ import type { MessageId, MessageSourceMap } from '@deepseek-ai/dsh-llm'
 import type { SessionId, SessionSeq } from '@deepseek-ai/dsh-session/types'
 import type { ChatView } from './chat-model.ts'
 import type { TeamView } from './model.ts'
-import { groupFileClaimMatches } from '../group-file-claim.ts'
+import { groupFileClaimMatches, groupVisualizationCallIds } from '../group-file-claim.ts'
 import type {} from '../chats-messages.ts'
 
 /** A persisted final relay supplies identities, never file paths. */
@@ -14,6 +14,12 @@ export interface GroupFilesTarget {
   readonly rootSessionId: SessionId
   readonly messageId: MessageId
   readonly source: MessageSourceMap['katcats-group-relay']
+}
+
+/** Retained executor and visualization calls confirmed for the closing relay. */
+export interface RetainedGroupFiles {
+  readonly reference: SessionReference
+  readonly visualizationCallIds: readonly string[]
 }
 
 /** Public group catalogs and Session acquisitions for a mounted result. */
@@ -75,7 +81,7 @@ export function groupFilesClaimMatches(target: GroupFilesTarget, window: Session
  * @returns A ready verified reference, owned by the caller until release or cancellation.
  */
 export async function retainGroupFiles(options: GroupFilesOptions, target: GroupFilesTarget,
-  signal: AbortSignal): Promise<SessionReference> {
+  signal: AbortSignal): Promise<RetainedGroupFiles> {
   const generation = options.connection.generation.getSnapshot()
   const available = (): boolean => !signal.aborted && generation !== undefined
     && options.connection.state.getSnapshot() === 'connected' && options.connection.generation.getSnapshot() === generation
@@ -96,7 +102,11 @@ export async function retainGroupFiles(options: GroupFilesOptions, target: Group
     if (!current() || !groupFilesClaimMatches(target, binding.eventSource.getSnapshot())) {
       throw new Error('The recorded reply does not belong to this group delivery')
     }
-    return reference
+    const entries = binding.eventSource.getSnapshot().entries
+    const visualizationCallIds = await groupVisualizationCallIds(target.source,
+      entries.flatMap(entry => entry.type === 'event' ? [entry.event] : []))
+    if (!current()) throw new Error('The group delivery Session changed')
+    return { reference, visualizationCallIds }
   } catch (error) {
     signal.removeEventListener('abort', release)
     release()

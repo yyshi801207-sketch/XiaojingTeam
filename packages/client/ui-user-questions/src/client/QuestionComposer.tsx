@@ -159,15 +159,17 @@ export function QuestionComposer(props: QuestionComposerProps) {
         useStore={props.useStore}
         useQuestionCard={props.useQuestionCard}
         actions={props.actions}
+        surface={props.surface}
       />
     )
     : <PlanReviewPanel key={question.key} pending={question} review={review} t={props.t} renderSlot={props.renderSlot} />
 }
 
 type QuestionFlowProps =
-  { pending: PendingQuestion } & Pick<QuestionComposerProps, 't' | 'useStore' | 'useQuestionCard' | 'actions'>
+  { pending: PendingQuestion; surface: QuestionComposerProps['surface'] } & Pick<QuestionComposerProps, 't' | 'useStore' | 'useQuestionCard' | 'actions'>
 
-function QuestionFlow({ pending, t, useStore, useQuestionCard, actions }: QuestionFlowProps) {
+function QuestionFlow({ pending, t, useStore, useQuestionCard, actions, surface }: QuestionFlowProps) {
+  const modal = surface === 'modal'
   const questions = pending.questions
   // A read-only card built from a settled call's transcript: the same panel
   // over the recorded answers, with nothing left to submit.
@@ -441,9 +443,9 @@ function QuestionFlow({ pending, t, useStore, useQuestionCard, actions }: Questi
   }
 
   return (
-    <div className={css.frame} data-question-key={pending.key}>
+    <div className={clsx(css.frame, modal && css.modalFrame)} data-question-key={pending.key}>
       <section
-        className={clsx(css.card, minimized && css.cardMinimized)}
+        className={clsx(css.card, modal && css.modalCard, minimized && css.cardMinimized)}
         aria-labelledby={`question-${pending.key}-${String(index)}`}
       >
         <header className={css.header}>
@@ -473,7 +475,7 @@ function QuestionFlow({ pending, t, useStore, useQuestionCard, actions }: Questi
               <span className={css.waitStatus}>{t('wait.held')}</span>
             )}
             {review !== undefined && <span className={css.waitStatus}>{t('review.status')}</span>}
-            <button
+            {!modal && <button
               type="button" className={css.iconButton}
               aria-label={t(minimized ? 'nav.maximize' : 'nav.minimize')}
               title={t(minimized ? 'nav.maximize' : 'nav.minimize')}
@@ -482,7 +484,7 @@ function QuestionFlow({ pending, t, useStore, useQuestionCard, actions }: Questi
               onClick={() => { setMinimized(current => !current) }}
             >
               {minimized ? <IconChevronUpOutlineRegular /> : <IconChevronDownOutlineRegular />}
-            </button>
+            </button>}
             <button
               type="button" className={css.iconButton}
               aria-label={t(pending.dismissal === 'hide' ? 'nav.close' : 'nav.cancel')}

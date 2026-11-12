@@ -8,6 +8,7 @@ import type {
 } from './chats-types.ts'
 import type { BotId, TeamBot } from './types.ts'
 import type { GroupTicket, RecordGroupTicket } from './group-tickets.ts'
+import type { GroupSemanticAcceptanceRequest } from './group-semantic-acceptance.ts'
 
 /** Validated deployment limits for group context and candidate inspection. */
 export interface GroupRuntimeConfig {
@@ -52,6 +53,8 @@ export interface ChatRuntimeExpected {
 
 /** Serialized durable operations supplied by the directory; none waits for a model turn. */
 export interface ChatRuntimeActions {
+  /** Apply semantic acceptance after verifying the exact owner input and delivered revision. */
+  acceptTask(deliveryId: ChatDeliveryId, request: GroupSemanticAcceptanceRequest, admit: () => void): Promise<GroupTicket>
   /** Persist classification from the current direct recipient, rechecking authority within the queue. */
   recordTicket(deliveryId: ChatDeliveryId, request: RecordGroupTicket, admit: () => void): Promise<GroupTicket>
   /** Read the group, current member settings, and its complete accepted delivery records. */
@@ -76,7 +79,7 @@ export interface ChatRuntimeActions {
   completeDelivery(deliveryId: ChatDeliveryId, receipt: ChatReceipt): Promise<ChatDelivery>
   /** Retain silence only after a real successful pass tool result and completed worker turn are flushed. */
   completePass(deliveryId: ChatDeliveryId, pass: ChatPass): Promise<ChatDelivery>
-  /** Record a definite failure or an uncertain dispatched outcome and pause dependent work. */
+  /** Record a failure and contain dependent work according to the certainty of its outcome. */
   failDelivery(deliveryId: ChatDeliveryId, failure: ChatFailure, unknown: boolean): Promise<void>
   /** Mark a completed receipt flushed into group history, including a superseded run; this does not imply model consumption. */
   markRelayed(deliveryId: ChatDeliveryId): Promise<void>

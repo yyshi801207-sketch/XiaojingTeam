@@ -55,7 +55,7 @@ function Remove-OverlongLegacyInstallEntries {
 
   foreach ($file in @($entries | Where-Object { -not $_.PSIsContainer -and $_.FullName.Length -gt $maximumLegacyPathLength })) {
     if (-not (Test-PathInsideInstallDirectory -Candidate $file.FullName -Root $Root)) {
-      throw 'Refusing to clean a file outside the fixed Katcats installation directory.'
+      throw 'Refusing to clean a file outside the fixed Xiaojing Accounting installation directory.'
     }
     [System.IO.File]::Delete((Convert-ToExtendedPath -Path $file.FullName))
   }
@@ -67,7 +67,7 @@ function Remove-OverlongLegacyInstallEntries {
   )
   foreach ($directory in $directories) {
     if (-not (Test-PathInsideInstallDirectory -Candidate $directory.FullName -Root $Root)) {
-      throw 'Refusing to clean a directory outside the fixed Katcats installation directory.'
+      throw 'Refusing to clean a directory outside the fixed Xiaojing Accounting installation directory.'
     }
     [System.IO.Directory]::Delete((Convert-ToExtendedPath -Path $directory.FullName), $true)
   }
@@ -118,7 +118,7 @@ function Wait-ForInstallProcessesToExit {
 try {
   $installRoot = Resolve-NormalizedPath -Path $InstallDirectory
   if ($expectedDirectoryNames -cnotcontains [System.IO.Path]::GetFileName($installRoot)) {
-    throw 'Refusing to inspect a directory outside the fixed Katcats installation identity.'
+    throw 'Refusing to inspect a directory outside the fixed Xiaojing Accounting installation identity.'
   }
 
   $running = @(Get-XiaojingInstallProcesses -Root $installRoot)

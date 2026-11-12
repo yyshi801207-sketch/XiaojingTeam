@@ -351,12 +351,17 @@
       disabled: !!js process.env.KATCATS_PRODUCT_MODE !== '1'
       config:
         workspaceRoot: !!js process.env.XIAOJING_OFFICE_WORKSPACE_ROOT
+        financeConnectors: !!js process.env.DSH_CLIENT_BUILD_PROFILE === 'xiaojing'
 
     - id: katcats-chats
       name: '@deepseek-ai/dsh-client-katcats-team/chats'
       disabled: !!js process.env.KATCATS_PRODUCT_MODE !== '1'
       config:
         workspaceRoot: !!js process.env.XIAOJING_OFFICE_WORKSPACE_ROOT
+
+    - id: xiaojing-ledger-setup
+      name: '@deepseek-ai/dsh-client-katcats-team/finance-setup'
+      disabled: !!js process.env.KATCATS_PRODUCT_MODE !== '1' || process.env.DSH_CLIENT_BUILD_PROFILE !== 'xiaojing'
 
     - id: katcats-memory
       name: '@deepseek-ai/dsh-client-katcats-team/memory'

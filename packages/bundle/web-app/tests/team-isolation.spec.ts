@@ -49,6 +49,15 @@ function resolved(id: string, env: Record<string, string | undefined> = {}, prof
 }
 
 describe('Team product composition', () => {
+  it('enables finance connectors only for the Team build profile', () => {
+    const productMode = { KATCATS_PRODUCT_MODE: '1' }
+    expect(resolved('katcats-team', { ...productMode, DSH_CLIENT_BUILD_PROFILE: 'xiaojing' })).toMatchObject({
+      disabled: false, config: { financeConnectors: true },
+    })
+    expect(resolved('katcats-team', { ...productMode, DSH_CLIENT_BUILD_PROFILE: 'katcats' }).config)
+      .toMatchObject({ financeConnectors: false })
+  })
+
   it('omits the removed desktop pet host and settings plugins from the assembled application', () => {
     expect(rows.filter(row => /desktop-companion/u.test(row.id))).toEqual([])
     const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { dependencies: Record<string, string> }

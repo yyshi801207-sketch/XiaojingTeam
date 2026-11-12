@@ -2,6 +2,7 @@
 import type { MessageId } from '@deepseek-ai/dsh-llm'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ChatDeliveryId, ChatId, ChatRunId, ChatSender } from './chats-types.ts'
+import type { FinanceConnectorId } from './finance-types.ts'
 
 /** Public history included in one member input; archived entries remain available through history lookup. */
 export interface GroupContextManifest {
@@ -13,6 +14,18 @@ export interface GroupContextManifest {
 
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
+    /** A product-authored welcome after successful manual verification of the group’s bound ledger. */
+    'katcats-group-finance-connected': {
+      readonly kind: 'katcats-group-finance-connected'
+      readonly form: 'notice'
+      readonly summary: string
+      readonly chatId: ChatId
+      readonly sender: ChatSender
+      readonly connectorId: FinanceConnectorId
+      readonly connectorName: string
+      readonly companyName: string
+      readonly currency: string
+    }
     /** One actual member's persisted public assistant text; a segment does not imply task completion. */
     'katcats-group-relay': {
       readonly kind: 'katcats-group-relay'

@@ -41,13 +41,17 @@ function MemberIdentity({ member, name, managerId, managerLabel }: {
 /**
  * Show committed handoffs and observed stages only in their original group transcript.
  * @param props - Typed lifecycle node, exact current Session and localized task copy.
- * @returns A task record and, for member handoffs, its full Markdown; nothing outside the original root Session.
+ * @returns A task record with its handoff when enabled, or an incomplete-review notice when records are hidden.
  */
 export function GroupTaskLifecycle({ node, sessionId, useGroupDirectory, t }: GroupTaskLifecycleProps) {
   const { task, stages } = node.data
   const managerId = useGroupDirectory(view => groupManager(view, task.chatId, sessionId))
   const visible = useGroupDirectory(view => groupHandoffRecordsVisible(view, task.chatId, sessionId))
-  if (sessionId !== task.rootSessionId || !visible) return null
+  const reviewFailure = task.status === 'failed' && task.error?.code === 'KATCATS_CHAT_REVIEW_INCOMPLETE' ? task.error : null
+  if (sessionId !== task.rootSessionId) return null
+  if (!visible) return reviewFailure === null ? null : <p className={css.record} role="status">
+    <strong>{t('task.reviewIncomplete')}</strong>{' '}{t('task.reviewNextStep')}
+  </p>
   const from = participantName(task.actor, t)
   const to = participantName(task.target, t)
   const memberHandoff = task.actor.kind === 'member'
@@ -75,7 +79,7 @@ export function GroupTaskLifecycle({ node, sessionId, useGroupDirectory, t }: Gr
           managerLabel={t('task.managerBadge')} /> : <strong>{from}</strong>}
         <span className={css.arrow} aria-hidden="true">→</span>
         <MemberIdentity member={task.target} name={to} managerId={managerId} managerLabel={t('task.managerBadge')} />
-        <span className={css.status}>{t(STATE_KEYS[task.status])}</span>
+        <span className={css.status}>{t(reviewFailure === null ? STATE_KEYS[task.status] : 'task.reviewIncomplete')}</span>
       </div>
       {!memberHandoff && <details className={css.instructions}>
         <summary><span className={css.label}>{t('task.instructions')}</span><span className={css.preview}>{task.message}</span></summary>
@@ -92,7 +96,13 @@ export function GroupTaskLifecycle({ node, sessionId, useGroupDirectory, t }: Gr
           </li>
         })}
       </ol>
-      {task.error !== null && <p className={css.notice}>{t('task.failure', { message: task.error.message })}</p>}
+      {reviewFailure !== null ? <>
+        <p className={css.notice} role="status">{t('task.reviewNextStep')}</p>
+        <details className={css.instructions}>
+          <summary>{t('task.reviewDetails')}</summary>
+          <p className={css.fullInstructions}>{reviewFailure.message}</p>
+        </details>
+      </> : task.error !== null && <p className={css.notice}>{t('task.failure', { message: task.error.message })}</p>}
       {task.status === 'unknown' && <p className={css.notice}>{t('task.unknownHint')}</p>}
       {task.status === 'passed' && <p className={css.notice}>{t('task.passedHint')}</p>}
     </article>

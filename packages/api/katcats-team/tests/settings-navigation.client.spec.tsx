@@ -13,6 +13,7 @@ import type { TeamView } from '../src/client/model.ts'
 import type { ChatView } from '../src/client/chat-model.ts'
 import { BotSettings, type BotSettingsProps } from '../src/client/BotSettings.tsx'
 import { ChatSettings, type ChatSettingsProps } from '../src/client/ChatForms.tsx'
+import type { FinanceSetupView } from '../src/client/FinanceLedgerSetup.tsx'
 import { zh } from '../src/client/locales.ts'
 
 afterEach(cleanup)
@@ -28,6 +29,11 @@ const tabInfo: SidebarRightTabInfo = {
 const permissionDefaults = {
   useConnection: bindSnapshotSelector(createSnapshotStore<ConnectionState | undefined>(undefined)),
   useTabInfo: () => tabInfo,
+}
+const privatePermissionDefaults = {
+  ...permissionDefaults,
+  useFinanceSetup: bindSnapshotSelector(createSnapshotStore<FinanceSetupView>({ kind: 'disabled' })),
+  setupDatabase: null,
 }
 const groupPermissionDefaults = {
   ...permissionDefaults,
@@ -60,7 +66,7 @@ describe('settings task shortcuts', () => {
   it('opens the private Bot task list without submitting or clearing edited identity', () => {
     const openSchedules = vi.fn()
     const save = vi.fn(async () => {})
-    const props = { ...permissionDefaults, sessionId: writer.sessionId, useDirectory: bindSnapshotSelector(directory()),
+    const props = { ...privatePermissionDefaults, sessionId: writer.sessionId, useDirectory: bindSnapshotSelector(directory()),
       useProjection: () => undefined, renderFactorySlot: () => null, openMemory: vi.fn(), openSchedules, save, t } as BotSettingsProps
     render(<BotSettings {...props} />)
     fireEvent.change(screen.getByLabelText(zh['bot.name']), { target: { value: 'Unsaved Writer' } })
@@ -87,29 +93,36 @@ describe('settings task shortcuts', () => {
   it('folds the group roster without changing member selection or discarding edited roles', () => {
     const save = vi.fn(async () => {})
     const props = { ...groupPermissionDefaults, sessionId: chat.rootSessionId, useDirectory: bindSnapshotSelector(directory()),
-      useChats: bindSnapshotSelector(chats()), openMemory: vi.fn(), openSchedules: vi.fn(), save, t } as ChatSettingsProps
+      useChats: bindSnapshotSelector(chats()), openMemory: vi.fn(), openSchedules: vi.fn(), save, t,
+      useConnection: bindSnapshotSelector(createSnapshotStore<ConnectionState | undefined>('connected')),
+    } as ChatSettingsProps
     render(<ChatSettings {...props} />)
-    expect(within(screen.getByRole('region', { name: zh['chat.settingsBasics'] })).getByLabelText(zh['chat.name'])).toBeTruthy()
-    expect(within(screen.getByRole('region', { name: zh['chat.settingsCollaboration'] })).getByLabelText(zh['chat.relayLimit'])).toBeTruthy()
-    expect(within(screen.getByRole('region', { name: zh['chat.settingsResources'] })).getByLabelText(zh['chat.folder'])).toBeTruthy()
-    const summary = screen.getByText(`${zh['chat.members']} · 1`)
+    expect(within(screen.getByText(zh['chat.settingsBasics']).closest('section')!).getByLabelText(zh['chat.name'])).toBeTruthy()
+    expect(within(screen.getByText(zh['chat.settingsCollaboration']).closest('details')!).getByLabelText(zh['chat.relayLimit'])).toBeTruthy()
+    expect(within(screen.getByText(zh['chat.settingsResources']).closest('details')!).getByLabelText(zh['chat.folder'])).toBeTruthy()
+    const summary = screen.getByText(zh['chat.settingsPeople']).closest('summary')!
     const details = summary.closest('details')!
     expect(details.open).toBe(false)
-    const roleSummary = screen.getByLabelText(t('chat.editMemberRole', { name: writer.name }))
+    fireEvent.click(screen.getByText(zh['chat.groupRoles']).closest('summary')!)
+    const roleSummary = screen.getByLabelText(t('chat.viewMemberRole', { name: writer.name }))
     expect(roleSummary.closest('details')!.open).toBe(false)
     fireEvent.click(roleSummary)
-    fireEvent.change(screen.getByLabelText(t('chat.memberRole', { name: writer.name })), {
+    const duty = within(screen.getByRole('region', { name: t('chat.memberRole', { name: writer.name }) }))
+    fireEvent.click(duty.getByRole('button', { name: zh['role.edit'] }))
+    fireEvent.change(duty.getByRole('textbox', { name: t('chat.memberRole', { name: writer.name }) }), {
       target: { value: 'My unsaved group role' },
     })
     fireEvent.click(roleSummary)
     expect(roleSummary.closest('details')!.open).toBe(false)
-    expect(roleSummary.textContent).toContain('My unsaved group role')
+    expect(roleSummary.textContent).toContain(writer.role)
+    expect(roleSummary.textContent).not.toContain('My unsaved group role')
     fireEvent.click(summary)
     expect(details.open).toBe(true)
     expect(screen.getByRole<HTMLInputElement>('checkbox', { name: writer.name }).checked).toBe(true)
     fireEvent.click(summary)
     expect(details.open).toBe(false)
-    expect(screen.getByLabelText<HTMLTextAreaElement>(t('chat.memberRole', { name: writer.name })).value)
+    fireEvent.click(roleSummary)
+    expect(duty.getByRole<HTMLTextAreaElement>('textbox', { name: t('chat.memberRole', { name: writer.name }) }).value)
       .toBe('My unsaved group role')
     expect(save).not.toHaveBeenCalled()
   })

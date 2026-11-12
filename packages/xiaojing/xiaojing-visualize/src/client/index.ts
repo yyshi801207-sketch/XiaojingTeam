@@ -16,11 +16,19 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import { en, zh } from './locales.ts'
 import { VisualizeCard } from './VisualizeCard.tsx'
 import { StreamingPreview } from './StreamingPreview.tsx'
-import { VisualizeTurnTail } from './VisualizeTurnTail.tsx'
+import { VisualizeDeliveredCards, VisualizeTurnTail } from './VisualizeTurnTail.tsx'
 
 export const name = 'xiaojing-visualize'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface SlotFactoryMap {
+    /** Verified cards for an exact closing message in the current executor Session. */
+    'xiaojing.visualize.cards': {
+      scope: 'session'
+      props: { readonly messageId: string; readonly callIds: readonly string[] }
+    }
+  }
+
   interface LocaleNamespaceMap {
     /** Product visualization status copy. */
     'xiaojing.visualize': keyof typeof zh
@@ -45,6 +53,8 @@ export function apply(ctx: ClientContext): void {
     { name: 'conversation.input.dock', id: 'visualize-stream', order: 30, locale: 'xiaojing.visualize' },
     StreamingPreview,
   ))
+  ctx.effect(() => ctx.slots.registerFactory({ name: 'xiaojing.visualize.cards', scope: 'session' },
+    VisualizeDeliveredCards), 'xiaojing-visualize: reusable saved cards')
   ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register(
     { name: 'conversation.chat.turnTail', id: 'visualize-results', order: 30 },
     VisualizeTurnTail,

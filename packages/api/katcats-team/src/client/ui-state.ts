@@ -2,13 +2,22 @@
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { BotId, GroupId, MoveGroupRequest, TeamGroup } from '../types.ts'
-import type { ChatId } from '../chats-types.ts'
+import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller/types'
+import type { ChatId, GroupTicketId } from '../chats-types.ts'
 import type { TeamKey } from './locales.ts'
 
 /** Captured list identity for one explicit rename or deletion action. */
 export type TeamEntity =
   | { readonly kind: 'bot'; readonly id: BotId; readonly name: string }
   | { readonly kind: 'chat'; readonly id: ChatId; readonly name: string }
+
+/** Exact delivered revision displayed for a human decision. */
+export interface TaskAcceptanceCandidate {
+  readonly taskId: GroupTicketId
+  readonly goal: string
+  readonly revision: number
+  readonly financeLabel?: string
+}
 
 /** An explicit create action; closing it never invokes a member mutation. */
 export type TeamDialog =
@@ -17,6 +26,8 @@ export type TeamDialog =
   | { readonly kind: 'remove-group'; readonly key: number; readonly group: TeamGroup }
   | { readonly kind: 'rename-entity' | 'delete-entity'; readonly key: number; readonly entity: TeamEntity }
   | { readonly kind: 'chat'; readonly key: number }
+  | { readonly kind: 'accept-task'; readonly key: number; readonly requestId?: SessionRequestId;
+    readonly chatId: ChatId; readonly candidates: readonly TaskAcceptanceCandidate[] }
 
 /** Local UI state, independent from the durable directory. */
 export interface TeamUiState {
@@ -37,6 +48,7 @@ export function createTeamUi(): {
   removeGroup: (group: TeamGroup) => void
   renameEntity: (entity: TeamEntity) => void
   deleteEntity: (entity: TeamEntity) => void
+  chooseTaskAcceptance: (chatId: ChatId, candidates: readonly TaskAcceptanceCandidate[], requestId?: SessionRequestId) => void
   closeDialog: () => void
   notify: (key: TeamKey, success: boolean, name?: string) => void
   dismissNotice: (id: number) => void
@@ -72,6 +84,11 @@ export function createTeamUi(): {
     deleteEntity: (entity: TeamEntity): void => {
       if (source.getSnapshot().dialog !== null) return
       source.set({ ...source.getSnapshot(), dialog: { kind: 'delete-entity', key: ++sequence, entity } })
+    },
+    chooseTaskAcceptance: (chatId, candidates, requestId): void => {
+      if (source.getSnapshot().dialog !== null) return
+      source.set({ ...source.getSnapshot(), dialog: { kind: 'accept-task', key: ++sequence, chatId, candidates,
+        ...(requestId === undefined ? {} : { requestId }) } })
     },
     closeDialog: (): void => { source.set({ ...source.getSnapshot(), dialog: null }) },
     notify: (key: TeamKey, success: boolean, name?: string): void => {

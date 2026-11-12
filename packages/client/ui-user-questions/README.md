@@ -69,7 +69,7 @@ The package is one ownership rule: rendering a question is a host UI capability,
 
 ### Reopening a panel
 
-`question.panel` is the provider-owned Session Factory for the original `PendingQuestion`. The ordinary composer chain and group question docks render that Factory under the request's retained Session; they share the same draft store, answer channel and card identity. The Factory alone declares `conversation.plan-review.actions`. Consumers must not redeclare `conversation.composer` to reuse the panel.
+`question.panel` is the provider-owned Session Factory for the original `PendingQuestion`. The ordinary composer and the group question dialog render that Factory under the request's retained Session and share its draft store, answer channel and card identity. The `modal` surface lets the parent dialog bound the card height and keeps the answer footer outside the option scroller. The Factory alone declares `conversation.plan-review.actions`. Consumers must not redeclare `conversation.composer` to reuse the panel.
 
 This package fills `userQuestionPanels`, the optional capability `dsh-client-ui-tool` declares for its `ask_user_question` row. `reveal(sessionId, callId)` republishes that call's card as the last equal-precedence pending interaction, so the composer seat shows it again, and returns `false` when this Client holds no card for the call — a legacy unkeyed request, another browser's question, or a card the projection already closed. Whether a question still takes an answer comes from the `userQuestions` Session projection, which the row reads directly, so the capability carries no state of its own.
 

@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-client-xiaojing-product",
-  "description": "Katcats product branding, onboarding, theme, and default persona",
+  "description": "Xiaojing Finance product branding, onboarding, theme, and default persona",
   "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"

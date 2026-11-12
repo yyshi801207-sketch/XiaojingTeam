@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import type { BotId, GroupId, TeamBot, TeamSnapshot } from '../src/types.ts'
+import { ledgerSetupBotId, odooAccessBotId, type BotId, type GroupId, type TeamBot, type TeamSnapshot } from '../src/types.ts'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceSnapshot } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
@@ -224,6 +224,73 @@ describe('team sidebar', () => {
     expect(portrait()?.getAttribute('width')).toBe('96')
     expect(screen.getByText(zh['team.mainRole'])).toBeTruthy()
     expect(reopened.getSnapshot().mainCollapsed).toBe(false)
+  })
+
+  it('switches the main Bot card to a pair of Odoo assistants without navigating away', () => {
+    const { props, directory, sessions, commands } = setup()
+    const openHeadquarters = vi.fn()
+    const ledger: TeamBot = { ...writer, id: ledgerSetupBotId, name: '建账助手', sessionId: 'setup-session' as SessionId }
+    const system: TeamBot = { ...writer, id: odooAccessBotId, name: '系统助手', sessionId: 'access-session' as SessionId }
+    const view = render(<TeamSidebar {...props} openHeadquarters={openHeadquarters} />)
+    expect(screen.queryByRole('button', { name: zh['team.switchFixedBot'] })).toBeNull()
+    act(() => directory.set({ ...directory.getSnapshot(), snapshot: { ...snapshot, bots: [main, writer, system, ledger] } }))
+    const toggle = screen.getByRole('button', { name: zh['team.switchFixedBot'] })
+    const mainPortrait = screen.getByRole('button', { name: main.name })
+    const mainIdentity = screen.getByRole('button', { name: `${main.name} ${zh['team.main']}` })
+    const mainRole = screen.getByText(zh['team.mainRole'])
+    const content = toggle.nextElementSibling
+    const collapse = screen.getByRole('button', { name: zh['team.collapseFixedBot'] })
+    const list = screen.getByRole('region', { name: zh['team.list'] })
+    list.scrollTop = 75
+    expect(toggle.getAttribute('aria-pressed')).toBe('false')
+    expect(content?.contains(mainPortrait)).toBe(true)
+    expect(mainIdentity.nextElementSibling).toBe(screen.getByRole('button', { name: zh['team.headquarters'] }))
+    expect(toggle.querySelector('img')?.getAttribute('src')).toContain('odoo-assistants.png')
+    expect(mainPortrait.querySelector('img')?.getAttribute('width')).toBe('96')
+    expect(entryIds(zh['team.bots'])).toEqual([writer.sessionId])
+    fireEvent.click(toggle)
+    const cards = screen.getByRole('group', { name: zh['team.odooAssistants'] })
+    const ledgerCard = within(cards).getByRole('button', { name: ledger.name })
+    const systemCard = within(cards).getByRole('button', { name: system.name })
+    expect(toggle.getAttribute('aria-pressed')).toBe('true')
+    expect(toggle.nextElementSibling).toBe(content)
+    expect(content?.contains(cards)).toBe(true)
+    expect(mainPortrait.parentElement?.getAttribute('aria-hidden')).toBe('true')
+    expect(screen.getByRole('button', { name: zh['team.collapseFixedBot'] })).toBe(collapse)
+    expect(screen.getByRole('region', { name: zh['team.list'] })).toBe(list)
+    expect(list.scrollTop).toBe(75)
+    expect(toggle.querySelector('img')?.getAttribute('src')).toContain('main-bot-avatar.png')
+    expect(within(cards).getAllByRole('button')).toEqual([ledgerCard, systemCard])
+    const artwork = cards.querySelectorAll('img')
+    expect(artwork).toHaveLength(1)
+    expect(artwork[0]?.getAttribute('src')).toContain('odoo-assistants.png')
+    expect(artwork[0]?.getAttribute('alt')).toBe('')
+    expect(within(ledgerCard).getByText('兢兢').className).toBe(mainRole.className)
+    expect(within(systemCard).getByText('业业').className).toBe(mainRole.className)
+    const mainBadge = within(mainIdentity).getByText(zh['team.main'])
+    expect(within(ledgerCard).getByText(ledger.name).className).toBe(mainBadge.className)
+    expect(within(systemCard).getByText(system.name).className).toBe(mainBadge.className)
+    expect(screen.queryByRole('button', { name: main.name })).toBeNull()
+    expect(commands.openBot).not.toHaveBeenCalled()
+    fireEvent.contextMenu(ledgerCard)
+    expect(screen.queryByRole('menu')).toBeNull()
+    fireEvent.click(ledgerCard)
+    expect(commands.openBot).toHaveBeenCalledExactlyOnceWith(ledger.id)
+    act(() => sessions.set({ ids: [ledger.sessionId], byId: { [ledger.sessionId]: { retainedBy: { mainView: 1 } } } }))
+    expect(ledgerCard.getAttribute('aria-current')).toBe('page')
+    expect(screen.queryByRole('button', { name: zh['team.headquarters'] })).toBeNull()
+    fireEvent.click(collapse)
+    expect(ledgerCard.querySelector('img')?.getAttribute('width')).toBe('28')
+    view.rerender(<TeamSidebar {...props} openHeadquarters={openHeadquarters} wide={false} />)
+    fireEvent.click(screen.getByRole('button', { name: system.name }))
+    expect(commands.openBot).toHaveBeenLastCalledWith(system.id)
+    fireEvent.click(screen.getByRole('button', { name: zh['team.switchFixedBot'] }))
+    expect(screen.queryByRole('group', { name: zh['team.odooAssistants'] })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: zh['team.headquarters'] }))
+    expect(openHeadquarters).toHaveBeenCalledOnce()
+    expect(commands.openBot).toHaveBeenCalledTimes(2)
+    fireEvent.click(screen.getByRole('button', { name: main.name }))
+    expect(commands.openBot).toHaveBeenLastCalledWith(main.id)
   })
 
   it('counts each Bot and chat as one section entry, then updates member counts from saved membership', () => {

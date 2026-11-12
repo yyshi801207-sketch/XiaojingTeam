@@ -1,13 +1,13 @@
 /** Host-authoritative group directory and revision-fenced mutations. */
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { RemoteError, type RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
-import type { SessionCancelRequest, SessionCancelValue, SessionPromptRequest, SessionPromptValue } from '@deepseek-ai/dsh-api-session-controller/types'
-import type { ChatControlRequest, ChatFrame, ChatMutationValue, ChatSnapshot, CreateChatRequest, DeleteChatRequest, UpdateChatRequest } from '../chats-types.ts'
+import type { SessionCancelRequest, SessionCancelValue, SessionPromptRequest, SessionRequestId } from '@deepseek-ai/dsh-api-session-controller/types'
+import type { ChatControlRequest, ChatFrame, ChatId, ChatMutationValue, ChatPromptValue, ChatSnapshot, ContinueGroupTaskRequest, CreateChatRequest, DeleteChatRequest, GroupTicketId, UpdateChatRequest } from '../chats-types.ts'
 import { TeamRequestSupersededError } from './model.ts'
 
 /** Generated owner-only group operations consumed by the product interface. */
 export interface ChatRemote {
-  sendMessage: (request: SessionPromptRequest, signal?: AbortSignal) => Promise<RemoteResult<SessionPromptValue>>
+  sendMessage: (request: SessionPromptRequest, signal?: AbortSignal) => Promise<RemoteResult<ChatPromptValue>>
   cancelSession: (request: SessionCancelRequest) => Promise<RemoteResult<SessionCancelValue>>
   snapshot: () => Promise<RemoteResult<ChatSnapshot>>
   follow: (signal?: AbortSignal) => AsyncIterable<ChatFrame>
@@ -17,6 +17,8 @@ export interface ChatRemote {
   pause: (request: ChatControlRequest) => Promise<RemoteResult<ChatMutationValue>>
   resume: (request: ChatControlRequest) => Promise<RemoteResult<ChatMutationValue>>
   stop: (request: ChatControlRequest) => Promise<RemoteResult<ChatMutationValue>>
+  continueTask: (request: ContinueGroupTaskRequest) => Promise<RemoteResult<ChatMutationValue>>
+  completeTask: (chatId: ChatId, taskId: GroupTicketId, expectedRevision: number, acceptanceRequestId?: SessionRequestId) => Promise<RemoteResult<ChatMutationValue>>
 }
 
 /** Retained group rows remain readable while their stream is unavailable. */
@@ -94,6 +96,27 @@ export class ChatClientModel {
    */
   async control(action: 'pause' | 'resume' | 'stop', request: ChatControlRequest): Promise<ChatMutationValue['chat']> {
     return this.mutate(() => this.remote[action](request))
+  }
+
+  /**
+   * Continue the selected business task through the current Host.
+   * @param request - The selected task revision and captured group run.
+   * @returns The acknowledged group state.
+   */
+  async continueTask(request: ContinueGroupTaskRequest): Promise<ChatMutationValue['chat']> {
+    return this.mutate(() => this.remote.continueTask(request))
+  }
+
+  /**
+   * Record the owner's acceptance of a verified delivery.
+   * @param chatId - Owning group.
+   * @param taskId - Task with a published delivery.
+   * @param expectedRevision - Revision reviewed by the owner.
+   * @param acceptanceRequestId - Saved chat instruction when resolving an ambiguous acceptance.
+   * @returns The acknowledged group state.
+   */
+  async completeTask(chatId: ChatId, taskId: GroupTicketId, expectedRevision: number, acceptanceRequestId?: SessionRequestId): Promise<ChatMutationValue['chat']> {
+    return this.mutate(() => this.remote.completeTask(chatId, taskId, expectedRevision, acceptanceRequestId))
   }
 
   /** End all publication when the owning product plugin unloads. */

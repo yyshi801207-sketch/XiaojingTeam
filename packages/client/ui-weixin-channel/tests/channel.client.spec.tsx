@@ -42,6 +42,7 @@ describe('Weixin channel settings', () => {
     })
     render(<WeixinChannelSection {...props(controller)} />)
     expect(screen.getByRole('heading', { name: '频道' })).toBeTruthy()
+    expect(screen.getByText(/在手机上向小兢会计发送/)).toBeTruthy()
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: '扫码连接微信' })) })
     expect(call).toHaveBeenCalledWith('/xiaojing-weixin', 'pairing/start', {})
     expect(screen.getByText('等待扫码')).toBeTruthy()

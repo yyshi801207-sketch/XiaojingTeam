@@ -30,10 +30,10 @@ describe('Katcats Agent-scoped member tools', () => {
     const main = mainAgent(h)
     const writer = (await h.team.createBot({ name: 'Writer' })).bot
     const ordinary = h.ctx.agents.get(writer.sessionId)!
-    expect(h.ctx.tools.schemas(main).map(tool => tool.name).sort()).toEqual(['create_bot', 'create_bots', 'list_bots', 'set_bot_appearance', 'set_own_role'])
+    expect(h.ctx.tools.schemas(main).map(tool => tool.name).sort()).toEqual(['create_bot', 'create_bot_folder', 'create_bots', 'list_bots', 'set_bot_appearance', 'set_own_role'])
     expect(h.ctx.tools.schemas(ordinary).map(tool => tool.name)).toEqual(['set_own_role'])
     expect(h.ctx.tools.schemas()).toEqual([])
-    for (const name of ['create_bot', 'list_bots', 'set_bot_appearance']) {
+    for (const name of ['create_bot', 'create_bot_folder', 'list_bots', 'set_bot_appearance']) {
       expect(await run(h, ordinary, name, { name: 'Denied', role: 'Denied' }))
         .toMatchObject({ isError: true, error: { info: { code: 'UNKNOWN_TOOL' } } })
     }
@@ -67,6 +67,21 @@ describe('Katcats Agent-scoped member tools', () => {
     })
     expect(text(list)).not.toContain(chatGroupId)
     expect(h.saveDefault).not.toHaveBeenCalled()
+  })
+
+  it('returns the existing custom folder for a repeated name and refuses ambiguous matching folders', async () => {
+    const h = await harness()
+    const main = mainAgent(h)
+    const first = (await h.team.createGroup({ name: 'Finance operations' })).group
+    expect(await run(h, main, 'create_bot_folder', { name: ' Finance operations ' })).toMatchObject({
+      isError: false, meta: { group_id: first.id, name: first.name },
+    })
+    expect((await h.team.snapshot()).groups.filter(group => group.name === first.name)).toHaveLength(1)
+    await h.team.createGroup({ name: first.name })
+    expect(await run(h, main, 'create_bot_folder', { name: first.name })).toMatchObject({
+      isError: true, error: { info: { code: 'KATCATS_TOOL_INVALID_INPUT' } },
+    })
+    expect((await h.team.snapshot()).groups.filter(group => group.name === first.name)).toHaveLength(2)
   })
 
   it('keeps a failed accepted creation with its initial role and lets list recover it once', async () => {
@@ -235,7 +250,7 @@ describe('Katcats Agent-scoped member tools', () => {
     expect(h.ctx.tools.schemas(main)).toEqual([])
     await h.ctx.plugin(KatcatsTeam, { workspaceRoot: h.root + '/workspaces', mainName: 'Katcats', mainRole: '团队主管', ordinaryGroupName: '普通 Bot', chatGroupName: '群聊' })
     expect(await h.ctx.katcatsTeam.snapshot()).toEqual(before)
-    expect(h.ctx.tools.schemas(main).map(tool => tool.name).sort()).toEqual(['create_bot', 'create_bots', 'list_bots', 'set_bot_appearance', 'set_own_role'])
+    expect(h.ctx.tools.schemas(main).map(tool => tool.name).sort()).toEqual(['create_bot', 'create_bot_folder', 'create_bots', 'list_bots', 'set_bot_appearance', 'set_own_role'])
   })
 
   it('provides replayable generic presentation and recorded prompt guidance without speculative success', async () => {
@@ -283,7 +298,7 @@ describe('Katcats Agent-scoped member tools', () => {
         When introducing yourself, use the exact team name 瑞华云财务共享团队, even if earlier conversation mentions an old product name.
 
         Use set_own_role only when the user explicitly asks to establish or change your ongoing identity or responsibilities. Do not change your saved role for a temporary task. Claim a role was saved only after the tool succeeds.
-        When the user explicitly requests a new persistent team member, use create_bot with its name and lasting role. Pass any requested bean avatar and color through avatar; writing a color in role does not change the avatar. Omit avatar only to use the default red B01 avatar. For several new Bots requested together, use create_bots once with the complete batch. Count only these new members, never existing Bots. Use distinct preset avatar colors for the first 8: #202124, #FF2849, #FF6B0B, #10C477, #2288FF, #9253FF, #F52C93, #10B8A6. Only additional members in that same batch may use other colors. Do not use set_bot_appearance to bypass creation colors. After every requested Bot is confirmed, use create_group_chat if the user requested a group or team and that tool is available. Use set_bot_appearance to change an existing member's requested avatar without recreating it. Use list_bots to inspect existing members, saved avatars, and group IDs; the default group is 未分组. Claim creation or an appearance change only after the tool returns the saved avatar. If a change fails or is cancelled, first use list_bots to check whether it completed; do not automatically retry it.",
+        When the user explicitly requests a new persistent team member, use create_bot with its name and lasting role. Pass any requested bean avatar and color through avatar; writing a color in role does not change the avatar. Omit avatar only to use the default red B01 avatar. For several new Bots requested together, use create_bots once with the complete batch. Count only these new members, never existing Bots. Use distinct preset avatar colors for the first 8: #202124, #FF2849, #FF6B0B, #10C477, #2288FF, #9253FF, #F52C93, #10B8A6. Only additional members in that same batch may use other colors. Do not use set_bot_appearance to bypass creation colors. After every requested Bot is confirmed, use create_group_chat if the user requested a group or team and that tool is available. Use set_bot_appearance to change an existing member's requested avatar without recreating it. Before creating a Bot or team, use list_bots to check saved sidebar folders. Use the ID of the existing folder the user selected. If placement is unclear, ask the user whether to use an existing folder, create a named folder, or leave the Bots under 未分组 and any chat under 群聊. Wait for the answer before creating anything. Use create_bot_folder only for an explicitly requested new folder. Pass the same selected custom folder ID as group_id to all new members and the group chat. Keep existing members in their saved folders. Claim creation or an appearance change only after the tool returns the saved avatar. If a change fails or is cancelled, first use list_bots to check whether it completed; do not automatically retry it.",
           ],
         }
       `)

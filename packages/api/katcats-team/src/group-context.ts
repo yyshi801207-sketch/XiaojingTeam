@@ -110,11 +110,11 @@ function publicHistory(input: PublicHistoryInput): { entries: GroupHistoryEntry[
 function retainedCoverage(input: PublicHistoryInput, events: readonly SessionEvent[], nodes: readonly SessionSeq[]) {
   const { snapshot, delivery, rootEvents } = input
   const records = new Map(events.map(event => [event.seq, event]))
-  const ownReplies = new Map<string, string>()
+  const ownReplies = new Map<string, { id: string; text: string }>()
   for (const candidate of snapshot.deliveries) {
     if (candidate.chatId === snapshot.chat.id && candidate.botId === delivery.botId
       && candidate.executorSessionId === delivery.executorSessionId && candidate.state === 'completed' && candidate.receipt !== null) {
-      ownReplies.set(candidate.receipt.outputMessageId, 'message:' + candidate.relayMessageId)
+      ownReplies.set(candidate.receipt.outputMessageId, { id: 'message:' + candidate.relayMessageId, text: candidate.receipt.text })
     }
   }
   for (const event of rootEvents) {
@@ -122,7 +122,8 @@ function retainedCoverage(input: PublicHistoryInput, events: readonly SessionEve
     const source = event.data.source
     if (source.kind === 'katcats-group-relay' && source.chatId === snapshot.chat.id
       && source.executionSessionId === delivery.executorSessionId && source.sender.botId === delivery.botId) {
-      ownReplies.set(source.outputMessageId, 'message:' + event.data.id)
+      ownReplies.set(source.outputMessageId, { id: 'message:' + event.data.id,
+        text: event.data.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('\n') })
     }
   }
   const toolCalls = new Map(events.flatMap(event => event.type === 'tool/call' ? [[event.data.callId, event.data.name] as const] : []))
@@ -138,8 +139,10 @@ function retainedCoverage(input: PublicHistoryInput, events: readonly SessionEve
     visited.add(seq)
     const event = records.get(seq)
     if (event?.type === 'assistant/message' && event.surfaceOp === 'append') {
-      const id = ownReplies.get(event.data.message.id)
-      if (id !== undefined) delivered.add(id)
+      const reply = ownReplies.get(event.data.message.id)
+      if (reply !== undefined && event.data.message.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('\n') === reply.text) {
+        delivered.add(reply.id)
+      }
       for (const block of event.data.message.content) {
         if (block.type !== 'tool-call' || block.name !== 'request_group_member') continue
         const child = snapshot.deliveries.find(candidate => candidate.chatId === snapshot.chat.id
@@ -235,13 +238,15 @@ export function buildGroupContext(input: PublicHistoryInput & {
   ].join('\n') }]
   if (delivery.recoveryOf !== undefined) content.push({ type: 'text', text: 'Responsible-member blocker follow-up: ' + delivery.message })
   if (owner?.coordinationVersion === 1) {
+    const { financeScope: _scope, ...savedTask } = ticket ?? { financeScope: undefined }
     content.push({ type: 'text', text: ticket === undefined
       ? 'This owner message is not classified. For substantive work, use record_group_task to create work or explicitly continue an existing task. '
         + 'Do not guess an ambiguous continuation; ask the owner. Unclassified messages remain shared context so corrections are not silently lost. '
         + 'Use find_group_tasks to find older tasks. Recent task index: '
-        + JSON.stringify((snapshot.chat.tickets ?? []).slice(-input.bootstrapMessageCount)
+        + JSON.stringify((snapshot.chat.tickets ?? []).filter(task => (task.financeScope ?? null) === (owner.financeScope ?? null))
+          .slice(-input.bootstrapMessageCount)
           .map(task => ({ id: task.id, ownerId: task.ownerId, goal: task.goal, state: task.state })))
-      : 'Saved business task (a member turn finishing does not mean this task is accepted): ' + JSON.stringify(ticket)
+      : 'Saved business task (a member turn finishing does not mean this task is accepted): ' + JSON.stringify(savedTask)
         + '\nOther task bodies are omitted from this input. read_group_history can retrieve permitted originals when explicitly needed; previously retained Session context is not erased.' })
   }
   const outcomes = snapshot.deliveries.filter(candidate => candidate.id !== delivery.id && candidate.chatId === snapshot.chat.id)

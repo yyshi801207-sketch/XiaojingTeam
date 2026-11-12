@@ -3,14 +3,14 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/client/ui-xiaojing-finance-clients/README.md
 /:
-  en: 4805e98daab176be
-  zh: 4805e98daab176be
+  en: f59b46d4161c4499
+  zh: f59b46d4161c4499
 /deepseek-ai-dsh-client-ui-xiaojing-finance-clients:
-  en: d81f7668ff0e97c3
-  zh: 0fdc512a233b5ebf
+  en: 323c2ec684312001
+  zh: 377188cd253ec2cb
 /deepseek-ai-dsh-client-ui-xiaojing-finance-clients/summary:
-  en: dca800c269516c53
-  zh: 0fdb0c2252ac9928
+  en: 88ee020fc7034e89
+  zh: 577e37ebbd3da84b
 /deepseek-ai-dsh-client-ui-xiaojing-finance-clients/table-of-contents:
   en: f1d967a7e5342ebc
   zh: 86774d5ea1aab22d
@@ -18,11 +18,11 @@
   en: 2ce9f1c5dd22685f
   zh: 8d70eaaf323eaf86
 /deepseek-ai-dsh-client-ui-xiaojing-finance-clients/attachment-and-reimbursement-configuration:
-  en: d9b52073960ca27b
-  zh: e085821144546f40
+  en: 510067d4fc825f91
+  zh: 2387575ce1f68df0
 /deepseek-ai-dsh-client-ui-xiaojing-finance-clients/conversation-context:
-  en: 5a31af4d31360c0a
-  zh: 455f3d2942455152
+  en: 53438310ab78801c
+  zh: 19cb9609e1cbe295
 /deepseek-ai-dsh-client-ui-xiaojing-finance-clients/unified-uploads:
   en: fd15624c0ffe7a4b
   zh: bd8c6f356b066afa

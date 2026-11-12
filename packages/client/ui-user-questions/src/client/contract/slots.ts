@@ -19,7 +19,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     /** Original question panel reusable under the request's owning Session. */
     'question.panel': {
       scope: 'session'
-      props: { matched: PendingQuestion }
+      props: { matched: PendingQuestion; surface?: 'modal' }
       store: ReturnType<typeof createQuestionDraftStore>
       locale: 'question'
       inject: { keyedHooks: { questionCard: (key: string) => PendingQuestion | undefined } }

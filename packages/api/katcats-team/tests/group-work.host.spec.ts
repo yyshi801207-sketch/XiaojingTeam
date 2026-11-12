@@ -62,6 +62,8 @@ describe('group-wide work admission', () => {
           { bot_id: bId, message: 'Verify the synthetic facts.' }, { bot_id: cId, message: 'Design the synthetic presentation.' },
         ], review: { reason: 'none' } })
       },
+      toolCallResponse('record-work', 'record_group_task', { goal: 'Integrate both member contributions.',
+        acceptance: ['Use FACT_B_731 and DESIGN_C_953.'], stage: 'preparing', next_step: 'Ask both members.', artifacts: [] }),
       () => toolCallResponse('ask-b', 'request_group_member', { bot_id: bId, message: 'Verify the synthetic facts.' }),
       textResponse('B actually verified FACT_B_731.'),
       toolCallResponse('only-b-write', 'produce_artifact', { file: 'only-b.md', content: 'C has not answered.' }),
@@ -82,6 +84,8 @@ describe('group-wide work admission', () => {
         return toolCallResponse('actual-final-write', 'produce_artifact',
           { file: 'team-final.md', content: 'FACT_B_731 + DESIGN_C_953' })
       },
+      toolCallResponse('submit-work', 'record_group_task', { goal: 'Integrate both member contributions.',
+        acceptance: ['Use FACT_B_731 and DESIGN_C_953.'], stage: 'delivered', next_step: 'Finished.', artifacts: [], submit_delivery: true }),
       textResponse('The final document uses both actual results: [File](./team-final.md).'),
     ])
     const a = (await h.ctx.katcatsTeam.createBot({ name: 'A' })).bot

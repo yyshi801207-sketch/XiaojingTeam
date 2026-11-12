@@ -198,6 +198,23 @@ describe('Xiaojing product persona', () => {
     await ctx.fiber.dispose()
   })
 
+  it('offers grounded clarification choices when the requested scope remains ambiguous', async () => {
+    const ctx = await mountedProduct()
+    try {
+      const prompt = renderPrompt(await ctx.systemPrompt.assemble())
+      expect(prompt).toContain('Proceed when the scope is clear')
+      expect(prompt).toContain('use its question panel')
+      expect(prompt).toContain('Recommend a choice only when the task or an established preference supports it')
+      expect(prompt).toContain('The panel already provides custom text')
+      expect(prompt).toContain('this month to date, the previous full month and this year to date')
+      expect(prompt).toContain('exact inclusive dates from the supplied time context')
+      expect(prompt).toContain('Use verified records for choices involving actual companies')
+      expect(prompt).toContain('Wait for the submitted choice or custom answer')
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('leaves an explicitly configured persona unchanged', async () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false, personaPrefix: 'User-selected persona.' }).await()

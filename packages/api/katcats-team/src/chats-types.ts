@@ -1,7 +1,7 @@
 /** Group conversations, isolated execution bindings, and durable delegation receipts. */
 import type { Branded } from '@deepseek-ai/dsh-brand'
 import type { MessageId, ToolCallId, UserMessage } from '@deepseek-ai/dsh-llm'
-import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller/types'
+import type { SessionPromptValue, SessionRequestId } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { BotAvatar, BotId, GroupId } from './types.ts'
 export type { ChatTaskActor, ChatTaskEventId, ChatTaskLifecycle, ChatTaskMember, ChatTaskStatus } from './chats-task-events.ts'
@@ -16,7 +16,27 @@ export type ChatDeliveryId = Branded<'KatcatsChatDeliveryId'>
 /** Stable business task identity retained when later owner messages continue the same work. */
 export type GroupTicketId = Branded<'KatcatsGroupTicketId'>
 
-/** Versioned business task; a completed member turn does not close or accept this record. */
+/** Saved response to a group owner’s acceptance message. */
+export type GroupTaskAcceptance =
+  | { readonly kind: 'completed'; readonly taskId: GroupTicketId; readonly goal: string }
+  | { readonly kind: 'choose'; readonly chatId: ChatId; readonly candidates: readonly {
+    readonly taskId: GroupTicketId; readonly goal: string; readonly revision: number
+  }[] }
+  | { readonly kind: 'none' }
+
+/** A group prompt can be recorded as an acceptance instruction without starting an Agent. */
+export interface ChatPromptValue extends SessionPromptValue {
+  readonly taskAcceptance?: GroupTaskAcceptance
+}
+
+/** Confirmed, published result offered for owner acceptance on a business task. */
+export interface GroupTicketDelivery {
+  readonly deliveryId: ChatDeliveryId
+  readonly outputMessageId: MessageId
+  readonly relayMessageId: MessageId
+}
+
+/** Versioned business task with verified delivery and optional human acceptance. */
 export interface GroupTicket {
   readonly version: 1
   readonly id: GroupTicketId
@@ -26,8 +46,22 @@ export interface GroupTicket {
   readonly acceptance: readonly string[]
   readonly stage: string
   readonly nextStep: string
-  readonly state: 'open' | 'blocked'
+  readonly state: 'open' | 'blocked' | 'delivered' | 'completed'
   readonly blocker: string | null
+  /** Opaque saved finance target, null for a known unbound group, absent on legacy tasks. */
+  readonly financeScope?: string | null
+  /** Ledger and company label retained with the saved task, when bound. */
+  readonly financeLabel?: string
+  /** Exact owner delivery allowed to publish the submitted work after normal review. */
+  readonly pendingDeliveryId?: ChatDeliveryId
+  /** Public receipt for a delivered or accepted task. */
+  readonly delivery?: GroupTicketDelivery
+  /** UTC timestamp in epoch milliseconds when the task completed. */
+  readonly completedAt?: number
+  /** Automatic criteria-based completion or owner acceptance; absent on older completed records. */
+  readonly completionKind?: 'criteria' | 'owner'
+  /** Prompt the owner to confirm a published result when the work calls for human review. */
+  readonly humanReviewRequired?: true
   readonly artifacts: readonly string[]
   readonly messageIds: readonly MessageId[]
   readonly revision: number
@@ -36,6 +70,14 @@ export interface GroupTicket {
 /** Complete business description; omitted id creates work or updates this message's saved task. */
 export interface RecordGroupTicket {
   readonly id?: GroupTicketId
+  /** Explicit owner-authorized transfer to the current manager after the previous owner leaves. */
+  readonly takeOverOwner?: true
+  /** Complete current owner message authorizing the transfer, never a selected excerpt. */
+  readonly ownerTransferQuote?: string
+  /** Submit this already-recorded task for delivery with the current turn's confirmed result. */
+  readonly submitDelivery?: true
+  /** The task calls for the owner to review its finished result. */
+  readonly humanReviewRequired?: true
   readonly goal: string
   readonly acceptance: readonly string[]
   readonly stage: string
@@ -122,6 +164,10 @@ export interface ChatInbound {
   readonly collaborationVersion?: 1
   /** Version 1 enables durable task classification and one-shot confirmed-blocker follow-up. */
   readonly coordinationVersion?: 1
+  /** Finance target captured at admission, null if known unbound, absent on legacy inputs. */
+  readonly financeScope?: string | null
+  /** Transcript-only owner instruction with its persisted acceptance outcome. */
+  readonly taskAcceptance?: GroupTaskAcceptance
   readonly state: 'accepted' | 'published'
 }
 
@@ -179,6 +225,8 @@ export interface ChatSnapshot {
   readonly chats: readonly TeamChat[]
   readonly deliveries: readonly ChatDelivery[]
   readonly relayLimit: number
+  /** Groups with a saved ledger binding, independent of the last connection test. */
+  readonly financeChatIds?: readonly ChatId[]
   readonly activities: readonly ChatActivity[]
 }
 
@@ -188,6 +236,10 @@ export interface ChatActivity {
   readonly processing: boolean
   readonly runningBotIds: readonly BotId[]
   readonly pendingControl: 'pause' | 'resume' | 'stop' | null
+  /** Business task attached to the current admitted group run, when classified. */
+  readonly currentTaskId?: GroupTicketId
+  /** Current disposition for each open or blocked task in this group's archive. */
+  readonly taskContinuation?: Readonly<Record<string, 'resume' | 'start' | 'busy' | 'unknown' | 'scope' | 'owner-missing'>>
 }
 
 /** Directory stream frames replace complete values rather than merging member fields. */
@@ -195,9 +247,10 @@ export type ChatFrame =
   | { readonly type: 'snapshot'; readonly value: ChatSnapshot }
   | { readonly type: 'replace'; readonly value: ChatSnapshot }
 
-/** Create a group from explicitly selected ordinary members; a responsible member is optional. */
+/** Create a group from explicitly selected ordinary members with optional sidebar placement and a responsible member. */
 export interface CreateChatRequest {
   readonly name: string
+  readonly groupId?: GroupId
   readonly memberIds: readonly BotId[]
   readonly managerId?: BotId | null
   readonly relayLimit?: number
@@ -210,7 +263,10 @@ export interface UpdateChatRequest {
   readonly name?: string
   readonly memberIds?: readonly BotId[]
   readonly managerId?: BotId | null
+  /** Replace the complete responsibility list when supplied. */
   readonly memberRoles?: readonly ChatMemberRole[]
+  /** Update only this member's override. Blank text clears it. Omission preserves the existing list unless memberRoles is supplied. */
+  readonly memberRole?: ChatMemberRole
   readonly relayLimit?: number
   /** Change transcript presentation only; omission preserves this group's saved preference. */
   readonly showHandoffRecords?: boolean
@@ -232,6 +288,16 @@ export interface ChatControlRequest {
   readonly id: ChatId
   readonly expectedRunId: ChatRunId | null
   readonly expectedGeneration: number
+}
+
+/** Owner-selected archive task and the exact observed revision and run. */
+export interface ContinueGroupTaskRequest {
+  readonly chatId: ChatId
+  readonly taskId: GroupTicketId
+  readonly expectedRevision: number
+  readonly expectedRunId: ChatRunId | null
+  readonly expectedGeneration: number
+  readonly requestId: ChatInbound['requestId']
 }
 
 /** Committed group mutation with an immediately renderable owner snapshot. */

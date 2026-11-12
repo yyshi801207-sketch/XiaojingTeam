@@ -18,7 +18,7 @@ export async function readKatcatInstallationId(directory: string): Promise<strin
   if (value === undefined) return undefined
   const id = value.trim()
   if (!/^\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}$/iu.test(id)) {
-    throw new Error('Katcats installation identifier is invalid')
+    throw new Error('Xiaojing Accounting installation identifier is invalid')
   }
   return id
 }
@@ -40,14 +40,14 @@ export async function prepareKatcatInstallation(profile: string, userData: strin
       customTags: [{ tag: 'tag:yaml.org,2002:js', resolve: (value: string) => value }],
     })
     if (document.errors[0] !== undefined) throw document.errors[0]
-    if (!isSeq(document.contents)) throw new Error('Katcats profile patch must be a YAML sequence')
+    if (!isSeq(document.contents)) throw new Error('Xiaojing Accounting profile patch must be a YAML sequence')
     let found = false
     for (const item of document.contents.items) {
       if (!isMap(item) || item.has('insert')) continue
       const id: unknown = item.get('id', true)
       if (!isScalar(id) || id.value !== 'ui-theme') continue
       const config = item.get('config', true)
-      if (config !== undefined && !isMap(config)) throw new Error('Katcats theme configuration must be a YAML mapping')
+      if (config !== undefined && !isMap(config)) throw new Error('Xiaojing Accounting theme configuration must be a YAML mapping')
       item.setIn(['config', 'preference'], 'light')
       found = true
     }

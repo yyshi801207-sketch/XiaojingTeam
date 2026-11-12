@@ -2,4 +2,4 @@
 
 exports[`opens task-local actions without changing selection, and copies the selected record only 1`] = `"查看任务详情复制任务目标复制任务 ID"`;
 
-exports[`updates the open archive from saved revisions and retains the selected task 1`] = `"TASK RECORDS财务组 / 任务档案随保存同步×1已登记任务1未标记阻塞0受阻任务全部受阻任务财务主管已登记核验三月财务数据资料核验修订 1已登记修订 1任务目标核验三月财务数据负责人财务主管已记录阶段资料核验下一步核对银行流水验收条件2总额与明细一致记录原始证据产物引用1核对说明.md关联消息 · 0任务 IDtask-a展示最后一次保存的业务任务；执行动态请查看调度室。成员结束一轮回复，不代表任务已完成或已验收。"`;
+exports[`updates the open archive from saved revisions and retains the selected task 1`] = `"TASK RECORDS财务组 / 任务档案随保存同步×当前任务当前没有指定任务1已登记任务0待验收0已完成全部受阻任务待验收已完成财务主管已登记核验三月财务数据资料核验修订 1已登记修订 1任务目标核验三月财务数据负责人财务主管已记录阶段资料核验下一步核对银行流水验收条件2总额与明细一致记录原始证据产物引用1核对说明.md关联消息 · 0任务 IDtask-a任务档案随保存更新。满足验收条件并正式交付后自动完成；需要人工复核的任务，确认验收后完成。"`;

@@ -16,7 +16,7 @@ import { HeadquartersOverview } from './HeadquartersOverview.tsx'
 import { HeadquartersPeople } from './HeadquartersPeople.tsx'
 import { RoomUsage } from './RoomUsage.tsx'
 import { useHandoffScroll } from './use-handoff-scroll.ts'
-import { TaskArchiveAction } from './TaskArchive.tsx'
+import { TaskArchiveAction, type TaskArchiveActions } from './TaskArchive.tsx'
 import { ROOM_ACTIVITY_ROWS } from './room-activity-model.ts'
 import type {} from './room-locales.ts'
 import roomCss from './group-room.module.css'
@@ -25,9 +25,10 @@ import css from './headquarters.module.css'
 const Scene = lazy(() => import('./HeadquartersScene.tsx'))
 const colors = ['#ffba54', '#ff77b6', '#ff795d', '#39d6a0', '#60c9ff', '#b398ff', '#ccdc68', '#e4b784']
 
-/** Framework-bound data and read-only navigation commands for the global window. */
+/** Framework-bound group data and owner commands for the global window. */
 export interface HeadquartersInjected {
   readonly copyText: (text: string) => Promise<void>
+  readonly archiveActions: TaskArchiveActions
   readonly hooks: {
     readonly headquarters: ObservableSnapshot<HeadquartersState>
     readonly directory: ObservableSnapshot<TeamView>
@@ -217,6 +218,7 @@ function HeadquartersWindow(props: HeadquartersProps) {
           <section className={css.handoffs} key={selected.chat.id}>
             <div className={css.heading}><h2>{t('tasks')}</h2>
               <TaskArchiveAction chat={selected.chat} bots={directory?.bots ?? []} connected={connected}
+                activity={chats.snapshot?.activities.find(item => item.chatId === selected.chat.id)} actions={props.archiveActions}
                 room copyText={props.copyText} t={t} />
               <button type="button" onClick={handoffs.top}>{t('top')}</button>
               <button type="button" onClick={handoffs.bottom}>{t('bottom')}</button></div>

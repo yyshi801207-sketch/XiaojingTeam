@@ -1,14 +1,16 @@
-/** Completed member messages retain their identity across live and durable history. */
+/** Group replies and finance connection notices retain their recorded author in chat. */
 import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
 import type { MessageSourceMap, UserMessage } from '@deepseek-ai/dsh-llm/types'
 import type { SessionEventLike } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { ConversationLocation, ConversationNodeDefinition } from '@deepseek-ai/dsh-client-ui-conversation/client'
 export type {} from '../chats-messages.ts'
 
-/** Immutable member identity and content from the durable relay message. */
+type RelaySource = MessageSourceMap['katcats-group-relay' | 'katcats-group-finance-connected']
+
+/** Immutable author identity and content from the durable group message. */
 export interface ChatRelayData {
   readonly messageId: MessageId
-  readonly source: MessageSourceMap['katcats-group-relay']
+  readonly source: RelaySource
   readonly text: string
   readonly time: number
   readonly consumed: boolean
@@ -16,7 +18,7 @@ export interface ChatRelayData {
 
 declare module '@deepseek-ai/dsh-client-ui-chat/client' {
   interface ChatNodeDataMap {
-    /** A real member result carried as a UserMessage, never an assistant impersonation. */
+    /** A member reply or a finance connection notice with its recorded author. */
     'katcats-relay': ChatRelayData
   }
 }
@@ -26,16 +28,20 @@ interface RelayState extends ChatRelayData {
   readonly location: ConversationLocation
 }
 
-function relayMessage(event: SessionEventLike): { message: UserMessage; consumed: boolean } | null {
-  if (event.type === 'user/message' && event.surfaceOp === 'append' && event.data.source.kind === 'katcats-group-relay') {
+function isRelay(message: UserMessage): message is UserMessage & { readonly source: RelaySource } {
+  return message.source.kind === 'katcats-group-relay' || message.source.kind === 'katcats-group-finance-connected'
+}
+
+function relayMessage(event: SessionEventLike): { message: UserMessage & { readonly source: RelaySource }; consumed: boolean } | null {
+  if (event.type === 'user/message' && event.surfaceOp === 'append' && isRelay(event.data)) {
     return { message: event.data, consumed: true }
   }
   if (event.type !== 'agent/inbox/spliced' || event.data.target !== 'next-step') return null
-  const messages = event.data.inserted.filter(message => message.source.kind === 'katcats-group-relay')
+  const messages = event.data.inserted.filter(isRelay)
   // Product writers enqueue each relay separately, including recovery and pause reordering.
   if (messages.length > 1) throw new Error('Katcats relay messages must use separate inbox splices')
   const message = messages[0]
-  return message === undefined ? null : { message, consumed: false }
+  return message?.source.kind !== 'katcats-group-relay' ? null : { message, consumed: false }
 }
 
 /** Member projection keyed by durable MessageId, including older pending relay history. */
@@ -48,7 +54,7 @@ export const chatRelayDefinition: ConversationNodeDefinition<RelayState> = {
   },
   start: (_context, match) => {
     const relay = relayMessage(match.event)
-    if (relay === null || relay.message.source.kind !== 'katcats-group-relay') throw new Error('Katcats relay start requires a relay message')
+    if (relay === null) throw new Error('Katcats relay start requires a group message')
     return {
       messageId: relay.message.id,
       source: relay.message.source,

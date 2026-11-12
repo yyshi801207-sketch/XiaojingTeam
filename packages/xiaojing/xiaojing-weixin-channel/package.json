@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-xiaojing-weixin-channel",
-  "description": "Katcats Weixin iLink channel, durable Agent session bridge, and encrypted image/document transfer",
+  "description": "Xiaojing Accounting Weixin iLink channel, durable Agent session bridge, and encrypted image/document transfer",
   "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"

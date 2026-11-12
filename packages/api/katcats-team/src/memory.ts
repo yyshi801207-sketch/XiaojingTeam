@@ -12,6 +12,7 @@ import type {} from './index.ts'
 import type {} from './chats.ts'
 import { containsMemorySecret, memoryDomainSpec, memoryScopeSchema, type MemoryState } from './memory-storage.ts'
 import { registerMemoryTools } from './memory-tools.ts'
+import { isOdooAdminBot } from './types.ts'
 import type {
   MemoryAuthor, MemoryDeleteValue, MemoryEditRequest, MemoryEntry, MemoryFrame, MemoryId,
   MemoryList, MemoryListRequest, MemoryMutationValue, MemorySaveRequest, MemoryScope,
@@ -105,6 +106,7 @@ export class KatcatsMemory extends TypertRemoteService {
       author: { kind: 'bot', botId: group.botId, sessionId: agent.id },
     }
     const bot = this.ctx.katcatsTeam.memberForSession(agent.id)
+    if (bot !== undefined && isOdooAdminBot(bot.id)) return undefined
     return bot === undefined ? undefined : {
       scope: { kind: 'bot', botId: bot.id }, author: { kind: 'bot', botId: bot.id, sessionId: agent.id }, teamWrite: bot.kind === 'main',
     }

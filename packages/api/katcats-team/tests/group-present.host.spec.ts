@@ -72,6 +72,30 @@ async function fixture(script: Parameters<typeof memoryFixture>[0]) {
 }
 
 describe('group final file registration', () => {
+  it('accepts an archive file submission only after the exact file is registered', async () => {
+    const task = { goal: 'Deliver the article', acceptance: ['Provide the finished article file'],
+      stage: 'Final delivery', next_step: 'Check the file', artifacts: ['article.md'] }
+    const h = await fixture([
+      routinePlan('plan'),
+      toolCallResponse('record', 'record_group_task', task),
+      write('write-article', 'article.md', 'ARCHIVE_ARTICLE'),
+      toolCallResponse('unregistered-file', 'record_group_task', { ...task, submit_delivery: true }),
+      present('present-article', 'article.md'),
+      toolCallResponse('registered-file', 'record_group_task', { ...task, submit_delivery: true }),
+      textResponse('The finished article is attached.'),
+    ])
+    await send(h.ctx, h.chat, 'Deliver the finished article.', 'archive-file')
+    const events = (await h.ctx.sessionController.inspect(h.workerA)).events
+    const archiveCalls = events.flatMap(event => event.type === 'tool/result'
+      && ['unregistered-file', 'registered-file'].includes(event.data.message.toolCallId)
+      ? [[event.data.message.toolCallId, event.data.message.isError]] : [])
+    expect(archiveCalls).toEqual([['unregistered-file', true], ['registered-file', false]])
+    const archive = (await h.ctx.katcatsChats.snapshot()).chats[0]!.tickets![0]!
+    expect(archive.state).toBe('delivered')
+    expect(archive.artifacts.map(path => basename(path))).toEqual(['article.md'])
+    await h.close()
+  })
+
   it('presents an existing second file with a routine decision and no unnecessary member calls or rewrites', async () => {
     const h = await fixture([
       routinePlan('plan-first'),

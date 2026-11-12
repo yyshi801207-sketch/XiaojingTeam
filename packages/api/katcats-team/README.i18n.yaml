@@ -12,20 +12,26 @@
   en: 5d7d0a06ea676c14
   zh: 48789149431449e2
 /katcats-team/table-of-contents:
-  en: 2f2950001f6231e6
-  zh: bc762a037e5d1c9d
+  en: 76e17282e5abfe4c
+  zh: fa65c670bf8a324f
 /katcats-team/configuration-and-ownership:
-  en: 5bb1de784fcd281c
-  zh: 294104754058bbe3
+  en: 47a5306bc8e14457
+  zh: dd25a98c301ca8a6
 /katcats-team/context-actions:
   en: 69b2a9f326e768a1
   zh: deb8b04c01e25caa
 /katcats-team/conversational-members:
-  en: 02980fd54c0a1f00
-  zh: 3879a6045689a5eb
+  en: 604751bc99b1c901
+  zh: 7e2e774a8c3a2fa6
 /katcats-team/group-conversations:
-  en: 5f60f19420695029
-  zh: 680b22b9663ef08c
+  en: 859273b67d1c49bb
+  zh: 506859200de298a3
+/katcats-team/finance-connectors:
+  en: bd8ba91a38278b0f
+  zh: cfc6cafbb5075980
+/katcats-team/finance-connectors/odoo-administration-and-ledger-setup:
+  en: bf52890894188f09
+  zh: f0f768d29ba5a68a
 /katcats-team/saved-memories:
   en: 5ad09d4dd7848006
   zh: 816844952c4b6ab8
@@ -102,8 +108,8 @@
   en: e3d8379b63322b55
   zh: f198c12be9844e96
 /katcats-team/known-limitations-and-deferred-work:
-  en: 4552fb76f42825f2
-  zh: 54e3c32f00ac4a2b
+  en: 70183dbd406ece34
+  zh: 31a1f8fd7923e988
 /katcats-team/known-limitations-and-deferred-work/dev-note:
   en: 0a1253c6f7b5e8b9
   zh: 9f56528562c7c914

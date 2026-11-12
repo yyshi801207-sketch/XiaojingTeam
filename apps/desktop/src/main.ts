@@ -14,7 +14,6 @@ import {
   powerMonitor,
   nativeImage,
   nativeTheme,
-  net,
   protocol,
   session,
   shell,
@@ -461,9 +460,14 @@ async function main(): Promise<void> {
     return {
       start: async () => {
         const ready = await host.start()
-        hostCookie = await authenticateWebHost(ready.url)
+        const cookie = await authenticateWebHost(ready.url)
+        hostCookie = cookie
         hostUrl = ready.url
-        welcomeBackend = await connectDesktopWelcome(ready.url, (input, init) => net.fetch(input, init), async () => (await session.defaultSession.cookies.get({ url: ready.url })).map(cookie => `${cookie.name}=${cookie.value}`).join('; '))
+        welcomeBackend = await connectDesktopWelcome(new URL('/', ready.url).href, (input, init) => {
+          const headers = new Headers(init?.headers)
+          headers.set('cookie', cookie)
+          return fetch(input, { ...init, headers, redirect: 'error' })
+        }, () => Promise.resolve(cookie))
         if (!katcatsDevelopment) {
           analyticsEnabled = await welcomeBackend.analyticsEnabled().catch(() => false)
           if (!reportedLaunch) { reportedLaunch = true; void track('desktop_app_launch', {}) }
@@ -726,7 +730,7 @@ async function main(): Promise<void> {
   })
   ipcMain.handle(PLATFORM_IPC.open, (event, page: unknown, bounds: unknown) => {
     const owner = assertMainApplication(event)
-    if (katcatsDevelopment) throw new Error('Katcats development: Platform account pages are disabled')
+    if (katcatsDevelopment) throw new Error('Xiaojing Accounting development: Platform account pages are disabled')
     if (page !== 'usage' && page !== 'top-up') throw new Error('Invalid Platform page')
     return platformView.open(owner, page, platformBounds(bounds))
   })

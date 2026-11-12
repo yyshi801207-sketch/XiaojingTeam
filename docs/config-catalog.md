@@ -503,7 +503,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-client-katcats-team`
 
 - `inject`: `storageDomain` · `sessionController` · `sessionTitle` · `sessionPersistence` · `agents` · `sessions` · `systemPrompt` · `workspaceRegistry` · `tools` · `agentDefaultModel`
-- `source`: [`packages/api/katcats-team/src/index.ts:40`](../packages/api/katcats-team/src/index.ts)
+- `source`: [`packages/api/katcats-team/src/index.ts:68`](../packages/api/katcats-team/src/index.ts)
 
 ```ts config-catalog
 /** Deployment-owned locations and first-use member labels. */
@@ -518,6 +518,10 @@ export interface Config {
   readonly ordinaryGroupName: string
   /** Initial label of the built-in group chat section. */
   readonly chatGroupName: string
+  /** Enable finance connectors in this product deployment. */
+  readonly financeConnectors?: boolean
+  /** Time budget for one Odoo JSON-2 request. */
+  readonly financeRequestTimeoutMs?: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-client-katcats-team -->
@@ -5026,7 +5030,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-xiaojing-weixin-channel`
 
 - `inject`: `connection` · `credentials` · `sessionController` · `agents` · `systemPrompt` · `tools` · `commands` · `permissionPresets` · `attachments` · `webServer`
-- `source`: [`packages/xiaojing/xiaojing-weixin-channel/src/index.ts:76`](../packages/xiaojing/xiaojing-weixin-channel/src/index.ts)
+- `source`: [`packages/xiaojing/xiaojing-weixin-channel/src/index.ts:77`](../packages/xiaojing/xiaojing-weixin-channel/src/index.ts)
 
 ```ts config-catalog
 /** Deployment tunables for network deadlines and reply delivery. */

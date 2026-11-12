@@ -2,7 +2,8 @@
 import { HarnessError } from '@deepseek-ai/dsh-llm'
 import type { BotId } from './types.ts'
 import type { ChatDeliveryId } from './chats-types.ts'
-import type { GroupReviewCandidate, GroupReviewPolicy, GroupReviewReceipt } from './group-review-types.ts'
+import type { GroupReviewCandidate, GroupReviewPolicy, GroupReviewReceipt, GroupReviewedOdooOperation } from './group-review-types.ts'
+import { groupReviewJson } from './group-review.ts'
 
 /** An actual member's declared responsibilities for the current owner request. */
 export interface GroupWorkPlan {
@@ -15,7 +16,7 @@ export interface GroupWorkPlan {
 const groupTools = new Set([
   'list_group_members', 'plan_group_work', 'request_group_member', 'set_group_roles', 'pass_group_turn',
   'remember', 'recall', 'forget', 'read_group_history', 'submit_group_review', 'report_group_blocker',
-  'record_group_task', 'find_group_tasks',
+  'record_group_task', 'find_group_tasks', 'accept_group_task',
 ])
 
 /**
@@ -30,6 +31,7 @@ export class GroupWorkGate {
   private businessAttempted = false
   private candidate: GroupReviewCandidate | undefined
   private receipt: GroupReviewReceipt | undefined
+  private unknownOperation = false
 
   constructor(private readonly required: boolean, private readonly eligible: readonly BotId[],
     private readonly options?: { readonly policy: 'review-v1'; readonly deliveryId: ChatDeliveryId }) {}
@@ -42,6 +44,9 @@ export class GroupWorkGate {
 
   /** Clear approval when a new review attempt is recorded, including one that later fails. */
   invalidateReview(): void { this.receipt = undefined }
+
+  /** Retain an uncertain external write even when the model later reports success. */
+  markUnknownOperation(): void { this.unknownOperation = true }
 
   /**
    * Save the member's declared work split; the tool call and result retain the decision in its Session.
@@ -80,7 +85,8 @@ export class GroupWorkGate {
    */
   beginReview(botId: BotId, candidate: GroupReviewCandidate): void {
     if (this.options === undefined || this.plan?.review === undefined || this.plan.review.reason === 'none'
-      || this.plan.review.reviewerBotId !== botId || !this.eligible.includes(botId)) {
+      || this.plan.review.reviewerBotId !== botId || !this.eligible.includes(botId)
+      || candidate.sources?.some(source => source.botId === botId)) {
       throw new HarnessError('Choose the independent reviewer recorded in this task plan.', 'KATCATS_CHAT_INVALID_REVIEW')
     }
     this.candidate = candidate
@@ -101,11 +107,27 @@ export class GroupWorkGate {
   }
 
   /**
+   * Admit only the external operation approved for this delivery, before human confirmation and dispatch.
+   * @param operation - Host-derived destination and normalized request body.
+   * @returns Why writing is blocked, or undefined for an exactly reviewed operation or legacy task.
+   */
+  operationDenial(operation: GroupReviewedOdooOperation): string | undefined {
+    if (this.options === undefined) return undefined
+    if (this.plan?.review?.reason !== 'data-change') return 'Record data-change review and obtain approval of the exact odoo_operation before writing.'
+    const denial = this.completionDenial()
+    if (denial !== undefined) return denial
+    if (this.candidate?.odooOperation === undefined || groupReviewJson(this.candidate.odooOperation) !== groupReviewJson(operation)) {
+      return 'This Odoo operation differs from the approved candidate. Review its exact destination, model, method, and parameters before writing.'
+    }
+    return undefined
+  }
+
+  /**
    * Refuse formal completion until required contributions and review are confirmed.
-   * @param finalText - when supplied, the proposed final response; reviewed candidate text must remain unchanged.
    * @returns a corrective instruction, or undefined when structural completion evidence is sufficient.
    */
-  completionDenial(finalText?: string): string | undefined {
+  completionDenial(): string | undefined {
+    if (this.unknownOperation) return 'An Odoo write has an unknown outcome. Inspect the actual records before retrying or claiming completion.'
     if (this.options === undefined) return undefined
     if (this.plan === undefined) {
       return this.required && this.businessAttempted
@@ -122,10 +144,6 @@ export class GroupWorkGate {
       return this.receipt?.verdict === 'changes_requested'
         ? 'Address the reviewer findings and request a new review of the revised candidate before final delivery.'
         : 'Request the recorded reviewer with review_candidate and obtain an actual approved review before final delivery.'
-    }
-    if (finalText !== undefined && this.candidate !== undefined && this.candidate.text !== null
-      && finalText.trim() !== this.candidate.text.trim()) {
-      return 'Deliver the exact reviewed text or submit the revised text for another independent review.'
     }
     return undefined
   }

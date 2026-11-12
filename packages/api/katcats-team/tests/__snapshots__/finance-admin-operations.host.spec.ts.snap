@@ -1,0 +1,18 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`durable Odoo administration writes > lists uncertain creation candidates and requires explicit tool confirmation to adopt one 1`] = `
+{
+  "detail": StringContaining "New Company",
+  "header": "核对未确认的管理操作",
+  "id": "odoo-admin-reconcile",
+  "options": [
+    {
+      "label": "确认认领记录",
+    },
+    {
+      "label": "取消",
+    },
+  ],
+  "question": "这些记录是否确实属于本次操作？确认后将其作为本次操作结果，不会重新创建。",
+}
+`;

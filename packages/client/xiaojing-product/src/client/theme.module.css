@@ -2,6 +2,7 @@
 body[data-xiaojing-product] {
   --sudo-brand: #ef254d;
   --sudo-brand-dark: #d8173e;
+  --sudo-brand-green: #12a489;
   --sudo-ink: #202124;
   --katcat-onboarding-paper: #fff;
   --katcat-onboarding-paper-raised: #fff;
@@ -96,7 +97,7 @@ body[data-xiaojing-product] {
 }
 
 body[data-xiaojing-product] [data-composer-primary] {
-  --dsw-alias-button-info-fill: #12a489;
+  --dsw-alias-button-info-fill: var(--sudo-brand-green);
   --dsw-alias-button-info-hover: #0f8b75;
 }
 

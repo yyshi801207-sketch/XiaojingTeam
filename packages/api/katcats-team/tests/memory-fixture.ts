@@ -58,10 +58,12 @@ class FixtureModels extends MockAdapter {
  * @param script - deterministic external model responses.
  * @param existingRoot - optional previously closed synthetic state to reopen.
  * @param config - explicit memory capacity overrides for parser and admission tests.
+ * @param teamConfig - optional product capabilities to load with the team.
  * @returns real product services, the scripted external adapter, and exact owned teardown.
  */
 export async function memoryFixture(
   script: ConstructorParameters<typeof MockAdapter>[0] = [], existingRoot?: string, config: Partial<MemoryConfig> = {},
+  teamConfig: { financeConnectors?: boolean } = {},
 ) {
   const root = existingRoot ?? await mkdtemp(join(tmpdir(), 'katcats-memory-'))
   if (existingRoot === undefined) roots.push(root)
@@ -76,7 +78,7 @@ export async function memoryFixture(
     ['agents'], ['loop'], ['default-model', { provider: 'fixture', model: 'fixture-model' }], ['fs', { cwd: root }],
     ['attachments', { dshHome: join(root, 'home') }], ['credentials', { path: join(root, 'credentials.yml'), watch: false }],
     ['connection'], ['commands'], ['uploads'], ['session-controller', { nativeOpen: false }],
-    ['team', { workspaceRoot: join(root, 'workspaces') }], ['chats', { workspaceRoot: join(root, 'workspaces'), relayLimit: 8 }],
+    ['team', { workspaceRoot: join(root, 'workspaces'), ...teamConfig }], ['chats', { workspaceRoot: join(root, 'workspaces'), relayLimit: 8 }],
     ['memory', config],
   ]
   await writeFile(configPath, JSON.stringify(rows.map(([name, config]) => ({ name: `cordis:${name}`, ...(config === undefined ? {} : { config }) }))))

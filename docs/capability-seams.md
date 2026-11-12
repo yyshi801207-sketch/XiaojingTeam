@@ -11,6 +11,7 @@ flowchart LR
   svc_katcatsTeam["ctx.katcatsTeam<br/>Katcats member directory"]
   svc_katcatsChats["ctx.katcatsChats<br/>Katcats group collaboration"]
   svc_katcatsMemory["ctx.katcatsMemory<br/>Katcats scoped memories"]
+  svc_xiaojingLedgerSetup["ctx.xiaojingLedgerSetup<br/>Xiaojing ledger setup and administration"]
   pkg_usage_accounting["usage-accounting"]
   svc_usageAccounting["ctx.usageAccounting<br/>Local request-time usage accounting"]
   pkg_client_ui_usage_accounting["client-ui-usage-accounting"]
@@ -348,6 +349,7 @@ flowchart LR
   pkg_client_katcats_team --> svc_katcatsChats
   pkg_client_katcats_team --> svc_katcatsMemory
   pkg_client_katcats_team --> svc_katcatsTeam
+  pkg_client_katcats_team --> svc_xiaojingLedgerSetup
   pkg_client_modules --> svc_clientModules
   pkg_client_product_analytics --> svc_productAnalytics
   pkg_client_ui_plugin_manager --> svc_pluginRegistryProbe
@@ -657,6 +659,7 @@ flowchart LR
   svc_xiaojingFinanceDomain --> pkg_xiaojing_finance_documents
   svc_xiaojingFinanceDomain --> pkg_xiaojing_finance_evidence
   svc_xiaojingFinanceEvidence --> pkg_xiaojing_finance_evidence
+  svc_xiaojingLedgerSetup --> pkg_client_katcats_team
   svc_xiaojingNativeBrowserSettings --> pkg_xiaojing_browser_control
   svc_xiaojingWeixinChannel --> pkg_client_ui_weixin_channel
   svc_fs -. event gate .-> pkg_fs_observation_policy
@@ -667,6 +670,7 @@ flowchart LR
 | `ctx.katcatsTeam` | `service` | [`client-katcats-team`](../packages/api/katcats-team) | - | [`client-katcats-team`](../packages/api/katcats-team) | - | Owns persistent Bot identities, logical groups, private Session bindings, and owner-only member settings in the isolated product composition. |
 | `ctx.katcatsChats` | `service` | [`client-katcats-team`](../packages/api/katcats-team) | - | [`client-katcats-team`](../packages/api/katcats-team) | - | Owns group membership, independent member execution Sessions, durable replies, and pause, continuation, and stop controls in the isolated product composition. |
 | `ctx.katcatsMemory` | `service` | [`client-katcats-team`](../packages/api/katcats-team) | - | [`client-katcats-team`](../packages/api/katcats-team) | - | Owns Bot, group, and team facts with owner-selected sharing and conversation-scoped model access in the isolated product composition. |
+| `ctx.xiaojingLedgerSetup` | `service` | [`client-katcats-team`](../packages/api/katcats-team) | - | [`client-katcats-team`](../packages/api/katcats-team) | - | Owns database connections, persisted company setup plans, initialization checkpoints, and administrative tools for the fixed finance assistants. |
 | `ctx.usageAccounting` | `core` | [`usage-accounting`](../packages/llm/usage-accounting) | - | [`client-ui-usage-accounting`](../packages/client/ui-usage-accounting) | - | Settles provider-reported usage under the actual request credential identity and serves redacted current-key monthly totals. |
 | `ctx.xiaojingBrowserControl` | `core` | [`xiaojing-browser-control`](../packages/xiaojing/xiaojing-browser-control) | - | [`xiaojing-browser-control`](../packages/xiaojing/xiaojing-browser-control) | - | Owns browser actions and their approval policy over the configured product browser. |
 | `ctx.xiaojingNativeBrowserSettings` | `core` | [`xiaojing-browser-control`](../packages/xiaojing/xiaojing-browser-control) | - | [`xiaojing-browser-control`](../packages/xiaojing/xiaojing-browser-control) | - | Owns per-browser permission, observed connection state, and verified settings-page navigation. |

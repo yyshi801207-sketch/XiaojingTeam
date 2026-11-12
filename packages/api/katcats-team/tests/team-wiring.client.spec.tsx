@@ -30,7 +30,8 @@ import type { SidebarEntity } from '../src/client/EntityMenu.tsx'
 import type { TeamRemote } from '../src/client/model.ts'
 import type { ChatRemote } from '../src/client/chat-model.ts'
 import type { MemoryRemote } from '../src/client/MemoryPanel.tsx'
-import type { ChatFrame, ChatId, ChatSnapshot, TeamChat } from '../src/chats-types.ts'
+import type { ChatFrame, ChatId, ChatSnapshot, GroupTicket, TeamChat } from '../src/chats-types.ts'
+import type { FinanceConnectorId } from '../src/finance-types.ts'
 import { ChatOverlay, type ChatOverlayInjected, type ChatOverlayProps } from '../src/client/ChatOverlay.tsx'
 import { ChatSettings, type ChatSettingsInjected } from '../src/client/ChatForms.tsx'
 import { ChatFolderInfo, type ChatFolderInfoProps } from '../src/client/ChatFolderInfo.tsx'
@@ -69,7 +70,7 @@ import { TeamOverlays } from '../src/client/Overlays.tsx'
 import { zh } from '../src/client/locales.ts'
 
 type OverlayTestProps = Pick<TeamOverlaysProps,
-  'useTeamUi' | 'close' | 'createBot' | 'createGroup' | 'renameGroup' | 'removeGroup' | 'renameEntity' | 'deleteEntity' | 'dismissNotice' | 't'>
+  'useTeamUi' | 'close' | 'createBot' | 'createGroup' | 'renameGroup' | 'removeGroup' | 'renameEntity' | 'deleteEntity' | 'acceptTask' | 'dismissNotice' | 't'>
 const OverlayUnderTest = TeamOverlays as (props: OverlayTestProps) => ReturnType<typeof TeamOverlays>
 
 const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
@@ -146,11 +147,15 @@ async function boot(initialSessions = sessionList(snapshot.bots), autoSnapshot =
     follow: async function* () { yield { type: 'snapshot', value: snapshot } },
     createBot: vi.fn(), updateBot: vi.fn(), deleteBot: vi.fn(), createGroup: vi.fn(), updateGroup: vi.fn(), moveGroup: vi.fn(), removeGroup: vi.fn(),
   }
-  const chatRemote: ChatRemote = {
+  const bindFinance = vi.fn<(chatId: ChatId, connectorId: FinanceConnectorId | null,
+    expectedBinding: FinanceConnectorId | null | undefined) => Promise<RemoteResult<void>>>()
+    .mockResolvedValue({ ok: true, value: undefined })
+  const chatRemote: ChatRemote & { bindFinance: typeof bindFinance } = {
     sendMessage: vi.fn(), cancelSession: vi.fn(),
     snapshot: vi.fn<ChatRemote['snapshot']>().mockResolvedValue({ ok: true, value: emptyChats }),
     follow: async function* () { yield { type: 'snapshot', value: emptyChats } },
     createChat: vi.fn(), updateChat: vi.fn(), deleteChat: vi.fn(), pause: vi.fn(), resume: vi.fn(), stop: vi.fn(),
+    continueTask: vi.fn(), completeTask: vi.fn(), bindFinance,
   }
   const session = {
     modelCatalog: vi.fn<() => Promise<RemoteResult<ModelCatalog>>>().mockResolvedValue({ ok: true,
@@ -185,11 +190,18 @@ async function boot(initialSessions = sessionList(snapshot.bots), autoSnapshot =
   const workspaceOpen = vi.fn()
   const pinSession = vi.fn<(sessionId: SessionId) => Promise<void>>().mockResolvedValue(undefined)
   const unpinSession = vi.fn<(sessionId: SessionId) => Promise<void>>().mockResolvedValue(undefined)
-  const disposeRemote = vi.fn(async () => { ctx.reflect.provide('remote.katcatsTeam', undefined); ctx.reflect.provide('remote.katcatsChats', undefined); ctx.reflect.provide('remote.katcatsMemory', undefined) })
+  const setupRemote = { follow: async function* () { yield null } }
+  const disposeRemote = vi.fn(async () => {
+    ctx.reflect.provide('remote.katcatsTeam', undefined)
+    ctx.reflect.provide('remote.katcatsChats', undefined)
+    ctx.reflect.provide('remote.katcatsMemory', undefined)
+    ctx.reflect.provide('remote.xiaojingLedgerSetup', undefined)
+  })
   const mountRemote = vi.fn(async () => {
     ctx.reflect.provide('remote.katcatsTeam', remote)
     ctx.reflect.provide('remote.katcatsChats', chatRemote)
     ctx.reflect.provide('remote.katcatsMemory', memoryRemote)
+    ctx.reflect.provide('remote.xiaojingLedgerSetup', setupRemote)
     return disposeRemote
   })
   ctx.provide('slots', slots as never)
@@ -211,7 +223,7 @@ async function boot(initialSessions = sessionList(snapshot.bots), autoSnapshot =
     return () => { listeners.delete(listener) }
   })
   ctx.provide('remote', { katcatsTeam: remote, katcatsChats: chatRemote, katcatsMemory: memoryRemote, session,
-    schedule, $on: remoteOn, $mount: mountRemote, $stream: vi.fn(() => ({})) } as never)
+    xiaojingLedgerSetup: setupRemote, schedule, $on: remoteOn, $mount: mountRemote, $stream: vi.fn(() => ({})) } as never)
   ctx.reflect.provide('remote.session', session)
   ctx.reflect.provide('remote.schedule', schedule)
   ctx.reflect.provide('remote.commands', { execute: vi.fn() })
@@ -332,6 +344,22 @@ describe('Katcats shell integration', () => {
       await expect(moving).rejects.toThrow('connection changed')
       expect(b.sidebar.hooks.directory.getSnapshot()).toMatchObject({ phase: 'loading', snapshot: withOrdinaryBot })
       expect(b.sidebar.hooks.chats.getSnapshot()).toMatchObject({ phase: 'loading', snapshot: withGroup })
+    } finally { await b.ctx.fiber.dispose() }
+  })
+
+  it('sends the prior binding slot when changing or clearing the group ledger from settings', async () => {
+    const b = await boot()
+    try {
+      const settings = b.entries.find(entry => entry.component === ChatSettings)!.inject as (id: SessionId) => ChatSettingsInjected
+      const finance = settings(groupChat.rootSessionId).finance
+      if (finance === undefined) throw new Error('Missing group finance actions')
+      const connectorId = 'selected-ledger' as FinanceConnectorId
+      await finance.bind(groupChat.id, connectorId)
+      await finance.bind(groupChat.id, null)
+      expect(b.chatRemote.bindFinance.mock.calls).toEqual([
+        [groupChat.id, connectorId, undefined],
+        [groupChat.id, null, undefined],
+      ])
     } finally { await b.ctx.fiber.dispose() }
   })
 
@@ -733,6 +761,81 @@ describe('Katcats shell integration', () => {
       await transport.cancel({ sessionId: groupChat.rootSessionId })
       expect(b.chatRemote.cancelSession).toHaveBeenCalledExactlyOnceWith({ sessionId: groupChat.rootSessionId })
       expect(b.registerTransport.mock.calls.some(([id]) => id === snapshot.bots[0]?.sessionId)).toBe(false)
+    } finally { await b.ctx.fiber.dispose() }
+  })
+
+  it('lets the owner select the exact delivery when a chat acceptance has multiple matches', async () => {
+    const b = await boot(sessionList([...snapshot.bots, { name: groupChat.name, sessionId: groupChat.rootSessionId }]), true, withGroup)
+    try {
+      b.sidebar.commands.openChat(groupChat.id)
+      const transport = b.registerTransport.mock.calls[0]![1]
+      const request = { sessionId: groupChat.rootSessionId,
+        requestId: 'accept-message' as Parameters<ChatRemote['sendMessage']>[0]['requestId'],
+        mode: 'queue' as const, content: [{ type: 'text' as const, text: '验收通过' }] }
+      const first = { taskId: 'first' as GroupTicket['id'], goal: 'First delivery', revision: 2 }
+      const second = { taskId: 'second' as GroupTicket['id'], goal: 'Second delivery', revision: 4 }
+      vi.mocked(b.chatRemote.sendMessage).mockResolvedValueOnce({ ok: true, value: { accepted: true,
+        taskAcceptance: { kind: 'choose', chatId: groupChat.id, candidates: [first, second] } } })
+      vi.mocked(b.chatRemote.completeTask).mockResolvedValueOnce({ ok: true, value: { chat: groupChat, snapshot: withGroup } })
+      await transport.prompt(request)
+      render(<OverlayUnderTest {...b.overlay} useTeamUi={bindSnapshotSelector(b.overlay.hooks.teamUi)} t={b.locale.bind('katcats.team')} />)
+      expect(screen.getByRole('dialog', { name: zh['archive.chatChoose'] })).toBeTruthy()
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: zh['archive.accept'] }).disabled).toBe(true)
+      fireEvent.click(screen.getByRole('radio', { name: second.goal }))
+      fireEvent.click(screen.getByRole('button', { name: zh['archive.accept'] }))
+      await waitFor(() => { expect(screen.queryByRole('dialog')).toBeNull() })
+      expect(b.chatRemote.completeTask).toHaveBeenCalledExactlyOnceWith(groupChat.id, second.taskId, second.revision, request.requestId)
+      expect(b.overlay.hooks.teamUi.getSnapshot().notice).toMatchObject({ key: 'archive.chatAccepted', name: second.goal })
+    } finally { await b.ctx.fiber.dispose() }
+  })
+
+  it('confirms a required review without a chat acceptance request and updates the task archive', async () => {
+    const task: GroupTicket = { version: 1, id: 'needs-review' as GroupTicket['id'], ownerId: ordinaryBot.id,
+      goal: 'Verify report', acceptance: ['Approved numbers'], stage: 'Reported', nextStep: 'Review', state: 'delivered',
+      humanReviewRequired: true, blocker: null, artifacts: [], messageIds: [], revision: 2 }
+    const delivered = { ...withGroup, revision: 2, chats: [{ ...groupChat, tickets: [task] }] }
+    const b = await boot(sessionList([...snapshot.bots, { name: groupChat.name, sessionId: groupChat.rootSessionId }]), true, delivered)
+    try {
+      const completed: GroupTicket = { ...task, state: 'completed', completedAt: 1, revision: 3 }
+      const chat = { ...groupChat, tickets: [completed] }
+      const saved = { ...delivered, revision: 3, chats: [chat] }
+      vi.mocked(b.chatRemote.completeTask).mockResolvedValueOnce({ ok: true, value: { chat, snapshot: saved } })
+      b.sidebar.commands.openChat(groupChat.id)
+      render(<OverlayUnderTest {...b.overlay} useTeamUi={bindSnapshotSelector(b.overlay.hooks.teamUi)} t={b.locale.bind('katcats.team')} />)
+      expect(screen.getByRole('dialog', { name: zh['archive.chatReview'] })).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: zh['archive.accept'] }))
+      await waitFor(() => { expect(screen.queryByRole('dialog')).toBeNull() })
+      expect(b.chatRemote.completeTask).toHaveBeenCalledExactlyOnceWith(groupChat.id, task.id, task.revision, undefined)
+      expect(b.sidebar.hooks.chats.getSnapshot().snapshot).toEqual(saved)
+      expect(b.overlay.hooks.teamUi.getSnapshot().notice).toMatchObject({ key: 'archive.chatAccepted', name: task.goal })
+    } finally { await b.ctx.fiber.dispose() }
+  })
+
+  it('prompts for a required review in its own group and waits for a new revision after dismissal', async () => {
+    const b = await boot(sessionList([...snapshot.bots, { name: groupChat.name, sessionId: groupChat.rootSessionId }]), true, withGroup)
+    try {
+      const task: GroupTicket = { version: 1, id: 'needs-review' as GroupTicket['id'], ownerId: ordinaryBot.id,
+        goal: 'Verify report', acceptance: ['Approved numbers'], stage: 'Reported', nextStep: 'Review', state: 'delivered',
+        humanReviewRequired: true, blocker: null, artifacts: [], messageIds: [], revision: 2, financeLabel: 'Demo ledger' }
+      const delivered = { ...withGroup, revision: 2, chats: [{ ...groupChat, tickets: [task] }] }
+      controls.entries[1]!.update({ type: 'replace', value: delivered })
+      render(<OverlayUnderTest {...b.overlay} useTeamUi={bindSnapshotSelector(b.overlay.hooks.teamUi)} t={b.locale.bind('katcats.team')} />)
+      expect(screen.queryByRole('dialog')).toBeNull()
+      act(() => { b.sidebar.commands.openChat(groupChat.id) })
+      expect(screen.getByRole('dialog', { name: zh['archive.chatReview'] })).toBeTruthy()
+      expect(screen.getByText(task.goal)).toBeTruthy()
+      expect(screen.getByText(task.financeLabel!)).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: zh['archive.chatReviewLater'] }))
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(b.chatRemote.completeTask).not.toHaveBeenCalled()
+      act(() => { controls.entries[1]!.update({ type: 'replace', value: { ...delivered, revision: 3 } }) })
+      expect(screen.queryByRole('dialog')).toBeNull()
+      act(() => { controls.entries[1]!.update({ type: 'replace', value: { ...delivered, revision: 4,
+        chats: [{ ...groupChat, tickets: [{ ...task, revision: 3 }] }] } }) })
+      expect(screen.getByRole('dialog', { name: zh['archive.chatReview'] })).toBeTruthy()
+      act(() => { b.connection.set('disconnected') })
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(b.chatRemote.completeTask).not.toHaveBeenCalled()
     } finally { await b.ctx.fiber.dispose() }
   })
 
@@ -1323,6 +1426,7 @@ describe('Katcats shell integration', () => {
         bot: updated, snapshot: { ...supported, revision: 2, bots: [updated] },
       } })
       const settingsProps = { sessionId: base.sessionId, useDirectory: bindSnapshotSelector(b.settings.hooks.directory),
+        useFinanceSetup: bindSnapshotSelector(b.settings.hooks.financeSetup), setupDatabase: b.settings.setupDatabase,
         useConnection: bindSnapshotSelector(b.connection), useTabInfo: () => ({ tab: { visible: true } }), renderFactorySlot: () => null,
         useProjection: projection, save: b.settings.save, t } as BotSettingsProps
       render(<BotSettings {...settingsProps} />)
@@ -1351,6 +1455,7 @@ describe('Katcats shell integration', () => {
             { id: 'openai-codex', name: 'ChatGPT', models: [{ id: 'gpt-fixture', name: 'GPT fixture' }] },
           ] }
         const settingsProps = { sessionId: main.sessionId, useDirectory: bindSnapshotSelector(b.settings.hooks.directory),
+          useFinanceSetup: bindSnapshotSelector(b.settings.hooks.financeSetup), setupDatabase: b.settings.setupDatabase,
           useConnection: bindSnapshotSelector(b.connection), useTabInfo: () => ({ tab: { visible: true } }), renderFactorySlot: () => null,
           useProjection: () => ({ next: available.default }), save: b.settings.save, t: b.locale.bind('katcats.team') } as BotSettingsProps
         render(<BotSettings {...settingsProps} />)

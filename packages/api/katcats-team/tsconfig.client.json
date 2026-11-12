@@ -9,6 +9,8 @@
     "src/client/**/*.ts",
     "src/client/**/*.tsx",
     "src/types.ts",
+    "src/finance-types.ts",
+    "src/finance-setup-types.ts",
     "src/avatar-palette.ts",
     "src/chats-types.ts",
     "src/chats-task-events.ts",
@@ -85,6 +87,9 @@
     },
     {
       "path": "../../client/ui-deliverables/tsconfig.client.json"
+    },
+    {
+      "path": "../../xiaojing/xiaojing-visualize/tsconfig.client.json"
     },
     {
       "path": "../../client/ui-chat/tsconfig.client.json"

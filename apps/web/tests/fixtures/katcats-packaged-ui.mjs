@@ -85,7 +85,7 @@ export async function verifyPackagedKatcatsBrowser({ loginUrl, directory, enviro
       assert.equal(entry?.state, 2, id + ' must actually activate, not merely be enabled')
     }
     assert.equal(before.modelCalls, 0)
-    assert.equal(before.bots, 1, 'Every smoke must start with only the fresh main Bot')
+    assert.equal(before.bots, 3, 'A fresh Xiaojing team starts with the main Bot and two built-in assistants')
     assert.equal(before.chats, 0)
     const cleanComposer = async (kind, placeholder) => {
       const editor = page.getByRole('textbox', { name: placeholder, exact: true })
@@ -235,19 +235,30 @@ export async function verifyPackagedKatcatsBrowser({ loginUrl, directory, enviro
     checks.push('new group creation defaults to sixteen total member task starts per round')
     await page.setViewportSize({ width: 1440, height: 1080 })
     const groupSettings = page.locator('[data-sidebar-right-panel][data-sidebar-right-open]:visible')
+    const groupSection = name => groupSettings.locator('form > details > summary').filter({
+      has: page.getByText(name, { exact: true }),
+    })
+    const openGroupSection = async name => {
+      const summary = groupSection(name)
+      if (!await summary.evaluate(element => element.parentElement.open)) await summary.click()
+    }
+    const basicInformation = groupSettings.getByRole('region', { name: '基本信息', exact: true })
+    await basicInformation.getByRole('heading', { name: '基本信息', exact: true }).waitFor({ state: 'visible' })
+    assert.equal(await basicInformation.getByLabel('群聊名称', { exact: true }).inputValue(), chatName)
+    assert.equal(await groupSection('基本信息').count(), 0, 'Basic information has no collapse control')
+    for (const name of ['任务档案', '成员与分工', '群内职责', '协作规则', '成员权限', '工作资料']) {
+      const summary = groupSection(name)
+      await summary.waitFor({ state: 'visible' })
+      assert.equal(await summary.evaluate(element => element.parentElement.open), false)
+    }
+    await openGroupSection('成员权限')
+    await openGroupSection('协作规则')
     const batchPermissions = groupSettings.getByRole('group', { name: '统一设置成员权限', exact: true })
     const batchPicker = batchPermissions.getByRole('button', { name: /^所有成员权限/u })
     await batchPicker.waitFor({ state: 'visible' })
     assert.equal(await groupSettings.getByRole('switch', { name: '显示交接记录与状态', exact: true })
       .getAttribute('aria-checked'), 'true')
-    for (const name of ['基本信息', '成员与分工', '协作规则', '工作资料', '统一设置成员权限']) {
-      const weight = await groupSettings.getByRole('heading', { name, exact: true })
-        .evaluate(element => Number(getComputedStyle(element).fontWeight))
-      assert(weight >= 600, name + ' must read as a section heading')
-    }
-    assert(await groupSettings.getByRole('group', { name: '群内职责', exact: true }).locator('legend')
-      .evaluate(element => Number(getComputedStyle(element).fontWeight)) >= 600)
-    checks.push('group settings section headings are bold and handoff records are enabled by default')
+    checks.push('group settings keep basic information visible while other sections start collapsed and expand independently')
     for (const name of names) {
       await groupSettings.getByRole('group', { name: name + '的群内权限', exact: true })
         .getByRole('button', { name: /工作区内修改/u }).waitFor({ state: 'visible' })
@@ -275,6 +286,7 @@ export async function verifyPackagedKatcatsBrowser({ loginUrl, directory, enviro
     checks.push('bulk group permissions leave both members’ private chat permissions unchanged')
     await page.getByRole('region', { name: '群聊', exact: true }).getByRole('button', { name: chatName, exact: true }).click()
     await cleanComposer('group-returned', '主人，这次让我们一起完成什么？')
+    await openGroupSection('成员权限')
     await page.locator('[data-sidebar-right-panel][data-sidebar-right-open]:visible')
       .getByRole('group', { name: '统一设置成员权限', exact: true })
       .getByRole('button', { name: /^所有成员权限.*仅可查看/u }).waitFor({ state: 'visible' })
@@ -294,9 +306,10 @@ export async function verifyPackagedKatcatsBrowser({ loginUrl, directory, enviro
     assert.equal(startedQuestion.question.phase, 'answer')
     assert.notEqual(startedQuestion.question.sessionId, startedQuestion.question.rootSessionId)
     assert.notEqual(startedQuestion.question.sessionId, startedQuestion.question.privateSessionId)
-    const questionCard = page.locator('[data-katcats-question]')
+    const questionCard = page.getByRole('dialog', { name: /^来自.+的问题$/u })
     await questionCard.getByText('合成验收：请选择群成员交付方式。', { exact: true }).waitFor({ state: 'visible' })
     assert.equal(await questionCard.count(), 1)
+    assert.equal(await questionCard.evaluate(dialog => dialog.parentElement?.parentElement === document.body), true)
     await questionCard.getByRole('radio', { name: '提交原成员', exact: true }).click()
     await questionCard.getByRole('button', { name: '提交', exact: true }).click()
     const answeredQuestion = await waitForQuestionOutcome('answered')
@@ -329,6 +342,7 @@ export async function verifyPackagedKatcatsBrowser({ loginUrl, directory, enviro
     await waitForCards(seeded.taskCount, seeded.handoffCount)
     await page.getByText(seeded.sentinel, { exact: true }).waitFor({ state: 'visible' })
     checks.push('persisted synthetic lifecycle events render two task cards and one full handoff beside ordinary chat')
+    await openGroupSection('协作规则')
     const handoffToggle = groupSettings.getByRole('switch', { name: '显示交接记录与状态', exact: true })
     const waitForAutomaticDisplaySave = async checked => {
       await groupSettings.locator(`[role="switch"][aria-label="显示交接记录与状态"][aria-checked="${checked}"]:not(:disabled)`)
@@ -344,6 +358,7 @@ export async function verifyPackagedKatcatsBrowser({ loginUrl, directory, enviro
     await page.getByRole('region', { name: '未分组', exact: true }).getByRole('button', { name: names[0], exact: true }).click()
     await cleanComposer('private-after-display-change', '主人，有什么需要我帮忙的？')
     await page.getByRole('region', { name: '群聊', exact: true }).getByRole('button', { name: chatName, exact: true }).click()
+    await openGroupSection('协作规则')
     await handoffToggle.waitFor({ state: 'visible' })
     assert.equal(await handoffToggle.getAttribute('aria-checked'), 'false', 'Group display choice must survive settings navigation')
     await waitForCards(0, 0)
@@ -353,7 +368,7 @@ export async function verifyPackagedKatcatsBrowser({ loginUrl, directory, enviro
     await waitForCards(seededWhileHidden.taskCount, seededWhileHidden.handoffCount)
     await page.getByText(seeded.sentinel, { exact: true }).waitFor({ state: 'visible' })
     checks.push('handoff toggle saves automatically, hides existing and subsequent records, stays off on navigation and restores all cards without hiding chat')
-    await groupSettings.getByRole('heading', { name: '协作规则', exact: true }).scrollIntoViewIfNeeded()
+    await groupSection('协作规则').scrollIntoViewIfNeeded()
     await page.screenshot({ path: join(directory, '04-group-display-settings.png'), animations: 'disabled' })
     const pauseResponse = await page.request.post(origin + '/katcats-packaged-ui-queue')
     assert.equal(pauseResponse.status(), 200)
@@ -399,7 +414,7 @@ export async function verifyPackagedKatcatsBrowser({ loginUrl, directory, enviro
     await page.screenshot({ path: join(directory, '06-mixed-folder-count.png'), animations: 'disabled' })
     after = await probe()
     assert.equal(after.modelCalls, 0, 'UI boot and entity creation must make zero model calls')
-    assert.equal(after.bots, 1 + paddingNames.length + names.length)
+    assert.equal(after.bots, before.bots + paddingNames.length + names.length)
     assert.equal(after.chats, 2)
     assert.deepEqual(pageErrors, [])
     assert.deepEqual(consoleErrors, [])

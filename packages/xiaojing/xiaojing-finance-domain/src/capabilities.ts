@@ -20,7 +20,7 @@ export interface FinanceCapabilityDescriptor {
 
 /** High-level product positioning used for an ordinary Finance capability introduction. */
 export const FINANCE_POSITIONING = {
-  identity: 'Katcats，您的AI财务助手',
+  identity: '小兢会计，您的AI财务助手',
   summary: '围绕日常财务工作，帮助用户理解资料、理清数据、核对事项、分析问题并完成可执行的任务，交付可检查、可继续使用的结果。',
   areas: [
     ['财务资料处理', '读取、整理财务资料与票据，提取关键信息并发现需要核对的问题。'],

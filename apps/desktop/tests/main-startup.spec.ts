@@ -5,6 +5,7 @@ import type { IpcMainInvokeEvent } from 'electron'
 import { join } from 'node:path'
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { createServer } from 'node:http'
 import type { MenuItemConstructorOptions, MessageBoxOptions } from 'electron'
 import { DESKTOP_IPC, XIAOJING_DESKTOP_IPC, type DesktopUpdateState } from '../src/ipc.ts'
 import { MANDATORY_IPC } from '../src/mandatory-update-ipc.ts'
@@ -13,11 +14,12 @@ import { DesktopHostFatalError, DesktopHostUncleanExitError } from '../src/host-
 import { en, zh } from '../src/locale.ts'
 import { DesktopUpdatePreparationError } from '../src/update-error.ts'
 import { writeCrashReport } from '../src/crash-report.ts'
+import type { connectDesktopWelcome } from '../src/welcome-backend.ts'
 
 type InvokeEvent = { sender?: unknown; senderFrame: { url: string } }
 type InvokeHandler = (event: InvokeEvent, ...args: unknown[]) => unknown
 
-vi.mock('../src/web-document.ts', () => ({ authenticateWebHost: async () => 'test-cookie', serveWebDocument: vi.fn(), forwardWebRequest: vi.fn() }))
+vi.mock('../src/web-document.ts', () => ({ authenticateWebHost: async () => harness.hostCookie, serveWebDocument: vi.fn(), forwardWebRequest: vi.fn() }))
 // Report persistence has its own unit tests; here it resolves within microtasks so the fatal
 // dialog never outlives the test that triggered it.
 vi.mock('../src/crash-report.ts', async importOriginal => ({
@@ -28,9 +30,9 @@ vi.mock('../src/crash-report.ts', async importOriginal => ({
 vi.mock('../src/xiaojing-product.ts', () => ({
   XIAOJING_IDENTITY: {
     appId: 'ai.xiaojing.accounting.team.desktop',
-    productName: '小兢Bot',
+    productName: '小兢财务',
     productVersion: '1.0.0',
-    shortcutName: '小兢Bot',
+    shortcutName: '小兢财务',
   },
   assertXiaojingDesktopClientBuild: vi.fn(),
   initializeXiaojingApplication: vi.fn(() => ({
@@ -60,6 +62,8 @@ const harness = await vi.hoisted(async () => {
   let windowFailure: Error | undefined
   const powerMonitor = new EventEmitter()
   const hosts: FakeHost[] = []
+  const welcomeConnections: Parameters<typeof connectDesktopWelcome>[] = []
+  let hostCookie = 'test-cookie'
   const handlers = new Map<string, InvokeHandler>()
   let pluginsEnabled = false
   let prepareUpdate: (() => Promise<boolean>) | undefined
@@ -223,6 +227,9 @@ const harness = await vi.hoisted(async () => {
   return {
     failWindow(error: Error) { windowFailure = error },
     windows, hosts, handlers, app, FakeWindow, FakeHost, powerMonitor, nativeTheme, analytics,
+    welcomeConnections,
+    get hostCookie() { return hostCookie },
+    set hostCookie(value: string) { hostCookie = value },
     trays, FakeTray, backgroundNotice, shellDialog,
     menu, popup, socketHeaders: vi.fn(), loginShell, readLoginShell, updateCheck, updateDownload, updateInstall,
     platformDispose,
@@ -272,6 +279,8 @@ const harness = await vi.hoisted(async () => {
     reset() {
       accountListener = undefined
       windows.length = 0; hosts.length = 0; handlers.clear(); app.removeAllListeners()
+      welcomeConnections.length = 0
+      hostCookie = 'test-cookie'
       trays.length = 0
       backgroundNotice.markerPath = undefined
       shellDialog.isOpen = false
@@ -396,17 +405,20 @@ vi.mock('../src/platform-view.ts', async importOriginal => ({
   },
 }))
 vi.mock('../src/welcome-backend.ts', () => ({
-  connectDesktopWelcome: async () => ({
-    analyticsEnabled: async () => harness.analyticsEnabled,
-    report: harness.analytics,
-    readLocalePreference: async () => {
-      const value = await (await harness.hosts.at(-1)!.fetch()).json() as { localePreference: string | null }
-      return value.localePreference
-    },
-    read: async (): Promise<unknown> => (await harness.hosts.at(-1)!.fetch()).json() as Promise<unknown>,
-    save: async () => ({ ok: true }),
-    account: { watch: harness.watchAccount, state: async () => ({ status: 'signed-out', attempt: null }) },
-  }),
+  connectDesktopWelcome: async (...args: Parameters<typeof connectDesktopWelcome>) => {
+    harness.welcomeConnections.push(args)
+    return {
+      analyticsEnabled: async () => harness.analyticsEnabled,
+      report: harness.analytics,
+      readLocalePreference: async () => {
+        const value = await (await harness.hosts.at(-1)!.fetch()).json() as { localePreference: string | null }
+        return value.localePreference
+      },
+      read: async (): Promise<unknown> => (await harness.hosts.at(-1)!.fetch()).json() as Promise<unknown>,
+      save: async () => ({ ok: true }),
+      account: { watch: harness.watchAccount, state: async () => ({ status: 'signed-out', attempt: null }) },
+    }
+  },
 }))
 
 function configureTestAuthPopup(allow: boolean): void {
@@ -482,6 +494,71 @@ afterEach(async () => {
 })
 
 describe('desktop main startup', () => {
+  it('keeps native HTTP and stream credentials scoped to each Host across restarts', async () => {
+    const received: string[] = []
+    const server = createServer((request, response) => {
+      const cookie = request.headers.cookie ?? ''
+      received.push(cookie)
+      if (!['session=first-host', 'session=replacement-host'].includes(cookie)) {
+        response.writeHead(401).end()
+        return
+      }
+      response.end('authenticated')
+    })
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    const address = server.address()
+    if (address === null || typeof address === 'string') throw new Error('missing HTTP listener')
+    const origin = `http://127.0.0.1:${String(address.port)}`
+    try {
+      harness.hostCookie = 'session=first-host'
+      await import('../src/main.ts')
+      await harness.preparing.promise
+      harness.prepared.resolve()
+      await harness.hostStarted.promise
+      const host = harness.hosts[0]!
+      host.url = `${origin}/?token=first-host`
+      host.ready.resolve()
+      await Promise.resolve(invoke(DESKTOP_IPC.boot))
+      const first = harness.welcomeConnections[0]!
+      expect(first[0]).toBe(`${origin}/`)
+      expect(await first[2]!()).toBe('session=first-host')
+
+      harness.dialog.showMessageBox.mockResolvedValueOnce({ response: 0 })
+      const preparing = harness.prepareUpdate()
+      await host.stopping.promise
+      host.exited.resolve()
+      await expect(preparing).resolves.toBe(true)
+      harness.hostCookie = 'session=replacement-host'
+      const restarted = harness.nextHostStart()
+      harness.publishUpdate({ phase: 'error', version: '1.0.1-nightly.1', failedOperation: 'install', message: 'Installer failed' })
+      await restarted
+      const replacement = harness.hosts[1]!
+      replacement.url = `${origin}/?token=replacement-host`
+      replacement.ready.resolve()
+      await Promise.resolve(invoke(DESKTOP_IPC.boot))
+      const next = harness.welcomeConnections[1]!
+      expect(next[0]).toBe(`${origin}/`)
+      expect(await first[2]!()).toBe('session=first-host')
+      expect(await next[2]!()).toBe('session=replacement-host')
+
+      const { connectDesktopWelcome: connect } = await vi.importActual<typeof import('../src/welcome-backend.ts')>('../src/welcome-backend.ts')
+      vi.useRealTimers()
+      await connect(...first)
+      await connect(...next)
+      const response = await first[1](`${origin}/api/settings/describe`, {
+        method: 'POST', headers: { cookie: 'stale=' + 'x'.repeat(20_000) },
+      })
+      expect(await response.text()).toBe('authenticated')
+      expect(received).toEqual(['session=first-host', 'session=replacement-host', 'session=first-host'])
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close(error => { if (error) reject(error); else resolve() })
+        server.closeAllConnections()
+      })
+      vi.useFakeTimers()
+    }
+  })
+
   it('keeps Katcats development away from installed protocols, account watchers and release operations', async () => {
     harness.app.isPackaged = false
     vi.stubEnv('KATCATS_DEV_MODE', '1')
@@ -739,8 +816,8 @@ describe('desktop main startup', () => {
     await vi.advanceTimersByTimeAsync(0)
     const zh = locale === 'zh-CN'
     expect(harness.dialog.showMessageBox).toHaveBeenLastCalledWith(expect.objectContaining({
-      type: 'info', title: zh ? '关于 小兢Bot' : 'About 小兢Bot',
-      message: zh ? '小兢Bot' : '小兢Bot',
+      type: 'info', title: zh ? '关于 小兢财务' : 'About 小兢财务',
+      message: zh ? '小兢财务' : '小兢财务',
       detail: `${zh ? '版本' : 'Version'} V1.0.0`, buttons: [zh ? '确定' : 'OK'], cancelId: 0,
     }))
     // A dialog that cannot open is logged, not surfaced as an unhandled rejection.
@@ -1161,7 +1238,7 @@ describe('desktop main startup', () => {
     expect(() => handler(event, 'application', NaN, 34)).toThrow('invalid popup request')
     const application = handler(event, 'application', 48, 34)
     expect(harness.menu.buildFromTemplate.mock.lastCall![0].map(item => item.label ?? item.type)).toEqual([
-      '关于 小兢Bot', 'separator', '退出 小兢Bot',
+      '关于 小兢财务', 'separator', '退出 小兢财务',
     ])
     expect(harness.popup.mock.lastCall![0]).toMatchObject({ window, x: 48, y: 34 })
     expect(harness.popup.mock.lastCall![0].callback).toBeTypeOf('function')
@@ -1194,7 +1271,7 @@ describe('desktop main startup', () => {
       .find(items => items.some(item => item.role === 'editMenu'))
     if (template === undefined) throw new Error('application menu missing')
     expect(template.map(describeItem)).toEqual(platform === 'darwin'
-      ? ['小兢Bot', en.fileMenu, 'editMenu', 'windowMenu']
+      ? ['小兢财务', en.fileMenu, 'editMenu', 'windowMenu']
       : ['Application', 'editMenu'])
     const application = template[0]!.submenu as MenuItemConstructorOptions[]
     expect(application.filter(item => item.visible !== false).map(describeItem)).toEqual(platform === 'darwin'

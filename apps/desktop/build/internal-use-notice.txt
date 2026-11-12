@@ -1,9 +1,9 @@
-小兢Bot
+小兢财务
 开源与使用说明
 
 发布方：瑞华云数豆科技
 
-小兢Bot 是基于 DeepSeek Harness 二次开发的独立桌面智能体，提供界面、品牌及办公场景扩展，不是 DeepSeek 官方产品，也不代表底层框架由瑞华云数豆科技开发。
+小兢财务 是基于 DeepSeek Harness 二次开发的独立桌面智能体，提供界面、品牌及办公场景扩展，不是 DeepSeek 官方产品，也不代表底层框架由瑞华云数豆科技开发。
 
 DeepSeek Harness 使用 MIT License。其版权声明、MIT License 全文及第三方依赖声明会随应用安装在 legal 目录中。
 

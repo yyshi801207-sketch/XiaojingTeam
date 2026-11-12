@@ -1,0 +1,36 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`fixed assistant administration context > isolates legacy history and saved memories before the first scoped request of both assistants 1`] = `
+[
+  {
+    "content": [
+      {
+        "text": "The administration database or account changed, or earlier history had no verified database identity. Previous conversation history is retained in the audit log but is excluded from this request. Do not infer previous company names, record IDs, permissions, drafts or unfinished operations. Use the current database context and current user request.",
+        "type": "text",
+      },
+    ],
+    "source": "system-prompt",
+  },
+  {
+    "content": [
+      {
+        "text": "Inspect the currently configured database.",
+        "type": "text",
+      },
+    ],
+    "source": "user",
+  },
+  {
+    "content": [
+      {
+        "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.
+
+Current Odoo administration connection: {"version":1,"connection":{"url":"https://admin-context.example","database":"first_database","databaseUuid":"a0e86794-f5ca-4777-9e1b-6373300cae11","userId":17}}
+Use only this database and account. Resolve company, user, group and accounting record IDs in this database before operating. If no connection is configured, ask the user to connect in this assistant’s settings. Never reuse another database’s records or permissions.",
+        "type": "text",
+      },
+    ],
+    "source": "runtime-context",
+  },
+]
+`;

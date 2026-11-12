@@ -63,7 +63,7 @@ it('requires one signing preflight before building, then records only the comple
   expect(stages.at(-1)).toBe('exec tsx scripts/smoke-packaged-runtime.ts')
   expect(copyWindowsInstallerDelivery).toHaveBeenCalledOnce()
   expect(vi.mocked(copyWindowsInstallerDelivery).mock.calls[0]?.[0])
-    .toBe(join(desktopTargetBuildPaths('win-x64').artifacts, 'XiaojingAccountingTeam-1.0.2-win-x64.exe'))
+    .toBe(join(desktopTargetBuildPaths('win-x64').artifacts, 'XiaojingAccountingTeam-1.1.0-win-x64.exe'))
   for (const call of run.run.mock.calls) {
     if (call[0].startsWith('run prepare:') || call[0].includes('smoke-packaged-runtime')) {
       expect(call[3].env).not.toHaveProperty('DSH_DESKTOP_WINDOWS_TOKEN_PIN')
@@ -113,7 +113,7 @@ it.each(['--unsigned', '--prepare-only'])('keeps %s hardware-free and creates no
   expect(stages.includes('exec tsx scripts/smoke-packaged-runtime.ts --unsigned')).toBe(mode === '--unsigned')
   if (mode === '--unsigned') {
     expect(vi.mocked(copyWindowsInstallerDelivery).mock.calls[0]?.[0])
-      .toBe(join(desktopTargetBuildPaths('win-x64').unsignedArtifacts, 'XiaojingAccountingTeam-1.0.2-win-x64-unsigned.exe'))
+      .toBe(join(desktopTargetBuildPaths('win-x64').unsignedArtifacts, 'XiaojingAccountingTeam-1.1.0-win-x64-unsigned.exe'))
   }
 })
 

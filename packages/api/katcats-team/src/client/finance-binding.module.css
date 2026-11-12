@@ -1,0 +1,359 @@
+.card {
+  --finance-ink: var(--dsw-alias-label-primary);
+  --finance-muted: var(--dsw-alias-label-secondary);
+  --finance-line: var(--dsw-alias-settings-card-stroke);
+  --finance-surface: color-mix(in srgb, var(--dsw-alias-settings-card-fill), var(--finance-ink) 6%);
+  --finance-inset: var(--dsw-alias-settings-card-fill);
+  --finance-accent: color-mix(in srgb, var(--finance-ink) 9%, transparent);
+
+  min-width: 0;
+  border: 0.5px solid var(--finance-line);
+  border-radius: var(--dsw-radius-lg);
+  background: var(--finance-surface);
+  color: var(--finance-ink);
+}
+
+.card[data-finance-state='reachable'] {
+  --finance-surface: var(--sudo-brand-green, #12a489);
+  --finance-ink: var(--dsw-alias-toast-label);
+  --finance-muted: var(--finance-ink);
+  --finance-line: color-mix(in srgb, var(--finance-ink) 25%, transparent);
+  --finance-inset: color-mix(in srgb, var(--dsw-static-neutral-bluish-1000) 6%, transparent);
+  --finance-accent: color-mix(in srgb, var(--dsw-static-neutral-bluish-1000) 10%, transparent);
+  --dsw-focus-ring-color: var(--finance-ink);
+}
+
+.card[data-finance-state='reachable'][data-finance-access='full'],
+.accountLogin > small[data-finance-access='full'] {
+  --finance-surface: #fe6238;
+}
+
+.card:is([data-finance-state='unreachable'], [data-finance-state='failed']) {
+  --finance-line: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 46%, var(--dsw-alias-settings-card-stroke));
+}
+
+.summary,
+.connectionActions,
+.actions,
+.feedback {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 14px;
+}
+
+summary.heading {
+  list-style: none;
+  cursor: pointer;
+  border-radius: var(--dsw-radius-lg);
+}
+
+summary.heading::-webkit-details-marker {
+  display: none;
+}
+
+summary.heading:hover {
+  background: color-mix(in srgb, var(--finance-ink) 5%, transparent);
+}
+
+.bindingCard summary.heading {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 7px;
+  padding: 10px 12px;
+}
+
+summary.heading:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color);
+  outline-offset: 2px;
+}
+
+.chevron {
+  flex: none;
+  color: var(--finance-muted);
+  transform: rotate(-90deg);
+}
+
+details[open] > .heading .chevron {
+  transform: none;
+}
+
+.title {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+.glyph {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--dsw-radius-sm);
+  background: var(--finance-accent);
+}
+
+.bindingCard .glyph {
+  width: 27px;
+  height: 27px;
+}
+
+.heading .status[data-tone] {
+  color: var(--finance-ink);
+}
+
+.bindingCard summary .status[data-tone] {
+  gap: 4px;
+  border: 0.5px solid var(--finance-line);
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 17px;
+}
+
+.bindingCard summary .status .chevron {
+  color: inherit;
+}
+
+.heading .status[data-tone='neutral'],
+.card[data-finance-state='reachable'] .status[data-tone] {
+  background: var(--finance-accent);
+}
+
+.status {
+  gap: 5px;
+}
+
+.body {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 0 14px 14px;
+}
+
+.bindingCard .body {
+  gap: 8px;
+  padding: 0 12px 10px;
+}
+
+.bindingCard .connectionActions {
+  gap: 4px;
+}
+
+.bindingCard .connectionActions > button {
+  padding-inline: 8px;
+  font-size: 11px;
+}
+
+.connectionActions > .actionIcon {
+  width: 28px;
+  padding: 0;
+}
+
+.bindingCard .connectionActions > .actionIcon[aria-expanded='true'] {
+  background: var(--finance-accent);
+}
+
+.connectionActions {
+  justify-content: flex-end;
+  gap: 6px;
+  margin-inline-start: auto;
+}
+
+.hint {
+  margin: 0;
+  color: var(--finance-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.current {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 8px;
+  border: 0.5px solid var(--finance-line);
+  border-radius: var(--dsw-radius-md);
+  background: var(--finance-inset);
+  color: var(--finance-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.provider {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 24px;
+  overflow: hidden;
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-toast-label);
+}
+
+.provider > img {
+  display: block;
+  flex: none;
+  width: 53px;
+  max-width: none;
+}
+
+.identity {
+  display: grid;
+  flex: 1 1 105px;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.identity > strong {
+  color: var(--finance-ink);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+}
+
+.connectionFacts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 3px 10px;
+  margin: 0;
+  padding-top: 8px;
+  border-top: 0.5px solid var(--finance-line);
+}
+
+.connectionFacts > dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--finance-ink);
+}
+
+.current > .connectionFacts {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  padding-top: 6px;
+}
+
+.current > .connectionFacts > dt {
+  font-size: 11px;
+}
+
+.accountLogin {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.accountLogin > bdi {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.accountLogin > small {
+  --finance-surface: var(--sudo-brand-green, #12a489);
+
+  margin-top: -1px;
+  background: var(--finance-surface);
+  color: var(--dsw-alias-toast-label);
+  border-color: color-mix(in srgb, currentColor 55%, transparent);
+}
+
+.bindingCard .accountLogin > small {
+  font-size: 11px;
+  padding-inline: 6px;
+}
+
+.verification {
+  display: grid;
+  grid-template-columns: max-content minmax(0, auto);
+  justify-content: end;
+  gap: 2px 8px;
+  margin: 0;
+  padding-top: 7px;
+  border-top: 0.5px solid var(--finance-line, var(--dsw-alias-settings-card-stroke));
+  color: var(--finance-muted, var(--dsw-alias-label-secondary));
+  font-size: 11px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.verification > dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.bindingCard .verification {
+  padding-top: 6px;
+}
+
+.bindingCard .verification > :is(dt, dd) {
+  white-space: nowrap;
+}
+
+.bindingCard .verification > dd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bindingControls,
+.picker {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.actions > :first-child {
+  flex: 1 1 150px;
+  min-width: 0;
+}
+
+.bindingCard .actions button[aria-haspopup='menu'] {
+  border-color: var(--dsw-alias-settings-card-stroke);
+  background: var(--dsw-alias-settings-card-fill);
+  color: var(--dsw-alias-label-primary);
+}
+
+.bindingCard .actions button[aria-haspopup='menu']:hover:not(:disabled) {
+  background: var(--dsw-alias-bg-module-platform);
+}
+
+.card[data-finance-state='reachable'] :is(.connectionActions, .actions, .feedback) > button {
+  color: var(--finance-ink);
+  border-color: var(--finance-line);
+}
+
+.card[data-finance-state='reachable'] :is(.connectionActions, .actions, .feedback) > button:hover:not(:disabled) {
+  background: var(--finance-accent);
+}
+
+.saved,
+.error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.saved {
+  color: color-mix(in srgb, var(--finance-ink) 65%, var(--dsw-alias-state-success-primary));
+}
+
+.error {
+  color: color-mix(in srgb, var(--finance-ink) 65%, var(--dsw-alias-state-error-primary));
+}
+
+.card[data-finance-state='reachable'] :is(.saved, .error, .picker > label) {
+  color: var(--finance-ink);
+}

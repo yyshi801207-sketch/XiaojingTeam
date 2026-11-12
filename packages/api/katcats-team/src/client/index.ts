@@ -21,8 +21,9 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceCategoryState } from '@deepseek-ai/dsh-client-ui-workspace/client'
-import type { BotId, CreateBotRequest, GroupId, TeamBot, TeamFrame, UpdateBotRequest } from '../types.ts'
+import { isOdooAdminBot, type BotId, type CreateBotRequest, type GroupId, type TeamBot, type TeamFrame, type UpdateBotRequest } from '../types.ts'
 import type { ChatId, ChatFrame, TeamChat } from '../chats-types.ts'
+import type { FinanceConnector, FinanceConnectorId } from '../finance-types.ts'
 import type { MemoryFrame } from '../memory-types.ts'
 import { remoteErrorOf, type RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import { TeamClientModel, TeamRequestSupersededError, type TeamRemote } from './model.ts'
@@ -31,6 +32,7 @@ import { createTeamUi } from './ui-state.ts'
 import { TeamSidebar, type TeamSidebarInjected } from './TeamSidebar.tsx'
 import { TeamOverlays, type TeamOverlaysInjected } from './Overlays.tsx'
 import { BotSettings, type BotSettingsInjected } from './BotSettings.tsx'
+import type { FinanceBindingActions } from './FinanceBinding.tsx'
 import { BotModelControl, type BotModelControlInjected, type BotSettingsRequest } from './BotModelControl.tsx'
 import { BotHeaderAction } from './BotHeaderAction.tsx'
 import { GroupRoomAction, type GroupRoomInjected } from './GroupRoom.tsx'
@@ -58,7 +60,7 @@ import { GroupTaskLifecycle } from './GroupTaskLifecycle.tsx'
 import { TASKS_NS, taskZh, taskEn } from './task-locales.ts'
 import { ChatApprovals, type ChatApprovalsInjected } from './ChatApprovals.tsx'
 import { readApprovalOperation } from './chat-approvals.ts'
-import { ChatQuestions, GroupQuestionPanel, type ChatQuestionsInjected } from './ChatQuestions.tsx'
+import { ChatQuestions, GroupQuestionPanel, installPrivateQuestionComposer, type ChatQuestionsInjected } from './ChatQuestions.tsx'
 import { createGroupQuestions, groupQuestionAvailable, retainGroupQuestion } from './chat-questions.ts'
 import { installGroupTransports } from './group-transports.ts'
 import { createGroupMessageFeedback } from './group-message-feedback.ts'
@@ -73,6 +75,7 @@ import { ScheduleList, ScheduleManager, type ScheduleViewsInjected } from './Sch
 import { SCHEDULE_NS, scheduleEn, scheduleZh } from './schedule-locales.ts'
 import { createMemberMentionSource, memberMentionRule, MemberMentionLabel } from './member-mentions.tsx'
 import { installTeamComposerPresentations } from './composer-presentations.ts'
+import { installFinancePage, type FinanceRemote, type FinanceSetupRemote } from './finance-page.tsx'
 import './user-message-theme.module.css'
 import type {} from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import type {} from '@deepseek-ai/dsh-schedule/client'
@@ -110,10 +113,11 @@ const UI_INJECT = [
 export async function apply(ctx: Context): Promise<void> {
   const dispose = await ctx.remote.$mount(katcatsRemote)
   ctx.effect(() => dispose, 'katcats-team: generated Remote')
-  await ctx.inject(UI_INJECT, mountUI)
+  const hasSetup = katcatsRemote.descriptors.some(descriptor => descriptor.namespace === 'xiaojingLedgerSetup')
+  await ctx.inject(hasSetup ? [...UI_INJECT, 'remote.xiaojingLedgerSetup'] : UI_INJECT, scope => mountUI(scope, hasSetup))
 }
 
-function mountUI(ctx: Context): void {
+function mountUI(ctx: Context, hasSetup: boolean): void {
   ctx.effect(() => {
     document.body.setAttribute('data-katcats-user-bubbles', '')
     return () => { document.body.removeAttribute('data-katcats-user-bubbles') }
@@ -122,13 +126,24 @@ function mountUI(ctx: Context): void {
   ctx.effect(() => ctx.locale.register('katcats.room', { zh: roomZh, en: roomEn }), 'katcats-team: room dictionaries')
   const t = ctx.locale.bind(NS)
   const remote = ctx.remote as ClientRemote & {
-    readonly katcatsTeam: TeamRemote
-    readonly katcatsChats: ChatRemote
+    readonly katcatsTeam: TeamRemote & FinanceRemote & {
+      financeBotBinding(botId: BotId): Promise<RemoteResult<FinanceConnectorId | null>>
+      bindFinanceBot(botId: BotId, connectorId: FinanceConnectorId | null): Promise<RemoteResult<void>>
+    }
+    readonly katcatsChats: ChatRemote & {
+      financeBinding(chatId: ChatId): Promise<RemoteResult<FinanceConnectorId | null>>
+      bindFinance(chatId: ChatId, connectorId: FinanceConnectorId | null, expectedBinding?: FinanceConnectorId | null): Promise<RemoteResult<void>>
+      connectFinance(chatId: ChatId, connectorId: FinanceConnectorId): Promise<RemoteResult<FinanceConnector>>
+    }
     readonly katcatsMemory: MemoryRemote
+    readonly xiaojingLedgerSetup?: FinanceSetupRemote
   }
   const connection = ctx.get('connection') as ConnectionHandle
   const model = new TeamClientModel(remote.katcatsTeam)
   const chats = new ChatClientModel(remote.katcatsChats)
+  const setupRemote = hasSetup ? remote.xiaojingLedgerSetup : undefined
+  const { catalog: financeCatalog, setupView, setupDatabase } = installFinancePage(ctx, remote.katcatsTeam, connection.generation, setupRemote)
+  const archiveActions = { continueTask: chats.continueTask.bind(chats), completeTask: chats.completeTask.bind(chats) }
   const messageFeedback = createGroupMessageFeedback({ binding: id => ctx.sessions.binding(id), connection })
   ctx.effect(() => () => { messageFeedback.dispose() }, 'katcats-team: scoped group admission notices')
   ctx.effect(() => installTeamComposerPresentations({
@@ -178,7 +193,21 @@ function mountUI(ctx: Context): void {
     block: (id, blocked) => { ctx.conversation.blocks.setOwned('katcats-group-transport', id,
       blocked ? { reason: t('chat.transportUnavailable') } : undefined) },
     failed: () => { ui.notify('chat.transportUnavailable', false) },
-    submitting: messageFeedback.submitting,
+    submitting: request => {
+      const acknowledge = messageFeedback.submitting(request)
+      const generation = connection.generation.getSnapshot()
+      return value => {
+        const acceptance = value.taskAcceptance
+        if (acceptance === undefined) { acknowledge(); return }
+        if (disposed || generation === undefined || generation !== connection.generation.getSnapshot()
+          || connection.state.getSnapshot() !== 'connected' || selectedSession() !== request.sessionId) return
+        if (acceptance.kind === 'completed') ui.notify('archive.chatAccepted', true, acceptance.goal)
+        else if (acceptance.kind === 'none') ui.notify('archive.chatNone', false)
+        else if (ui.source.getSnapshot().dialog === null) {
+          ui.chooseTaskAcceptance(acceptance.chatId, acceptance.candidates, request.requestId)
+        } else ui.notify('archive.chatChooseAgain', false)
+      }
+    },
   }), 'katcats-team: group Session delivery')
   ctx.effect(() => installGroupStopShortcut(ctx.shortcuts, ctx.sessions, chats.state, ctx.uiSession, async (id) => {
     const session = ctx.sessions.binding(id)?.session
@@ -483,6 +512,43 @@ function mountUI(ctx: Context): void {
     name: 'main', key: 'schedules' as MainPanelId, priority: -100, locale: SCHEDULE_NS,
     inject: (): ScheduleViewsInjected => scheduleInjected,
   }, ScheduleManager))
+  const financeActions = <OwnerId extends ChatId | BotId>(
+    read: (id: OwnerId) => Promise<RemoteResult<FinanceConnectorId | null>>,
+    write: (id: OwnerId, connectorId: FinanceConnectorId | null) => Promise<RemoteResult<void>>,
+    connect: (id: OwnerId, connectorId: FinanceConnectorId) => Promise<RemoteResult<FinanceConnector>>,
+  ): FinanceBindingActions<OwnerId> => ({
+    catalog: financeCatalog,
+    load: async (id) => {
+      const snapshot = await remote.katcatsTeam.financeSnapshot()
+      if (!snapshot.ok) throw snapshot.error
+      if (snapshot.value === null) return null
+      const binding = await read(id)
+      if (!binding.ok) throw binding.error
+      return { connectors: snapshot.value.connectors, connectorId: binding.value }
+    },
+    bind: async (id, connectorId) => {
+      const result = await write(id, connectorId)
+      if (!result.ok) throw result.error
+    },
+    connect: async (id, connectorId) => {
+      const generation = connection.generation.getSnapshot()
+      if (generation === undefined) throw new TeamRequestSupersededError()
+      const result = await connect(id, connectorId)
+      if (generation !== connection.generation.getSnapshot()) throw new TeamRequestSupersededError()
+      if (!result.ok) throw result.error
+      return result.value
+    },
+  })
+  const groupFinance = financeActions<ChatId>(
+    id => remote.katcatsChats.financeBinding(id),
+    (id, connectorId) => remote.katcatsChats.bindFinance(id, connectorId, undefined),
+    (id, connectorId) => remote.katcatsChats.connectFinance(id, connectorId),
+  )
+  const botFinance = financeActions<BotId>(
+    id => remote.katcatsTeam.financeBotBinding(id),
+    (id, connectorId) => remote.katcatsTeam.bindFinanceBot(id, connectorId),
+    (_id, connectorId) => remote.katcatsTeam.testFinanceConnector(connectorId),
+  )
   ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
     name: 'sidebar.right.pane.tab', key: CHAT_SETTINGS_ID, locale: NS,
     children: { 'katcats.settings.permission': { kind: 'single', scope: 'session' } },
@@ -496,7 +562,8 @@ function mountUI(ctx: Context): void {
       return {
         hooks: { directory: model.state, chats: chats.state, connection: connection.state, permissionBatch: batch.state },
         activatePermissionBatch: batch.activate, applyPermissionBatch: batch.apply, cancelPermissionBatch: batch.cancel,
-        openMemory, openSchedules, retainPermissionSession, copyText,
+        openMemory, openSchedules, retainPermissionSession, copyText, archiveActions,
+        finance: groupFinance,
         save: async (request) => {
           try { await chats.update(request); if (!disposed) ui.notify('chat.saved', true) }
           catch (error) {
@@ -513,7 +580,8 @@ function mountUI(ctx: Context): void {
   ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
     name: 'sidebar.right.pane.tab', key: SETTINGS_ID, locale: NS,
     inject: (): BotSettingsInjected => ({
-      hooks: { directory: model.state, connection: connection.state }, save, openMemory, openSchedules,
+      hooks: { directory: model.state, connection: connection.state, financeSetup: setupView },
+      save, openMemory, openSchedules, finance: botFinance, setupDatabase,
     }),
   }, BotSettings))
   ctx.slots.inject('conversation.input.model', () => ctx.slots.register({
@@ -568,6 +636,19 @@ function mountUI(ctx: Context): void {
     name: 'shell.overlay', id: 'katcats-team.dialogs', locale: NS,
     inject: (): TeamOverlaysInjected => ({
       hooks: { teamUi: ui.source }, close: ui.closeDialog, dismissNotice: ui.dismissNotice,
+      acceptTask: async (dialog, task) => {
+        const isOpen = (): boolean => !disposed && ui.source.getSnapshot().dialog?.key === dialog.key
+          && connection.state.getSnapshot() === 'connected'
+        if (!isOpen()) return
+        try {
+          await chats.completeTask(dialog.chatId, task.taskId, task.revision, dialog.requestId)
+          if (!isOpen()) return
+          ui.closeDialog()
+          ui.notify('archive.chatAccepted', true, task.goal)
+        } catch (_error) {
+          if (isOpen()) ui.notify('archive.actionFailed', false)
+        }
+      },
       createBot: async (request: CreateBotRequest) => {
         try {
           const bot = await model.createBot(request)
@@ -663,6 +744,33 @@ function mountUI(ctx: Context): void {
     if (pending.callId !== undefined) ctx.get('userQuestionPanels')?.reveal(pending.sessionId, pending.callId)
   })
   ctx.effect(() => groupQuestions.dispose, 'katcats-team: original group questions')
+  ctx.effect(() => {
+    const prompted = new Map<string, number>()
+    const showRequiredReview = (): void => {
+      const view = chats.state.getSnapshot()
+      const current = selectedSession()
+      const chat = view.phase === 'ready' && connection.state.getSnapshot() === 'connected'
+        ? view.snapshot?.chats.find(item => item.rootSessionId === current) : undefined
+      const dialog = ui.source.getSnapshot().dialog
+      const statuses = ctx.uiSession.sessionStatus.getSnapshot()
+      const waiting = chat?.executors.some(executor => statuses.get(executor.sessionId)?.pendingInteraction !== undefined) === true
+      if (dialog?.kind === 'accept-task' && (dialog.chatId !== chat?.id || (dialog.requestId === undefined && waiting))) {
+        ui.closeDialog()
+        return
+      }
+      if (chat === undefined || dialog !== null || waiting) return
+      const candidates = chat.tickets?.filter(task => task.state === 'delivered' && task.humanReviewRequired === true
+        && prompted.get(task.id) !== task.revision) ?? []
+      if (candidates.length === 0) return
+      for (const task of candidates) prompted.set(task.id, task.revision)
+      ui.chooseTaskAcceptance(chat.id, candidates.map(task => ({ taskId: task.id, goal: task.goal, revision: task.revision,
+        ...(task.financeLabel === undefined ? {} : { financeLabel: task.financeLabel }) })))
+    }
+    const stop = [chats.state, ctx.sessions.list, ui.source, connection.state, ctx.uiSession.sessionStatus]
+      .map(source => source.subscribe(showRequiredReview))
+    showRequiredReview()
+    return () => { for (const unsubscribe of stop) unsubscribe() }
+  }, 'katcats-team: required task review prompts')
 
   const roomActivityLifetime = new AbortController()
   ctx.effect(() => () => { roomActivityLifetime.abort() }, 'katcats-team: room execution subscriptions')
@@ -676,7 +784,7 @@ function mountUI(ctx: Context): void {
     inject: (): HeadquartersInjected => ({
       hooks: { headquarters: headquarters.source, directory: model.state, chats: chats.state,
         connection: connection.state, statuses: ctx.uiSession.sessionStatus },
-      close: headquarters.close, select: headquarters.select, copyText,
+      close: headquarters.close, select: headquarters.select, copyText, archiveActions,
       openChat: id => { headquarters.close(); openChat(id) },
       openBot: id => { headquarters.close(); openBot(id) },
     }),
@@ -690,7 +798,7 @@ function mountUI(ctx: Context): void {
       return {
         hooks: { chats: chats.state, directory: model.state, roomEvents: binding?.eventSource ?? emptyRoomEvents,
           roomConnection: connection.state, roomStatuses: ctx.uiSession.sessionStatus, groupQuestions: groupQuestions.source },
-        watchRoomActivity, copyText,
+        watchRoomActivity, copyText, archiveActions,
         loadRoomHistory: async () => {
           if (binding === undefined || disposed || ctx.sessions.binding(sessionId) !== binding
             || connection.state.getSnapshot() !== 'connected') throw new Error('Group history unavailable')
@@ -699,6 +807,7 @@ function mountUI(ctx: Context): void {
       }
     },
   }, GroupRoomAction))
+  if (process.env.DSH_CLIENT_BUILD_PROFILE === 'xiaojing') installPrivateQuestionComposer(ctx, model.state)
   ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
     name: 'conversation.input.dock', id: 'katcats-team.worker-questions', order: -190, locale: NS,
     children: { 'katcats.group.question-panel': { kind: 'single', scope: 'session' } },
@@ -832,7 +941,7 @@ function mountUI(ctx: Context): void {
       update: (frame) => {
         const known = new Set(model.state.getSnapshot().snapshot?.bots.map(bot => bot.id) ?? [])
         model.replace(frame.value)
-        const created = frame.value.bots.filter(bot => bot.kind === 'ordinary' && !known.has(bot.id))
+        const created = frame.value.bots.filter(bot => bot.kind === 'ordinary' && !isOdooAdminBot(bot.id) && !known.has(bot.id))
         if (created.length > 0) openCreatedBot(created[0]!)
       },
       failed: () => { model.failed() },

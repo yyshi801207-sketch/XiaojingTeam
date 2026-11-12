@@ -11,6 +11,7 @@ import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ChatDelivery, ChatSender, TeamChat } from './chats-types.ts'
 import type { TeamBot } from './types.ts'
 import type { ChatTaskActor, ChatTaskEventId, ChatTaskLifecycle, ChatTaskMember, ChatTaskStatus } from './chats-task-events.ts'
+import { mainBotId } from './storage.ts'
 import type {} from './chats-messages.ts'
 
 type GroupContainer = Pick<TeamChat, 'id' | 'rootSessionId'>
@@ -83,6 +84,20 @@ export class GroupTranscript {
   publishUser(chat: GroupContainer, message: UserMessage): Promise<void> {
     if (message.source.kind !== 'user') {
       return Promise.reject(new HarnessError('A group user message must retain its human source.', 'KATCATS_CHAT_MESSAGE_MISMATCH'))
+    }
+    return this.publish(chat, message)
+  }
+
+  /**
+   * Persist a product-authored finance welcome without scheduling a member turn.
+   * @param chat - group receiving its own connection confirmation.
+   * @param message - welcome attributed to the deployment’s main Bot.
+   * @returns fulfillment after the notice has been flushed.
+   */
+  publishFinanceConnection(chat: GroupContainer, message: UserMessage): Promise<void> {
+    const source = message.source
+    if (source.kind !== 'katcats-group-finance-connected' || source.chatId !== chat.id || source.sender.botId !== mainBotId) {
+      return Promise.reject(new HarnessError('The connection welcome does not belong to this group or main Bot.', 'KATCATS_CHAT_MESSAGE_MISMATCH'))
     }
     return this.publish(chat, message)
   }
